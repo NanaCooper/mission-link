@@ -11,6 +11,8 @@ import LobbyScreen from './ui/flow/LobbyScreen.jsx';
 import EndScreen from './ui/flow/EndScreen.jsx';
 import HowToPlayScreen from './ui/flow/HowToPlayScreen.jsx';
 import DataSourcesScreen from './ui/flow/DataSourcesScreen.jsx';
+import MissionBriefing from './ui/game/intro/MissionBriefing.jsx';
+import { hasSeenBriefing, markBriefingSeen } from './ui/game/intro/briefingText.js';
 import { gameBanner, loadProgress, pickGameScreen, progressAfter, saveProgress } from './ui/flow/appFlow.js';
 
 // Screen switching with React state, no router.
@@ -18,6 +20,7 @@ import { gameBanner, loadProgress, pickGameScreen, progressAfter, saveProgress }
 //   home -> create room -> lobby -> Astronaut game -> end
 //   home -> join room -> Mission Control game -> end
 //   home <-> How to play, home/end <-> Data sources
+//   the first mission on this device starts with the mission briefing (also: home -> Mission briefing)
 
 const scrollToTop = () => {
   try {
@@ -28,9 +31,11 @@ const scrollToTop = () => {
 };
 
 export default function App() {
-  const [page, setPage] = useState('home'); // 'home' | 'howTo' | 'sources' | 'game'
+  const [page, setPage] = useState('home'); // 'home' | 'howTo' | 'sources' | 'briefing' | 'game'
   const [session, setSession] = useState(null); // { id, mode, role, code, world, moonStars }
   const [progress, setProgress] = useState(() => loadProgress());
+  // The mission waiting behind the briefing (the first time), or null when it was opened from home.
+  const [afterBriefing, setAfterBriefing] = useState(null);
 
   useEffect(scrollToTop, [page]);
 
@@ -42,9 +47,21 @@ export default function App() {
     });
   };
 
-  const start = (options) => {
+  const startNow = (options) => {
     setSession({ id: Date.now(), ...options });
     setPage('game');
+  };
+  // The first mission on this device opens the briefing first, so everyone knows the goal.
+  const start = (options) => {
+    if (hasSeenBriefing()) return startNow(options);
+    setAfterBriefing(options);
+    setPage('briefing');
+  };
+  const briefingDone = () => {
+    markBriefingSeen();
+    if (afterBriefing) startNow(afterBriefing);
+    else setPage('home');
+    setAfterBriefing(null);
   };
   const goHome = () => {
     setSession(null); // unmounting the game closes the room
@@ -62,6 +79,15 @@ export default function App() {
       />
     );
   }
+  if (page === 'briefing') {
+    return (
+      <MissionBriefing
+        storm={getStorm(null)}
+        onDone={briefingDone}
+        startLabel={afterBriefing ? undefined : 'Back to home'}
+      />
+    );
+  }
   if (page === 'howTo') return <HowToPlayScreen onBack={() => setPage('home')} />;
   if (page === 'sources') return <DataSourcesScreen storm={getStorm(null)} onBack={() => setPage('home')} />;
 
@@ -75,6 +101,7 @@ export default function App() {
       }
       onJoinRoom={(code) => start({ mode: 'online', role: ROLES.MISSION_CONTROL, code })}
       onHowToPlay={() => setPage('howTo')}
+      onBriefing={() => setPage('briefing')}
       onDataSources={() => setPage('sources')}
       onUnlockMars={() => updateProgress((old) => (old.marsUnlocked ? old : { ...old, marsUnlocked: true }))}
     />

@@ -1,0 +1,272 @@
+/* The mission briefing (Dev 3). A full-screen pixel cutscene:
+   phones held upright: picture on top, words under it.
+   wide or sideways screens: picture on the left, words on the right. */
+
+.briefing {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom))
+    max(12px, env(safe-area-inset-left));
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+/* ---------- Top: title, page dots, skip ---------- */
+.briefing__top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.briefing__kicker {
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.briefing__dots {
+  display: flex;
+  gap: 6px;
+  margin: 0 auto 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.briefing__dots li {
+  width: 12px;
+  height: 12px;
+  background: var(--panel);
+  border: 2px solid var(--panel-border);
+}
+
+.briefing__dots li.is-done {
+  background: var(--panel-border);
+}
+
+.briefing__dots li.is-on {
+  background: var(--focus);
+  border-color: var(--focus);
+}
+
+.briefing__skip,
+.briefing__back {
+  --edge: var(--panel-border);
+  min-height: var(--tap);
+  padding: 4px 16px;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--bg-2);
+  border: var(--px) solid var(--edge);
+  clip-path: var(--notch);
+}
+
+.briefing__back:disabled {
+  visibility: hidden;
+}
+
+/* ---------- The page ---------- */
+.briefing__page {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  animation: briefing-in 0.35s steps(4) 1;
+}
+
+.briefing__picture {
+  max-width: 560px;
+  width: 100%;
+  justify-self: center;
+}
+
+.briefing__words {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  max-width: 620px;
+  width: 100%;
+  justify-self: center;
+}
+
+.briefing__title {
+  margin: 0;
+  font-size: 16px;
+  color: var(--accent);
+}
+
+.briefing__title:focus {
+  outline: none;
+}
+
+.briefing__fact {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border-left: var(--px) solid var(--focus);
+}
+
+.briefing__fact-text {
+  margin: 0;
+  font-weight: 700;
+}
+
+.briefing__fact-source {
+  margin: 4px 0 0;
+  color: var(--text-dim);
+}
+
+.briefing__goals,
+.briefing__roles {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.briefing__goals li,
+.briefing__roles li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.briefing__goal-stars {
+  display: inline-flex;
+  gap: 2px;
+  min-width: 56px;
+}
+
+.briefing__after {
+  margin: 0;
+  color: var(--text-dim);
+  font-weight: 700;
+}
+
+/* ---------- Bottom: back and next ---------- */
+.briefing__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.briefing__next {
+  min-width: min(260px, 60%);
+}
+
+.briefing__next .big-button {
+  --edge: var(--focus);
+  min-height: 56px;
+}
+
+/* ---------- The three waves picture ---------- */
+.briefing-waves {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: end;
+  gap: 16px;
+  height: 160px;
+  padding: 12px 16px;
+  background: var(--ink);
+  border: var(--px) solid var(--panel-border);
+  clip-path: var(--notch);
+}
+
+.briefing-waves__wave {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  align-items: end;
+  justify-items: center;
+  height: 100%;
+  gap: 4px;
+}
+
+.briefing-waves__bar {
+  width: 70%;
+  background: var(--radiation);
+  background-image: linear-gradient(transparent 0 8px, var(--ink) 8px 10px);
+  background-size: 100% 10px;
+  animation: briefing-grow 0.8s steps(8) 1 backwards;
+}
+
+.briefing-waves__wave:nth-child(2) .briefing-waves__bar {
+  background-color: var(--danger);
+  animation-delay: 0.2s;
+}
+
+.briefing-waves__wave:nth-child(3) .briefing-waves__bar {
+  animation-delay: 0.4s;
+}
+
+.briefing-waves__note,
+.briefing-waves__name {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.briefing-waves__note {
+  color: var(--text-dim);
+}
+
+.briefing-waves__wave:nth-child(2) .briefing-waves__note {
+  color: var(--danger);
+}
+
+@keyframes briefing-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes briefing-grow {
+  from { transform: scaleY(0); transform-origin: bottom; }
+  to { transform: scaleY(1); transform-origin: bottom; }
+}
+
+/* Wide or sideways screens: picture left, words right */
+@media (min-width: 700px) and (orientation: landscape), (min-width: 900px) {
+  /* The page itself never scrolls: only the words do, so the picture stays in view */
+  .briefing__page {
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    align-items: center;
+    overflow: hidden;
+  }
+
+  .briefing__words {
+    justify-self: start;
+    align-self: stretch;
+    max-height: 100%;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+}
+
+/* Short screens (a phone held sideways): smaller picture and title */
+@media (max-height: 480px) {
+  .briefing-waves {
+    height: 120px;
+  }
+
+  .briefing__title {
+    font-size: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .briefing__page,
+  .briefing-waves__bar {
+    animation: none;
+  }
+}
