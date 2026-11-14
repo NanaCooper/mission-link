@@ -4,11 +4,14 @@
 //
 // mode 'split':  both players on one device. No network. Always works.
 // mode 'online': role 'astronaut' is the host (runs the engine), role 'missionControl' is the guest.
-// `world` ('moon' | 'mars') and `moonStars` (0-3) pick the FIRST level only. After that:
-//   restart()                          replays the same level
-//   restart({ world: 'mars', moonStars }) starts the next level in the same room ("Fly to Mars")
-// Changing the `world` / `moonStars` props later does nothing; use restart(). In online mode only
-// the host (Astronaut) can restart; Mission Control follows the host's state.
+// `world` ('moon' | 'mars'), `moonStars` (0-3) and `storm` (a ready-made storm for Level 3: Live Sun,
+// or null for the saved one) pick the FIRST level only. After that:
+//   restart()                                 replays the same level (same storm)
+//   restart({ world: 'mars', moonStars })     starts the next level in the same room ("Fly to Mars")
+//   restart({ world, moonStars, storm })      starts a level with a ready-made storm (Level 3)
+//   restart({ world: 'mars', storm: null })   goes back to the saved storm
+// Changing these props later does nothing; use restart(). In online mode only the host (Astronaut)
+// can restart; Mission Control follows the host's state, and the storm travels inside it.
 // `stormId` is an optional extra (not in the contract). `state` is never null: before the game
 // starts it has status 'lobby'.
 
@@ -54,23 +57,26 @@ const blankOnline = (key, world) => ({
   error: null,
 });
 
-export function useGameSession({ mode, role, code, world = 'moon', moonStars = 0, stormId = null }) {
+export function useGameSession({ mode, role, code, world = 'moon', moonStars = 0, storm = null, stormId = null }) {
   const online = mode === 'online';
   const isHost = role === ROLES.ASTRONAUT;
   // The level is not part of the key: a level change must not reconnect the room.
   const key = online ? `${role}|${code}` : null;
 
   const [splitState, dispatch] = useReducer(reduceSplit, null, () =>
-    engine.createGame({ mode: 'split', ...nextLevel({ world: 'moon', stormId, moonStars: 0 }, { world, moonStars }) }),
+    engine.createGame({
+      mode: 'split',
+      ...nextLevel({ world: 'moon', stormId, moonStars: 0 }, { world, moonStars, ...(storm ? { storm } : {}) }),
+    }),
   );
   const [net, setNet] = useState(null);
   const sessionRef = useRef(null);
 
   // Latest first-level props, read when a room opens (without making the room reconnect on change).
-  const firstLevel = useRef({ world, moonStars, stormId });
+  const firstLevel = useRef({ world, moonStars, storm, stormId });
   useEffect(() => {
-    firstLevel.current = { world, moonStars, stormId };
-  }, [world, moonStars, stormId]);
+    firstLevel.current = { world, moonStars, storm, stormId };
+  }, [world, moonStars, storm, stormId]);
 
   useEffect(() => {
     if (!online || !code || !hasSupabase) return undefined;

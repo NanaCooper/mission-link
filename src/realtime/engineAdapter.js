@@ -4,3 +4,5 @@
 // (the fake has no views or storms, so only the realtime test page works then).
 export { createGame, sendWarning, applyMove } from '../engine/index.js';
 export { getAstronautView, getMissionControlView, getStorm } from '../engine/index.js';
+// Level 3 (Live Sun): the storm a game actually plays (state.storm or the saved one), and the safety check.
+export { getGameStorm, isValidStorm } from '../engine/index.js';
