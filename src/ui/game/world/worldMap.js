@@ -172,6 +172,16 @@ export function placeNearHero(map, hero) {
   return null;
 }
 
+// Which way the character must face to look at a place right next to them (null if none).
+// Used when they press USE, so they turn to the thing they use.
+export function facingToward(hero, place) {
+  if (!place) return null;
+  for (const [direction, [dx, dy]] of Object.entries(DIRECTIONS)) {
+    if (place.tiles.some(([x, y]) => x === hero.x + dx && y === hero.y + dy)) return direction;
+  }
+  return null;
+}
+
 // The top-left corner of a place, in squares of the drawing (for drawing its sprite).
 export function placeCorner(place) {
   const xs = place.tiles.map(([x]) => x);

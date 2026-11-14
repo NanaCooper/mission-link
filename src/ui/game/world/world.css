@@ -428,3 +428,158 @@
     transform: none;
   }
 }
+
+/* ---------- The character comes alive (WorldMap.jsx) ---------- */
+/* Breathing: the body (not the legs) rises one square, now and then, while standing */
+.world__breathe {
+  animation: world-breathe 1.8s steps(1) infinite;
+}
+
+/* Walking: a small bounce on every step */
+.world__bob {
+  animation: world-bob 0.16s steps(2) 1;
+}
+
+/* Using a place: a quick hop */
+.world__hop {
+  animation: world-hop 0.4s steps(4) 1;
+}
+
+/* A small puff after a step: it spreads and fades */
+.world__puff {
+  opacity: 0;
+  animation: world-puff 0.35s steps(3) 1;
+}
+
+/* Sparkles over a place when it is used */
+.world__sparkle {
+  opacity: 0;
+  animation: world-sparkle 0.7s steps(5) 1;
+}
+
+@keyframes world-breathe {
+  0%, 59% { transform: translateY(0); }
+  60%, 100% { transform: translateY(-1px); }
+}
+
+@keyframes world-bob {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-1px); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes world-hop {
+  0% { transform: translateY(0); }
+  40% { transform: translateY(-3px); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes world-puff {
+  0% { opacity: 0.9; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-2px); }
+}
+
+@keyframes world-sparkle {
+  0% { opacity: 1; transform: translateY(0); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+
+/* ---------- Life on the maps: robots, satellites, waving flags ---------- */
+/* Two-frame sprites: frame A shows, then frame B */
+.world__frame-a { animation: world-frame-a 0.8s steps(1) infinite; }
+.world__frame-b { animation: world-frame-b 0.8s steps(1) infinite; }
+.world__frame-a--fast { animation-duration: 0.3s; }
+.world__frame-b--fast { animation-duration: 0.3s; }
+
+@keyframes world-frame-a {
+  0%, 49% { visibility: visible; }
+  50%, 100% { visibility: hidden; }
+}
+
+@keyframes world-frame-b {
+  0%, 49% { visibility: hidden; }
+  50%, 100% { visibility: visible; }
+}
+
+/* BLIP rolls back and forth along the bottom of the base, turning round at each end */
+.world__patrol {
+  animation: world-patrol 9s steps(36) infinite alternate;
+}
+
+.world__patrol-turn {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: world-turn 18s steps(1) infinite;
+}
+
+@keyframes world-patrol {
+  from { transform: translateX(0); }
+  to { transform: translateX(var(--patrol, 36px)); }
+}
+
+@keyframes world-turn {
+  0%, 49% { transform: scaleX(1); }
+  50%, 100% { transform: scaleX(-1); }
+}
+
+/* A satellite crosses the sky */
+.world__satellite {
+  animation: world-cross 18s steps(90) infinite;
+}
+
+@keyframes world-cross {
+  from { transform: translateX(-12px); }
+  to { transform: translateX(var(--cross, 132px)); }
+}
+
+/* Now and then a shooting star */
+.world__shooting-star {
+  opacity: 0;
+  animation: world-shoot 7s steps(1) infinite;
+}
+
+@keyframes world-shoot {
+  0%, 91% { opacity: 0; transform: translate(0, 0); }
+  92% { opacity: 1; transform: translate(0, 0); }
+  94% { opacity: 1; transform: translate(-6px, 3px); }
+  96% { opacity: 1; transform: translate(-12px, 6px); }
+  97%, 100% { opacity: 0; transform: translate(-12px, 6px); }
+}
+
+/* A whirlwind drifting across Mars */
+.world__whirl {
+  animation: world-whirl 12s steps(48) infinite alternate;
+}
+
+@keyframes world-whirl {
+  from { transform: translateX(0); }
+  to { transform: translateX(var(--drift, 30px)); }
+}
+
+/* The engineer typing: hands go up and down */
+.world__typing {
+  animation: world-frame-a 0.25s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world__breathe,
+  .world__bob,
+  .world__hop,
+  .world__patrol,
+  .world__patrol-turn,
+  .world__satellite,
+  .world__whirl,
+  .world__typing,
+  .world__frame-a,
+  .world__frame-b {
+    animation: none;
+  }
+
+  .world__frame-b,
+  .world__shooting-star,
+  .world__puff,
+  .world__sparkle {
+    display: none;
+  }
+}

@@ -8,6 +8,7 @@ import { roomDialog } from './dialogs.jsx';
 import { spriteRects, diskRects } from '../../components/pixel/spriteRects.jsx';
 import { PALETTE } from '../../components/pixel/sprites.js';
 import { PixelIcon } from '../../components/index.js';
+import { COOLER, SERVER, DESK, SCREEN_BACK, ENGINEER } from './props.js';
 
 // Mission Control's map: the control room on Earth, seen from above like an old role-playing game.
 // Commander Sola walks to a place and uses it:
@@ -62,6 +63,18 @@ const RADIO_DESK = [
 const PLANT = ['..N..N..', '.NLN.N..', '..NLNLN.', '.NLNNLN.', '..NNLN..', '...NN...', '.KKKKKK.', '.KOOOOK.', '.KOOOOK.', '..KKKK..'];
 
 const place = (id) => placeCorner(ROOM_MAP.places.find((p) => p.id === id));
+
+// Where each letter of the room first appears, in squares of the drawing: { x, y } or null
+function corner(letter) {
+  for (let y = 0; y < ROOM_MAP.rows.length; y += 1) {
+    const x = ROOM_MAP.rows[y].indexOf(letter);
+    if (x >= 0) return { x: x * TILE, y: y * TILE };
+  }
+  return null;
+}
+const COOLER_AT = corner('c');
+const SERVER_AT = corner('S');
+const DESK_AT = corner('E');
 
 export default function ControlRoomMap({ view, onWarn, active = true }) {
   const gameNumber = useGameNumber(view.turn);
@@ -120,6 +133,7 @@ export default function ControlRoomMap({ view, onWarn, active = true }) {
       canUse={playing}
       active={active}
       ground={PALETTE.k}
+      stepPuff={PALETTE.g}
       onStep={close}
       onDialogClose={close}
       dialog={dialog || null}
@@ -149,6 +163,54 @@ export default function ControlRoomMap({ view, onWarn, active = true }) {
       <rect x={8} y={3} width={6} height={6} fill={PALETTE.W} />
       <rect x={10} y={4} width={1} height={3} fill={PALETTE.K} />
       <rect x={11} y={6} width={2} height={1} fill={PALETTE.K} />
+
+      {/* On the wall: a clock (its hand ticks), a Moon poster, a Mars poster, status lights */}
+      {diskRects(24, 6, 4, PALETTE.W, 'clock')}
+      <rect x={24} y={3} width={1} height={3} fill={PALETTE.K} className="world__frame-a" />
+      <rect x={24} y={6} width={3} height={1} fill={PALETTE.K} className="world__frame-b" />
+      <rect x={24} y={6} width={1} height={1} fill={PALETTE.r} />
+      <rect x={92} y={2} width={9} height={8} fill={PALETTE.K} />
+      {diskRects(96, 6, 3, PALETTE.G, 'poster-moon')}
+      <rect x={95} y={5} width={1} height={1} fill={PALETTE.g} />
+      <rect x={104} y={2} width={9} height={8} fill={PALETTE.K} />
+      {diskRects(108, 6, 3, PALETTE.O, 'poster-mars')}
+      <rect x={107} y={7} width={2} height={1} fill="#b0553a" />
+      {[[2, 'px-blink-slow'], [5, 'px-twinkle'], [114, 'px-blink-fast'], [117, 'px-twinkle px-twinkle--late']].map(([x, className]) => (
+        <rect key={`light-${x}`} x={x} y={9} width={2} height={1} fill={x < 60 ? PALETTE.L : PALETTE.C} className={className} />
+      ))}
+
+      {/* A rug under the radio desk */}
+      <rect x={radio.x - 4} y={radio.y + TILE - 1} width={2 * TILE + 8} height={4} fill={PALETTE.P} opacity={0.6} />
+
+      {/* The water cooler, the computer rack (lights blink) and the flight engineer at the desk (typing) */}
+      {COOLER_AT && <g>{spriteRects(COOLER, { x: COOLER_AT.x + 2, y: COOLER_AT.y + TILE - COOLER.length, id: 'cooler' })}</g>}
+      {SERVER_AT && (
+        <g>
+          {spriteRects(SERVER, { x: SERVER_AT.x + 1, y: SERVER_AT.y + TILE - SERVER.length, id: 'server' })}
+          {[1, 3, 5, 7, 9, 11].map((row, i) => (
+            <rect
+              key={`server-light-${row}`}
+              x={SERVER_AT.x + 3 + (i % 3) * 2}
+              y={SERVER_AT.y + TILE - SERVER.length + row}
+              width={1}
+              height={1}
+              fill={i % 2 ? PALETTE.L : PALETTE.C}
+              className={['px-blink-fast', 'px-twinkle', 'px-blink-slow'][i % 3]}
+            />
+          ))}
+        </g>
+      )}
+      {DESK_AT && (
+        <g>
+          {spriteRects(ENGINEER, { x: DESK_AT.x + 12, y: DESK_AT.y + TILE - DESK.length - ENGINEER.length + 3, id: 'engineer' })}
+          {spriteRects(DESK, { x: DESK_AT.x, y: DESK_AT.y + TILE - DESK.length, id: 'desk' })}
+          {spriteRects(SCREEN_BACK, { x: DESK_AT.x + 3, y: DESK_AT.y + TILE - DESK.length - SCREEN_BACK.length, id: 'screen' })}
+          <rect x={DESK_AT.x + 4} y={DESK_AT.y + TILE - DESK.length - 4} width={4} height={1} fill={PALETTE.b} className="px-flicker" />
+          {/* Hands on the keyboard: they go up and down */}
+          <rect x={DESK_AT.x + 13} y={DESK_AT.y + TILE - DESK.length - 1} width={2} height={1} fill={PALETTE.U} className="world__typing" />
+          <rect x={DESK_AT.x + 19} y={DESK_AT.y + TILE - DESK.length - 1} width={2} height={1} fill={PALETTE.U} className="world__frame-b world__frame-b--fast" />
+        </g>
+      )}
 
       {/* Telescope, crew monitor, radio desk, plants */}
       <g>{spriteRects(TELESCOPE, { x: telescope.x + 1, y: telescope.y, id: 'telescope' })}</g>

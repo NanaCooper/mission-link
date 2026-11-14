@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { spriteRects } from '../../components/pixel/spriteRects.jsx';
 import { PALETTE } from '../../components/pixel/sprites.js';
-import { TILE, WALK_REPEAT_MS, stepHero, placeNearHero, placeTop, nextChoice } from './worldMap.js';
+import { TILE, WALK_REPEAT_MS, stepHero, placeNearHero, placeTop, nextChoice, facingToward } from './worldMap.js';
 import { bindMapKeys } from './mapKeys.js';
 import Joystick from './Joystick.jsx';
 import '../scenes/scenes.css';
@@ -24,7 +24,9 @@ import './world.css';
 //   overlay       HTML shown on top of the picture (tags)
 //   children      SVG drawn under the character (ground, places)
 //   foreground    SVG drawn over the character (shield, flashes)
-//   hero          { sprites: { front, back, legs: { stand, stepLeft, stepRight } }, name }
+//   hero          { sprites: { front, back, legs: { stand, stepLeft, stepRight }, side?, sideLegs? }, name }
+//                 side faces right; walking left shows it mirrored. Without side, the front is used.
+//   stepPuff      optional: a colour. Each step kicks up a little puff in that colour.
 //   start         { x, y, facing } where the character starts
 //   resetKey      when this changes (a new game), the character goes back to the start
 //   hiddenKey     when this changes to a new value, the character is hidden (inside the shelter)
@@ -82,10 +84,13 @@ export default function WorldMap({
   ground = PALETTE.K,
   dialog = null,
   onDialogClose,
-  onStep
+  onStep,
+  stepPuff = null
 }) {
   const [position, setPosition] = useState(start);
   const [steps, setSteps] = useState(0);
+  // Each USE: the character hops and the place sparkles. { count, place }
+  const [used, setUsed] = useState({ count: 0, place: null });
   const [lastReset, setLastReset] = useState(resetKey);
   const [revealedKey, setRevealedKey] = useState(hiddenKey);
 
@@ -121,7 +126,12 @@ export default function WorldMap({
     onStep?.();
   };
   const act = () => {
-    if (usable) onUse(near);
+    if (!usable) return;
+    // Turn to face the place, hop, and make it sparkle, then let the screen do the rest.
+    const facing = facingToward(position, near);
+    if (facing && facing !== position.facing) setPosition((current) => ({ ...current, facing }));
+    setUsed((now) => ({ count: now.count + 1, place: near }));
+    onUse(near);
   };
 
   // The latest handlers, for the timer and the window listeners (which outlive one render).
@@ -180,8 +190,14 @@ export default function WorldMap({
   const height = map.height * TILE;
   const heroX = position.x * TILE + (TILE - HERO_W) / 2;
   const heroY = position.y * TILE + TILE - HERO_H;
-  const body = position.facing === 'up' ? hero.sprites.back : hero.sprites.front;
+  // Which way the character looks: back when walking up, the side view (mirrored for left)
+  // when walking left or right, the front when walking down.
+  const sideways = (position.facing === 'left' || position.facing === 'right') && Boolean(hero.sprites.side);
+  const body = position.facing === 'up' ? hero.sprites.back : sideways ? hero.sprites.side : hero.sprites.front;
+  const legs = sideways && hero.sprites.sideLegs ? hero.sprites.sideLegs : hero.sprites.legs;
+  const mirror = sideways && position.facing === 'left' ? `translate(${HERO_W} 0) scale(-1 1)` : undefined;
   const legsY = body.length;
+  const sparkleAt = used.place ? placeTop(used.place) : null;
   const arrowAt = near ? placeTop(near) : null;
   const nearName = near ? placeNames[near.id] ?? near.id : null;
 
@@ -216,23 +232,49 @@ export default function WorldMap({
         >
           {children}
 
-          {/* The character */}
+          {/* A small puff where the character lands after a step */}
+          {stepPuff && steps > 0 && !hidden && (
+            <g key={`puff-${steps}`} className="world__puff" aria-hidden="true">
+              <rect x={heroX + 1} y={heroY + HERO_H - 1} width={2} height={1} fill={stepPuff} />
+              <rect x={heroX + HERO_W - 3} y={heroY + HERO_H - 1} width={2} height={1} fill={stepPuff} />
+              <rect x={heroX - 1} y={heroY + HERO_H - 2} width={1} height={1} fill={stepPuff} />
+              <rect x={heroX + HERO_W} y={heroY + HERO_H - 2} width={1} height={1} fill={stepPuff} />
+            </g>
+          )}
+
+          {/* The character: slides one square per step; bobs while walking, breathes while standing,
+              hops when using a place. Walking left shows the side view mirrored. */}
           {!hidden && (
             <g className="world__hero" style={{ transform: `translate(${heroX}px, ${heroY}px)` }}>
-              {spriteRects(body, { id: 'hero' })}
-              {steps === 0 ? (
-                <g>{spriteRects(hero.sprites.legs.stand, { y: legsY, id: 'legs' })}</g>
-              ) : (
-                <g key={steps}>
-                  <g className="world__legs-moving">
-                    {spriteRects(steps % 2 ? hero.sprites.legs.stepLeft : hero.sprites.legs.stepRight, {
-                      y: legsY,
-                      id: 'step'
-                    })}
+              <g key={`use-${used.count}`} className={used.count > 0 ? 'world__hop' : undefined}>
+                <g transform={mirror}>
+                  <g key={`step-${steps}`} className={steps > 0 ? 'world__bob' : undefined}>
+                    <g className="world__breathe">{spriteRects(body, { id: 'hero' })}</g>
                   </g>
-                  <g className="world__legs-still">{spriteRects(hero.sprites.legs.stand, { y: legsY, id: 'legs' })}</g>
+                  {steps === 0 ? (
+                    <g>{spriteRects(legs.stand, { y: legsY, id: 'legs' })}</g>
+                  ) : (
+                    <g key={steps}>
+                      <g className="world__legs-moving">
+                        {spriteRects(steps % 2 ? legs.stepLeft : legs.stepRight, { y: legsY, id: 'step' })}
+                      </g>
+                      <g className="world__legs-still">{spriteRects(legs.stand, { y: legsY, id: 'legs' })}</g>
+                    </g>
+                  )}
                 </g>
-              )}
+              </g>
+            </g>
+          )}
+
+          {/* Using a place: a burst of sparkles over it */}
+          {sparkleAt && (
+            <g key={`sparkle-${used.count}`} className="world__sparkle" aria-hidden="true">
+              <rect x={sparkleAt.x - 1} y={sparkleAt.y - 4} width={2} height={2} fill={PALETTE.Y} />
+              <rect x={sparkleAt.x - 6} y={sparkleAt.y - 1} width={1} height={1} fill={PALETTE.W} />
+              <rect x={sparkleAt.x + 5} y={sparkleAt.y - 1} width={1} height={1} fill={PALETTE.W} />
+              <rect x={sparkleAt.x - 4} y={sparkleAt.y - 6} width={1} height={1} fill={PALETTE.C} />
+              <rect x={sparkleAt.x + 3} y={sparkleAt.y - 6} width={1} height={1} fill={PALETTE.C} />
+              <rect x={sparkleAt.x} y={sparkleAt.y - 9} width={1} height={1} fill={PALETTE.W} />
             </g>
           )}
 

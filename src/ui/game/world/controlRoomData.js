@@ -4,18 +4,19 @@ import { buildMap } from './worldMap.js';
 
 //  # wall (with the big screen)   . floor   p plant (blocked)
 //  T telescope   M crew monitor   R radio desk (two squares)
+//  Just there to look at (blocked): c water cooler, S computer rack, E the engineer's desk (two squares)
 const ROWS = [
   '##########',
-  '.T......M.',
+  'cT......M.',
   '..........',
-  '...RR.....',
+  '...RR....S',
   '..........',
-  'p........p',
+  'p....EE..p',
   '..........'
 ];
 
 export const ROOM_MAP = buildMap(ROWS, {
-  blocked: '#p',
+  blocked: '#pcSE',
   places: { T: 'telescope', M: 'monitor', R: 'radio' }
 });
 

@@ -9,6 +9,29 @@ import { spriteRects } from '../../components/pixel/spriteRects.jsx';
 import { PIECES, PALETTE } from '../../components/pixel/sprites.js';
 import { PixelIcon } from '../../components/index.js';
 import { MOVE_INFO } from '../labels.js';
+import { ANTENNA, FLAG_A, FLAG_B, LANDER, CRATES, BLIP_BOT_A, BLIP_BOT_B, SATELLITE } from './props.js';
+
+// Where each letter of the map first appears, in squares of the drawing: { x, y } or null
+function corner(letter) {
+  for (let y = 0; y < BASE_MAP.rows.length; y += 1) {
+    const x = BASE_MAP.rows[y].indexOf(letter);
+    if (x >= 0) return { x: x * TILE, y: y * TILE };
+  }
+  return null;
+}
+const ANTENNA_AT = corner('a');
+const FLAG_AT = corner('f');
+const LANDER_AT = corner('L');
+const CRATES_AT = corner('c');
+
+// Little stones on the ground, just to look at: [x, y, light?]
+const PEBBLES = [
+  [8, 16, 1], [30, 42, 0], [52, 18, 1], [70, 45, 0], [95, 40, 1], [16, 70, 0],
+  [40, 64, 1], [102, 58, 0], [62, 77, 1], [84, 30, 0], [22, 52, 1], [110, 76, 0]
+];
+
+// Old footprints from Nova's walks: [x, y]
+const FOOTPRINTS = [[64, 52], [67, 55], [64, 58], [67, 61], [76, 50], [79, 53]];
 
 // The Astronaut's map: the Moon or Mars base, seen from above like an old role-playing game.
 // Nova walks to a place and uses it to make her move:
@@ -150,6 +173,7 @@ export default function BaseMap({ view, onMove, hit = 0, overlay, active = true 
       canUse={view.status === 'playing'}
       active={active}
       ground={look.ground}
+      stepPuff={look.light}
       foreground={
         <>
           {/* The shield: a glowing dome over the base */}
@@ -223,6 +247,66 @@ export default function BaseMap({ view, onMove, hit = 0, overlay, active = true 
           return null;
         })
       )}
+
+      {/* Pebbles, footprints, and the power cable from the solar panel to the base */}
+      {PEBBLES.map(([x, y, light]) => (
+        <rect key={`pebble-${x}-${y}`} x={x} y={y} width={light ? 1 : 2} height={1} fill={light ? look.light : look.dark} />
+      ))}
+      {FOOTPRINTS.map(([x, y]) => (
+        <rect key={`foot-${x}-${y}`} x={x} y={y} width={2} height={1} fill={look.dark} opacity={0.7} />
+      ))}
+      <rect x={panel.x + 12} y={panel.y + 11} width={dome.x - panel.x - 12} height={1} fill={PALETTE.K} />
+      <rect x={panel.x + 18} y={panel.y + 11} width={1} height={1} fill={PALETTE.Y} className="px-blink-slow" />
+
+      {/* A satellite crossing the sky, and now and then a shooting star */}
+      <g className="world__satellite" style={{ '--cross': `${BASE_MAP.width * TILE + 12}px` }}>
+        {spriteRects(SATELLITE, { x: 0, y: 3, id: 'satellite' })}
+      </g>
+      <g className="world__shooting-star">
+        <rect x={70} y={2} width={1} height={1} fill={PALETTE.W} />
+        <rect x={71} y={1} width={1} height={1} fill={PALETTE.G} />
+        <rect x={72} y={0} width={1} height={1} fill={PALETTE.g} />
+      </g>
+
+      {/* Mars: a whirlwind drifting along the horizon */}
+      {view.world === 'mars' && (
+        <g className="world__whirl" style={{ '--drift': '40px' }}>
+          <rect x={14} y={14} width={5} height={1} fill={look.light} opacity={0.8} />
+          <rect x={15} y={15} width={4} height={1} fill={look.light} opacity={0.7} />
+          <rect x={15} y={16} width={3} height={1} fill={look.light} opacity={0.6} />
+          <rect x={16} y={17} width={2} height={1} fill={look.light} opacity={0.5} />
+          <rect x={16} y={18} width={1} height={1} fill={look.light} opacity={0.4} />
+        </g>
+      )}
+
+      {/* The radio dish (its light blinks), the flag (it waves), the lander and the supply crates */}
+      {ANTENNA_AT && (
+        <g>
+          {spriteRects(ANTENNA, { x: ANTENNA_AT.x + 1, y: ANTENNA_AT.y + TILE - ANTENNA.length, id: 'antenna' })}
+          <rect x={ANTENNA_AT.x + 8} y={ANTENNA_AT.y + 1} width={1} height={1} fill={PALETTE.r} className="px-blink-fast" />
+        </g>
+      )}
+      {FLAG_AT && (
+        <g>
+          <g className="world__frame-a">{spriteRects(FLAG_A, { x: FLAG_AT.x + 3, y: FLAG_AT.y + TILE - FLAG_A.length, id: 'flag-a' })}</g>
+          <g className="world__frame-b">{spriteRects(FLAG_B, { x: FLAG_AT.x + 3, y: FLAG_AT.y + TILE - FLAG_B.length, id: 'flag-b' })}</g>
+        </g>
+      )}
+      {LANDER_AT && (
+        <g>
+          {spriteRects(LANDER, { x: LANDER_AT.x, y: LANDER_AT.y + TILE - LANDER.length, id: 'lander' })}
+          <rect x={LANDER_AT.x + 11} y={LANDER_AT.y + TILE - LANDER.length + 6} width={2} height={1} fill={PALETTE.L} className="px-blink-slow" />
+        </g>
+      )}
+      {CRATES_AT && <g>{spriteRects(CRATES, { x: CRATES_AT.x, y: CRATES_AT.y + TILE - CRATES.length, id: 'crates' })}</g>}
+
+      {/* BLIP, the base robot, rolls back and forth along the bottom of the base */}
+      <g className="world__patrol" style={{ '--patrol': '40px' }}>
+        <g className="world__patrol-turn">
+          <g className="world__frame-a world__frame-a--fast">{spriteRects(BLIP_BOT_A, { x: 2, y: 6 * TILE + 3, id: 'blip-a' })}</g>
+          <g className="world__frame-b world__frame-b--fast">{spriteRects(BLIP_BOT_B, { x: 2, y: 6 * TILE + 3, id: 'blip-b' })}</g>
+        </g>
+      </g>
 
       {/* Solar panel. It sparkles when Nova saves power. */}
       <g>{spriteRects(PIECES.solarPanel, { x: panel.x, y: panel.y + 4, id: 'panel' })}</g>

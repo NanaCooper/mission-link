@@ -4,18 +4,19 @@ import { buildMap } from './worldMap.js';
 
 //  ~ sky   . ground   , dark ground   o crater (blocked)
 //  P solar panel   H shelter (two squares)   T shield tower   R science rover
+//  Just there to look at (blocked): a radio dish, f flag, L lander (two squares), c supply crates
 const ROWS = [
   '~~~~~~~~~~',
-  '..........',
+  '.........a',
   '.P..HH..T.',
   '..........',
   '.o.,...R..',
-  '....,....o',
-  '..,.......'
+  'f...,....o',
+  '..,..LL.c.'
 ];
 
 export const BASE_MAP = buildMap(ROWS, {
-  blocked: '~o',
+  blocked: '~oafLc',
   places: { P: 'solarPanel', H: 'shelter', T: 'shieldTower', R: 'rover' }
 });
 
