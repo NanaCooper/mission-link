@@ -49,6 +49,14 @@ Never edit anything else (not `App.jsx`, `main.jsx`, `src/engine/`, `src/realtim
 Newest warning = last item of `inbox`. Latest log line = last item of `log`. Meters are 0–100;
 the radiation bar's max is **always `view.radiationLimit`**, never a hard-coded 40.
 
+**Confirmed against Dev 1's engine (`src/engine/index.js`), 14 Nov:**
+- Both views match the shapes above exactly.
+- `turn` **starts at 0** and goes up by 1 after each move; the game ends when it reaches `maxTurns`.
+  So screens show **`Turn ${Math.min(view.turn + 1, view.maxTurns)} of ${view.maxTurns}`**.
+- On Mars, a delivered warning is `{ turn, turnSent, warning }` (`turn` = the turn it arrived).
+  Screens only read `.warning` from the last inbox item, so the extra field changes nothing.
+- `getStorm(id)` returns the default storm for an unknown id, so it never returns nothing.
+
 ## Shared component APIs (fixed now so all WPs can build in parallel)
 | Component | File | Props |
 |---|---|---|
