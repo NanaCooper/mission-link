@@ -6,7 +6,8 @@ import LobbyScreen from './LobbyScreen.jsx';
 import EndScreen from './EndScreen.jsx';
 import HowToPlayScreen from './HowToPlayScreen.jsx';
 import DataSourcesScreen from './DataSourcesScreen.jsx';
-import { BLACKOUT_FACT, MARS_FACT } from './facts.js';
+import { ALERTS_FACT, BLACKOUT_FACT, MARS_FACT, MOON_DELAY_FACT } from './facts.js';
+import { DEBRIEF_TIPS, debriefLines } from './debrief.js';
 import { fakeMarsWin, fakeMoonLost, fakeMoonWin } from './fakeFlow.js';
 import { archivedLabel, crates, formatDate } from './text.js';
 
@@ -118,6 +119,51 @@ describe('HowToPlayScreen', () => {
     expect(out).toContain('Mission Control');
     expect(out).toContain('Astronaut');
     expect(out).toContain(`href="${BLACKOUT_FACT.source.url}"`);
+  });
+
+  it('shows the two facts the 3 waves skip (timely alerts, the Moon delay), with their sources', () => {
+    const out = html(<HowToPlayScreen />);
+    for (const fact of [ALERTS_FACT, MOON_DELAY_FACT]) {
+      expect(out).toContain(fact.text);
+      expect(out).toContain(`href="${fact.source.url}"`);
+    }
+  });
+
+  it('uses exactly the same words and sources as the storm file, so the two never drift apart', () => {
+    expect(storm.stages[0].fact).toEqual(ALERTS_FACT);
+    expect(storm.stages[2].fact).toEqual(MOON_DELAY_FACT);
+  });
+});
+
+describe('What your choices meant', () => {
+  it('turns the Astronaut view into plain sentences, with every number from the view', () => {
+    expect(debriefLines(fakeMoonWin)).toEqual([
+      'You used 18 of your 40 radiation points.',
+      'You ended with 35 power and 100 oxygen.',
+      'Crew health: 72 out of 100.',
+      'You earned 2 science points.',
+      DEBRIEF_TIPS.perfect
+    ]);
+  });
+
+  it('says when the radiation budget ran out, and gives the tip for how the game was lost', () => {
+    const lines = debriefLines(fakeMoonLost);
+    expect(lines[0]).toBe('Radiation reached 41 of your 40 points, so the storm budget ran out.');
+    expect(lines.at(-1)).toBe(DEBRIEF_TIPS.radiation);
+    for (const reason of ['oxygen', 'health', 'time']) {
+      expect(debriefLines({ ...fakeMoonLost, lostReason: reason }).at(-1)).toBe(DEBRIEF_TIPS[reason]);
+    }
+  });
+
+  it('suggests more stars when the win was not perfect, and says 1 science point, not 1 points', () => {
+    const lines = debriefLines({ ...fakeMarsWin, science: 1 });
+    expect(lines).toContain('You earned 1 science point.');
+    expect(lines.at(-1)).toBe(DEBRIEF_TIPS.moreStars);
+  });
+
+  it('shows on the end screen when the crew view is passed, and not without it', () => {
+    expect(html(<EndScreen view={fakeMoonWin} storm={storm} crew={fakeMoonWin} />)).toContain('What your choices meant');
+    expect(html(<EndScreen view={fakeMoonWin} storm={storm} />)).not.toContain('What your choices meant');
   });
 });
 

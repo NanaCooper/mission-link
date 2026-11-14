@@ -154,6 +154,7 @@ function Game({ session, onLevelEnd, onHome }) {
       <EndScreen
         view={view}
         storm={getGameStorm(state)}
+        crew={getAstronautView(state)}
         canContinue={!isMissionControl}
         onNextLevel={(stars) => restart({ world: 'mars', moonStars: stars })}
         onPlayAgain={() => restart()}
