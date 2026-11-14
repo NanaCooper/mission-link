@@ -10,7 +10,8 @@ import {
   MOVE_EFFECTS,
   STARS,
   LEVELS,
-  STORM_LIMITS
+  STORM_LIMITS,
+  SIGNAL_SECONDS
 } from './balance.js';
 import { getStorm, DEFAULT_STORM_ID } from './storms/index.js';
 
@@ -59,6 +60,21 @@ function isBlackoutStage(state) {
 }
 
 const BLACKOUT_TEXT = 'The Sun is blocking the signal. Your message could not get through!';
+const TIME_UP_TEXT = 'Mission Control did not send a message in time. The crew could not stay safe.';
+
+// The warning Mission Control sent this turn, or undefined.
+// Moon: it is already in the inbox. Mars: it waits in the outbox until next turn.
+function warningSentThisTurn(state) {
+  return levelOf(state).delayTurns === 0
+    ? state.inbox.find((w) => w.turn === state.turn)
+    : state.outbox.find((w) => w.turnSent === state.turn);
+}
+
+// The signal clock runs while the game is on, no warning has been sent this turn,
+// and the Sun is not blocking the signal (nobody can send one then).
+function isClockRunning(state) {
+  return state.status === 'playing' && !isBlackoutStage(state) && !warningSentThisTurn(state);
+}
 
 // storm: an optional ready-made storm object (Level 3: Live Sun). If it is not valid,
 // the game plays the saved storm from stormId instead, so a bad storm never breaks the game.
@@ -91,7 +107,25 @@ export function createGame({
     inbox: [],
     outbox: [],
     lastFact: null,
+    signalSecondsLeft: SIGNAL_SECONDS,
     log: [{ turn: 0, text: firstLine }]
+  };
+}
+
+// The signal clock. The caller says how many seconds passed (the engine never reads the time),
+// e.g. tick(state, 1) once a second. Nothing happens when the clock is not running.
+// At 0 the game is lost with lostReason 'time'.
+export function tick(state, seconds) {
+  if (!Number.isFinite(seconds) || seconds <= 0 || !isClockRunning(state)) return state;
+  const left = Math.max(0, (state.signalSecondsLeft ?? SIGNAL_SECONDS) - seconds);
+  if (left > 0) return { ...state, signalSecondsLeft: left };
+  return {
+    ...state,
+    signalSecondsLeft: 0,
+    status: 'lost',
+    lostReason: 'time',
+    stars: 0,
+    log: [...state.log, { turn: state.turn, text: TIME_UP_TEXT }]
   };
 }
 
@@ -218,6 +252,7 @@ export function applyMove(state, move) {
     outbox,
     lastMove: move,
     lastFact: stage.fact ?? null,
+    signalSecondsLeft: SIGNAL_SECONDS, // a new turn: the clock starts again
     log,
     lostReason,
     stars
@@ -238,7 +273,17 @@ export function getAstronautView(state) {
     lastMove: state.lastMove,
     lastFact: state.lastFact ?? null,
     lostReason: state.lostReason,
-    stars: state.stars
+    stars: state.stars,
+    ...clockView(state)
+  };
+}
+
+// The signal clock, as both players see it.
+function clockView(state) {
+  return {
+    signalSecondsLeft: state.signalSecondsLeft ?? SIGNAL_SECONDS,
+    signalLimit: SIGNAL_SECONDS,
+    clockRunning: isClockRunning(state)
   };
 }
 
@@ -247,11 +292,7 @@ export function getMissionControlView(state) {
   const stage = currentStage(state);
   const level = levelOf(state);
   const next = stages[state.stormStage + 1];
-
-  const sentNow =
-    level.delayTurns === 0
-      ? state.inbox.find((w) => w.turn === state.turn)
-      : state.outbox.find((w) => w.turnSent === state.turn);
+  const sentNow = warningSentThisTurn(state);
 
   return {
     status: state.status,
@@ -271,6 +312,7 @@ export function getMissionControlView(state) {
     crewHealth: state.meters.crewHealth,
     warningThisTurn: sentNow ? sentNow.warning : null,
     lostReason: state.lostReason,
-    stars: state.stars
+    stars: state.stars,
+    ...clockView(state)
   };
 }

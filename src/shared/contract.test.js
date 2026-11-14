@@ -30,7 +30,7 @@ describe('shared contract', () => {
       [
         'status', 'mode', 'world', 'turn', 'maxTurns', 'meters', 'science',
         'stormId', 'storm', 'stormStage', 'inbox', 'outbox', 'lastMove', 'log',
-        'lostReason', 'stars', 'moonStars'
+        'lostReason', 'stars', 'moonStars', 'signalSecondsLeft'
       ].sort()
     );
   });

@@ -7,9 +7,10 @@ import {
   getMissionControlView,
   getStorm,
   getGameStorm,
-  isValidStorm
+  isValidStorm,
+  tick
 } from './index.js';
-import { RADIATION_LIMIT, LEVELS, STORM_LIMITS } from './balance.js';
+import { RADIATION_LIMIT, LEVELS, STORM_LIMITS, SIGNAL_SECONDS } from './balance.js';
 import { MOVES, initialState } from '../shared/contract.js';
 
 const moon = () => createGame({ mode: 'split', world: 'moon' });
@@ -221,6 +222,90 @@ describe('Mars signal blackout', () => {
   });
 });
 
+describe('the signal clock', () => {
+  const blackoutStage = LEVELS.mars.blackoutStages[0];
+
+  it('starts full at the start of a game and of every turn', () => {
+    expect(moon().signalSecondsLeft).toBe(SIGNAL_SECONDS);
+    const later = applyMove(tick(moon(), 25), 'doScience');
+    expect(later.signalSecondsLeft).toBe(SIGNAL_SECONDS);
+  });
+
+  it('counts down by the seconds it is given', () => {
+    expect(tick(moon(), 1).signalSecondsLeft).toBe(SIGNAL_SECONDS - 1);
+    expect(tick(tick(moon(), 10), 5).signalSecondsLeft).toBe(SIGNAL_SECONDS - 15);
+  });
+
+  it('ignores zero, negative and broken amounts of time', () => {
+    const s = moon();
+    for (const seconds of [0, -3, NaN, Infinity, undefined, '5']) expect(tick(s, seconds)).toBe(s);
+  });
+
+  it('stops once a warning is sent this turn, on the Moon and on Mars', () => {
+    for (const start of [moon(), mars()]) {
+      const sent = sendWarning(tick(start, 20), 'shelterNow');
+      expect(tick(sent, 100)).toBe(sent);
+      expect(getMissionControlView(sent).clockRunning).toBe(false);
+      expect(getAstronautView(sent).clockRunning).toBe(false);
+    }
+  });
+
+  it('runs again on the next turn, even after a warning was sent', () => {
+    const next = applyMove(sendWarning(moon(), 'stormComing'), 'raiseShield');
+    expect(getMissionControlView(next).clockRunning).toBe(true);
+    expect(tick(next, 1).signalSecondsLeft).toBe(SIGNAL_SECONDS - 1);
+  });
+
+  it('on Mars, a warning that arrives this turn does not stop this turn\'s clock', () => {
+    const next = applyMove(sendWarning(mars(), 'shelterNow'), 'raiseShield'); // it arrives now
+    expect(next.inbox.at(-1).warning).toBe('shelterNow');
+    expect(getMissionControlView(next).clockRunning).toBe(true);
+  });
+
+  it('pauses during the Mars signal blackout, but not on the same stage on the Moon', () => {
+    const blocked = atStage(mars(), blackoutStage);
+    expect(tick(blocked, 100)).toBe(blocked);
+    expect(getMissionControlView(blocked).clockRunning).toBe(false);
+    expect(tick(atStage(moon(), blackoutStage), 1).signalSecondsLeft).toBe(SIGNAL_SECONDS - 1);
+  });
+
+  it('loses the game with "time" when it reaches 0, and never goes below 0', () => {
+    const lost = tick(moon(), SIGNAL_SECONDS + 30);
+    expect(lost.status).toBe('lost');
+    expect(lost.lostReason).toBe('time');
+    expect(lost.stars).toBe(0);
+    expect(lost.signalSecondsLeft).toBe(0);
+    expect(lost.log.at(-1).text).toMatch(/did not send a message in time/);
+    expect(getMissionControlView(lost).lostReason).toBe('time');
+  });
+
+  it('does nothing after the game ends, and moves and warnings are then ignored', () => {
+    const lost = tick(moon(), SIGNAL_SECONDS);
+    expect(tick(lost, 5)).toBe(lost);
+    expect(applyMove(lost, 'shelter')).toBe(lost);
+    expect(sendWarning(lost, 'allClear')).toBe(lost);
+    const won = { ...moon(), status: 'won' };
+    expect(tick(won, 5)).toBe(won);
+  });
+
+  it('never changes the state it is given', () => {
+    const s = tick(mars(), 7);
+    const before = JSON.stringify(s);
+    tick(s, 3);
+    tick(s, SIGNAL_SECONDS);
+    expect(JSON.stringify(s)).toBe(before);
+  });
+
+  it('shows the same clock to both players', () => {
+    const s = tick(moon(), 12);
+    for (const view of [getAstronautView(s), getMissionControlView(s)]) {
+      expect(view.signalSecondsLeft).toBe(SIGNAL_SECONDS - 12);
+      expect(view.signalLimit).toBe(SIGNAL_SECONDS);
+      expect(view.clockRunning).toBe(true);
+    }
+  });
+});
+
 describe('views', () => {
   it('after a move, both views carry lastFact from the stage just played', () => {
     const s = applyMove(moon(), 'doScience');
@@ -234,7 +319,8 @@ describe('views', () => {
     expect(v.radiationLimit).toBe(RADIATION_LIMIT);
     expect(Object.keys(v).sort()).toEqual(
       ['status', 'turn', 'maxTurns', 'world', 'meters', 'radiationLimit', 'science', 'inbox',
-        'log', 'lastMove', 'lastFact', 'lostReason', 'stars'].sort()
+        'log', 'lastMove', 'lastFact', 'lostReason', 'stars',
+        'signalSecondsLeft', 'signalLimit', 'clockRunning'].sort()
     );
   });
 

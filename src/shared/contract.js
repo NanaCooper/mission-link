@@ -21,7 +21,8 @@ export const initialState = {
   outbox: [],          // warnings not yet delivered (Mars delay): { turnSent, warning }
   lastMove: null,
   log: [],             // { turn, text } short kid-friendly lines
-  lostReason: null,    // 'oxygen' | 'health' | 'radiation'
+  lostReason: null,    // 'oxygen' | 'health' | 'radiation' | 'time'
+  signalSecondsLeft: 0, // the signal clock: seconds left for Mission Control to send a warning this turn
   stars: 0,
   moonStars: 0         // 0-3 stars won on the Moon, used for Mars supply crates
 };

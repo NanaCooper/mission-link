@@ -26,6 +26,12 @@ export const MOVE_EFFECTS = {
 // Stars when the crew survives: 1, 2 if healthy, 3 if also did enough science.
 export const STARS = { healthForTwo: 60, scienceForThree: 2 };
 
+// The signal clock: each turn, Mission Control has this many seconds to send a warning.
+// If the clock reaches 0 first, the crew is lost ('time'). 6 turns x 60 s = 6 minutes.
+export const SIGNAL_SECONDS = 60;
+// Not used yet: the other idea, one clock for the whole level. Kept so a switch is a small change.
+export const MISSION_SECONDS = 360;
+
 // Limits for a ready-made storm passed to createGame (Level 3: Live Sun).
 // A storm must have exactly 6 stages, and each stage's incoming radiation must sit
 // inside these per-stage ranges, or the engine plays the saved storm instead.

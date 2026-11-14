@@ -5,7 +5,8 @@
 // Guest = Mission Control device. Never runs the engine. Shows what the host sends.
 //
 // `room` is anything shaped like openRoom() in room.js: { send, on, onPresence, onStatus }.
-// `engine` is { createGame, sendWarning, applyMove } (see engineAdapter.js).
+// `engine` is { createGame, sendWarning, applyMove, tick } (see engineAdapter.js).
+// The signal clock: whoever runs the engine calls tick once a second (see useGameSession.js).
 
 import { initialState, MOVES, WARNINGS, WORLDS } from '../shared/contract.js';
 
@@ -124,6 +125,11 @@ export function createHostSession({
       if (state.status !== 'playing' || !MOVES.includes(move)) return;
       update(engine.applyMove(state, move));
     },
+    /** The signal clock: `seconds` passed. Mission Control sees it through the usual stateUpdate. */
+    tick(seconds) {
+      if (state.status !== 'playing' || typeof engine.tick !== 'function') return;
+      update(engine.tick(state, seconds));
+    },
     restart(options) {
       level = nextLevel(level, options);
       // Mission Control is not here yet: stay in the lobby, the new level starts when they join.
@@ -188,7 +194,8 @@ export function createGuestSession({ room, onChange = () => {}, resyncEveryMs = 
 
 /**
  * Split mode: both players on one device.
- * Actions: { type: 'move', move }, { type: 'warning', warning }, { type: 'restart', options }.
+ * Actions: { type: 'move', move }, { type: 'warning', warning }, { type: 'restart', options },
+ *          { type: 'tick', seconds } (the signal clock).
  * Restart works at any time, including after the game ends.
  */
 export function splitReducer(engine) {
@@ -199,6 +206,7 @@ export function splitReducer(engine) {
     if (action?.type === 'warning' && WARNINGS.includes(action.warning)) {
       return engine.sendWarning(state, action.warning);
     }
+    if (action?.type === 'tick' && typeof engine.tick === 'function') return engine.tick(state, action.seconds);
     return state;
   };
 }

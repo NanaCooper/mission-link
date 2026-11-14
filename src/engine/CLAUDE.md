@@ -16,7 +16,7 @@ The Four-Person Build Guide wins where it differs from older notes.
 - `storms/index.js`: `STORMS`, `DEFAULT_STORM_ID`, `getStorm(id)`. Shared: Dev 4 adds
   one line per real storm and tells Dev 1.
 - `index.js`: `createGame`, `sendWarning`, `applyMove`, `getAstronautView`,
-  `getMissionControlView`, `getStorm`, `getGameStorm`, `isValidStorm`.
+  `getMissionControlView`, `getStorm`, `getGameStorm`, `isValidStorm`, `tick`.
 - `engine.test.js`: rules and balance tests.
 
 ## Levels (balance.js LEVELS)
@@ -69,13 +69,24 @@ Ignored if not 'playing' or not in MOVES.
 9. End check: oxygen 0 → lost 'oxygen'; crewHealth 0 → 'health';
    radiationDose >= RADIATION_LIMIT (40) → 'radiation'. Else turn reaching maxTurns → won.
    Stars: 1, 2 if crewHealth >= 60, 3 if also science >= 2. Lost = 0 stars.
+10. signalSecondsLeft goes back to SIGNAL_SECONDS (a new turn starts the clock again).
+
+## tick(state, seconds): the signal clock
+- Each turn Mission Control has SIGNAL_SECONDS (balance.js, 60) to send a warning.
+- The caller says how many seconds passed; the engine never reads the time.
+- Ignored if seconds is not a positive number, or the clock is not running: not 'playing',
+  a warning already sent this turn (Moon: in inbox; Mars: in outbox), or a blackout stage.
+- At 0: status 'lost', lostReason 'time', stars 0, one log line. Never below 0.
+- MISSION_SECONDS (360) is kept in balance.js for the other idea (one clock per level). Unused.
 
 ## Views
 - `getAstronautView`: `{ status, turn, maxTurns, world, meters, radiationLimit, science,
-  inbox, log, lastMove, lastFact, lostReason, stars }`. No storm data, no dust.
+  inbox, log, lastMove, lastFact, lostReason, stars, signalSecondsLeft, signalLimit,
+  clockRunning }`. No storm data, no dust.
 - `getMissionControlView`: `{ status, turn, maxTurns, world, delayTurns,
   stage: { label, missionControlSees, dust, blackout }, forecast, lastMove, lastFact, crewHealth,
-  warningThisTurn, lostReason, stars }`. forecast is the next stage label or null.
+  warningThisTurn, lostReason, stars, signalSecondsLeft, signalLimit, clockRunning }`.
+  forecast is the next stage label or null.
 
 ## Storm file: storms/<id>.json
 ```json

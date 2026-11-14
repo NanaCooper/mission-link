@@ -577,3 +577,74 @@ describe('fake engine (placeholder for Dev 1)', () => {
     expect(s.outbox).toEqual([]);
   });
 });
+
+describe('the signal clock (Mission Control must send a warning in time)', () => {
+  const realSetup = () => {
+    const net = memoryRooms();
+    const host = createHostSession({ room: net.hostRoom, engine: realEngine });
+    const guest = createGuestSession({ room: net.guestRoom, resyncEveryMs: 0 });
+    net.join(net.host);
+    net.join(net.guest);
+    return { net, host, guest };
+  };
+
+  it('online: the host moves the clock on, and Mission Control sees it', () => {
+    const { host, guest } = realSetup();
+    const full = host.getState().signalSecondsLeft;
+    host.tick(1);
+    host.tick(1);
+    expect(host.getState().signalSecondsLeft).toBe(full - 2);
+    expect(guest.getState().signalSecondsLeft).toBe(full - 2);
+  });
+
+  it('online: a warning from Mission Control stops the clock', () => {
+    const { host, guest } = realSetup();
+    guest.sendWarning('shelterNow');
+    const left = host.getState().signalSecondsLeft;
+    host.tick(5);
+    expect(host.getState().signalSecondsLeft).toBe(left);
+    expect(realEngine.getMissionControlView(guest.getState()).clockRunning).toBe(false);
+  });
+
+  it('online: when the clock runs out, both players see the game lost with "time"', () => {
+    const { host, guest } = realSetup();
+    host.tick(host.getState().signalSecondsLeft);
+    expect(host.getState().lostReason).toBe('time');
+    expect(guest.getState().status).toBe('lost');
+    expect(guest.getState().lostReason).toBe('time');
+  });
+
+  it('online: tick does nothing in the lobby, after the game, or with an engine that has no clock', () => {
+    const net = memoryRooms();
+    const host = createHostSession({ room: net.hostRoom, engine: realEngine });
+    net.join(net.host); // Mission Control not here yet: still the lobby
+    const lobby = host.getState();
+    host.tick(10);
+    expect(host.getState()).toBe(lobby);
+
+    const { host: fakeHost, net: fakeNet } = setup(); // the fake engine has no tick
+    fakeNet.join(fakeNet.host);
+    fakeNet.join(fakeNet.guest);
+    const before = fakeHost.getState();
+    fakeHost.tick(10);
+    expect(fakeHost.getState()).toBe(before);
+  });
+
+  it('split: the reducer moves the clock on with { type: "tick" }, and stops at the end', () => {
+    const reduce = splitReducer(realEngine);
+    let s = realEngine.createGame({ mode: 'split' });
+    const full = s.signalSecondsLeft;
+    s = reduce(s, { type: 'tick', seconds: 3 });
+    expect(s.signalSecondsLeft).toBe(full - 3);
+    s = reduce(s, { type: 'tick', seconds: full });
+    expect(s.lostReason).toBe('time');
+    expect(reduce(s, { type: 'tick', seconds: 1 })).toBe(s);
+  });
+
+  it('split: a new turn starts the clock again', () => {
+    const reduce = splitReducer(realEngine);
+    let s = reduce(realEngine.createGame({ mode: 'split' }), { type: 'tick', seconds: 30 });
+    s = reduce(s, { type: 'move', move: 'doScience' });
+    expect(s.signalSecondsLeft).toBe(realEngine.createGame({ mode: 'split' }).signalSecondsLeft);
+  });
+});

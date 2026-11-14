@@ -24,7 +24,8 @@ export const initialState = {
   outbox: [],          // warnings not yet delivered (Mars delay): { turnSent, warning }
   lastMove: null,
   log: [],             // { turn, text } short kid-friendly lines
-  lostReason: null,    // 'oxygen' | 'health' | 'radiation'
+  lostReason: null,    // 'oxygen' | 'health' | 'radiation' | 'time'
+  signalSecondsLeft: 0, // the signal clock: seconds left for Mission Control to send a warning this turn
   stars: 0,
   moonStars: 0         // 0-3 stars won on the Moon, used for Mars supply crates
 };
@@ -54,14 +55,16 @@ createGame({ mode, world, stormId, moonStars, storm })
   //   if isValidStorm(storm); otherwise ignored and the saved storm plays.
   // Returns a new state with status 'playing'.
 sendWarning(state, warning)   // returns new state
-applyMove(state, move)        // resolves the whole turn, returns new state
+applyMove(state, move)        // resolves the whole turn, returns new state (the clock starts again)
+tick(state, seconds)          // the signal clock: `seconds` passed. Returns new state. At 0: lost 'time'.
 getAstronautView(state)
   // { status, turn, maxTurns, world, meters, radiationLimit, science, inbox, log,
-  //   lastMove, lastFact, lostReason, stars }
+  //   lastMove, lastFact, lostReason, stars, signalSecondsLeft, signalLimit, clockRunning }
 getMissionControlView(state)
   // { status, turn, maxTurns, world, delayTurns,
   //   stage: { label, missionControlSees, dust, blackout }, forecast,
-  //   lastMove, lastFact, crewHealth, warningThisTurn, lostReason, stars }
+  //   lastMove, lastFact, crewHealth, warningThisTurn, lostReason, stars,
+  //   signalSecondsLeft, signalLimit, clockRunning }
 getStorm(id)
   // { id, title, realDates, savedOn, source, stages, whatReallyHappened, scalingNote }
   // each stage: { label, missionControlSees, incoming, realData, fact: { text, source } }
@@ -82,6 +85,14 @@ isValidStorm(storm)   // true if a ready-made storm is safe to play (see STORM_L
 - `stage.blackout` is true on the Mars signal blackout stage (no warning gets through).
 - The Astronaut view never includes storm data, `dust` or `blackout`.
 - `forecast` is the next stage's label, or `null` on the last turn.
+- The signal clock: each turn Mission Control has `signalLimit` seconds (`SIGNAL_SECONDS`
+  in balance.js, 60 for now) to send a warning. `clockRunning` is false once a warning is
+  sent this turn (on Mars too, even though it arrives next turn), during the Mars blackout,
+  and when the game is not being played. If `signalSecondsLeft` reaches 0 while the clock
+  runs, the game is lost with `lostReason: 'time'`. Each new turn starts the clock again.
+- The engine never reads the time. Whoever runs the engine calls `tick(state, 1)` once a
+  second: the split-mode hook, or the online host while Mission Control is in the room.
+  Mission Control's device never runs the clock; it sees it through `stateUpdate`.
 - Screens import the engine view functions through `src/realtime/engineAdapter.js`,
   never from `src/engine/` directly.
 

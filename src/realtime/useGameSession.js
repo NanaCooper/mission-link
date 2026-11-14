@@ -31,6 +31,9 @@ export const SESSION_TEXT = {
 
 const reduceSplit = splitReducer(engine);
 
+// How often the signal clock moves on (it moves 1 second each time).
+export const CLOCK_MS = 1000;
+
 // The host saves the game in this tab, so a page reload continues it instead of starting over.
 const saveKey = (code) => `missionlink:${code}`;
 function loadSaved(code) {
@@ -145,6 +148,22 @@ export function useGameSession({ mode, role, code, world = 'moon', moonStars = 0
     }
     return stop;
   }, [online, isHost, role, code, key]);
+
+  // The signal clock: the device that runs the engine moves it on once a second while a game is on.
+  // Split mode always; online only the host (Astronaut), and only while Mission Control is in the room,
+  // so a dropped connection does not eat Mission Control's time. Mission Control never runs it.
+  const onlineView = net?.key === key ? net : null;
+  const clockOn = online
+    ? isHost && onlineView?.state?.status === 'playing' && Boolean(onlineView?.partnerConnected)
+    : splitState.status === 'playing';
+  useEffect(() => {
+    if (!clockOn) return undefined;
+    const timer = setInterval(() => {
+      if (!online) dispatch({ type: 'tick', seconds: 1 });
+      else sessionRef.current?.tick?.(1);
+    }, CLOCK_MS);
+    return () => clearInterval(timer);
+  }, [clockOn, online]);
 
   // Astronaut only: one move per turn.
   const sendMove = useCallback(
