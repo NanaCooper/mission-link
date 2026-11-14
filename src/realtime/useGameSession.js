@@ -122,6 +122,21 @@ export function useGameSession({ mode, role, code, world = 'moon', moonStars = 0
         }
       }),
     ];
+
+    // Mission Control: ask for the latest state as soon as the tab is visible or back online.
+    // A hidden tab can miss messages, and phones pause background tabs.
+    if (!isHost && typeof window !== 'undefined' && typeof document !== 'undefined') {
+      const onVisible = () => {
+        if (document.visibilityState === 'visible') session.resync();
+      };
+      const onOnline = () => session.resync();
+      document.addEventListener('visibilitychange', onVisible);
+      window.addEventListener('online', onOnline);
+      offs.push(
+        () => document.removeEventListener('visibilitychange', onVisible),
+        () => window.removeEventListener('online', onOnline),
+      );
+    }
     return stop;
   }, [online, isHost, role, code, key]);
 

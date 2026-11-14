@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { initialState, MOVES, WARNINGS } from '../shared/contract.js';
 import { LEVELS } from '../engine/balance.js'; // read-only: Dev 1's numbers, so this test never hard-codes them
 import * as engine from './fakeEngine.js';
@@ -6,8 +6,9 @@ import * as realEngine from './engineAdapter.js';
 import { createHostSession, createGuestSession, splitReducer } from './session.js';
 
 // Two linked fake rooms. Messages only arrive while both sides are connected, like the real thing.
+// drop(side, event) makes the next `event` that side sends get lost on the way (Supabase can do that).
 function memoryRooms() {
-  const side = () => ({ events: new Map(), presence: new Set(), status: new Set(), connected: false });
+  const side = () => ({ events: new Map(), presence: new Set(), status: new Set(), connected: false, lose: new Set(), sent: [] });
   const host = side();
   const guest = side();
   const otherOf = (me) => (me === host ? guest : host);
@@ -15,6 +16,8 @@ function memoryRooms() {
     send(event, payload = {}) {
       const other = otherOf(me);
       if (!me.connected || !other.connected) return false;
+      me.sent.push(event);
+      if (me.lose.delete(event)) return true; // sent, but lost on the way
       (other.events.get(event) ?? new Set()).forEach((cb) => cb(structuredClone(payload)));
       return true;
     },
@@ -45,7 +48,8 @@ function memoryRooms() {
     s.connected = false;
     syncPresence();
   };
-  return { hostRoom: room(host), guestRoom: room(guest), host, guest, join, leave };
+  const drop = (s, event) => s.lose.add(event);
+  return { hostRoom: room(host), guestRoom: room(guest), host, guest, join, leave, drop };
 }
 
 function setup({ world = 'moon', restored = null } = {}) {
@@ -58,7 +62,7 @@ function setup({ world = 'moon', restored = null } = {}) {
     restored,
     onChange: (s) => saved.push(s),
   });
-  const guest = createGuestSession({ room: net.guestRoom });
+  const guest = createGuestSession({ room: net.guestRoom, resyncEveryMs: 0 });
   return { net, host, guest, saved };
 }
 
@@ -215,12 +219,72 @@ describe('split mode reducer', () => {
   });
 });
 
+describe('healing a lost stateUpdate (Mission Control stuck on an old turn)', () => {
+  afterEach(() => vi.useRealTimers());
+
+  const started = (resyncEveryMs) => {
+    const net = memoryRooms();
+    const host = createHostSession({ room: net.hostRoom, engine });
+    const changes = [];
+    const guest = createGuestSession({ room: net.guestRoom, resyncEveryMs, onChange: (s) => changes.push(s) });
+    net.join(net.host);
+    net.join(net.guest);
+    return { net, host, guest, changes };
+  };
+
+  it('a lost update is fixed by the next resync, within 3 seconds', () => {
+    vi.useFakeTimers();
+    const { net, host, guest } = started(3000);
+    net.drop(net.host, 'stateUpdate');
+    host.sendMove('shelter'); // this update is lost
+    expect(host.getState().turn).toBe(1);
+    expect(guest.getState().turn).toBe(0);
+
+    vi.advanceTimersByTime(3000);
+    expect(guest.getState()).toEqual(host.getState());
+    guest.close();
+  });
+
+  it('a warning from an old turn makes the host send its state again right away', () => {
+    const { net, host, guest } = started(0);
+    net.drop(net.host, 'stateUpdate');
+    host.sendMove('shelter'); // lost: guest still thinks it is turn 0
+    guest.sendWarning('shelterNow'); // tagged turn 0, host is on turn 1
+    expect(host.getState().inbox).toEqual([]); // refused, as the contract says
+    expect(guest.getState()).toEqual(host.getState()); // but the guest caught up at once
+
+    guest.sendWarning('shelterNow'); // the kid taps again, now on the right turn
+    expect(host.getState().inbox).toEqual([{ turn: 1, warning: 'shelterNow' }]);
+  });
+
+  it('resync replies that change nothing do not cause a re-render', () => {
+    vi.useFakeTimers();
+    const { guest, changes } = started(3000);
+    const before = changes.length;
+    vi.advanceTimersByTime(3000 * 5);
+    expect(changes.length).toBe(before);
+    guest.close();
+  });
+
+  it('resync() asks right away; after close() the timer sends nothing', () => {
+    vi.useFakeTimers();
+    const { net, guest } = started(3000);
+    const asked = () => net.guest.sent.filter((e) => e === 'requestState').length;
+    const n = asked();
+    guest.resync();
+    expect(asked()).toBe(n + 1);
+    guest.close();
+    vi.advanceTimersByTime(3000 * 5);
+    expect(asked()).toBe(n + 1);
+  });
+});
+
 describe('with the real engine (engineAdapter.js)', () => {
   for (const world of ['moon', 'mars']) {
     it(`plays a full ${world} game in sync and stops at the end`, () => {
       const net = memoryRooms();
       const host = createHostSession({ room: net.hostRoom, engine: realEngine, world });
-      const guest = createGuestSession({ room: net.guestRoom });
+      const guest = createGuestSession({ room: net.guestRoom, resyncEveryMs: 0 });
       net.join(net.host);
       net.join(net.guest);
       expect(host.getState().status).toBe('playing');
@@ -242,7 +306,7 @@ describe('restart (replay, and "Fly to Mars")', () => {
   const online = ({ world = 'moon', moonStars = 0, restored = null } = {}) => {
     const net = memoryRooms();
     const host = createHostSession({ room: net.hostRoom, engine: realEngine, world, moonStars, restored });
-    const guest = createGuestSession({ room: net.guestRoom });
+    const guest = createGuestSession({ room: net.guestRoom, resyncEveryMs: 0 });
     return { net, host, guest };
   };
   const playOut = (host) => {

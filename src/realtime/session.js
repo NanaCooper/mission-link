@@ -69,9 +69,13 @@ export function createHostSession({
     }),
     room.on('requestState', () => publish()),
     room.on('sendWarning', ({ turn, warning } = {}) => {
-      if (state.status !== 'playing') return;
-      if (turn !== state.turn) return; // old (or future) turn: ignore
       if (!WARNINGS.includes(warning)) return;
+      // Old (or future) turn, or the game is over: Mission Control is showing an old state,
+      // probably because a stateUpdate got lost. Ignore the warning, but send the state again.
+      if (state.status !== 'playing' || turn !== state.turn) {
+        publish();
+        return;
+      }
       update(engine.sendWarning(state, warning));
     }),
   ];
@@ -100,11 +104,16 @@ export function createHostSession({
  * - Shows every `stateUpdate`. The host is the only sender and is always right, so the guest
  *   does not drop "older" states (that would freeze the guest if the host starts a new game).
  * - Sends warnings as `sendWarning { turn, warning }`.
+ * - Asks again every `resyncEveryMs` (and when resync() is called), because Supabase broadcast
+ *   can lose a message. Without this, a lost stateUpdate leaves Mission Control on an old turn
+ *   until the next move. Replies that change nothing do not call onChange. 0 turns it off.
  */
-export function createGuestSession({ room, onChange = () => {} }) {
+export function createGuestSession({ room, onChange = () => {}, resyncEveryMs = 3000 }) {
   let state = lobbyState({ mode: 'online' });
+  let shown = JSON.stringify(state);
   let hostHere = false;
   const ask = () => room.send('requestState', {});
+  const timer = resyncEveryMs > 0 ? setInterval(ask, resyncEveryMs) : null;
 
   const offs = [
     room.onStatus((status) => {
@@ -116,6 +125,9 @@ export function createGuestSession({ room, onChange = () => {} }) {
     }),
     room.on('stateUpdate', ({ state: next } = {}) => {
       if (!next || typeof next !== 'object') return;
+      const text = JSON.stringify(next);
+      if (text === shown) return; // a resync reply with nothing new
+      shown = text;
       state = next;
       onChange(state);
     }),
@@ -127,7 +139,10 @@ export function createGuestSession({ room, onChange = () => {} }) {
       if (state.status !== 'playing' || !WARNINGS.includes(warning)) return;
       room.send('sendWarning', { turn: state.turn, warning });
     },
+    /** Ask the host for the latest state now (for example when the tab becomes visible again). */
+    resync: ask,
     close() {
+      if (timer) clearInterval(timer);
       offs.forEach((off) => off());
     },
   };
