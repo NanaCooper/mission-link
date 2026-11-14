@@ -16,7 +16,7 @@ The Four-Person Build Guide wins where it differs from older notes.
 - `storms/index.js`: `STORMS`, `DEFAULT_STORM_ID`, `getStorm(id)`. Shared: Dev 4 adds
   one line per real storm and tells Dev 1.
 - `index.js`: `createGame`, `sendWarning`, `applyMove`, `getAstronautView`,
-  `getMissionControlView`, `getStorm`.
+  `getMissionControlView`, `getStorm`, `getGameStorm`, `isValidStorm`.
 - `engine.test.js`: rules and balance tests.
 
 ## Levels (balance.js LEVELS)
@@ -27,9 +27,22 @@ The Four-Person Build Guide wins where it differs from older notes.
 | Save power      | +15         | +15, but +5 on dust stages ([1])        |
 | Signal blackout | none        | blackoutStages [4]: no warning gets through |
 
-## createGame({ mode, world = 'moon', stormId = DEFAULT_STORM_ID, moonStars = 0 })
+## createGame({ mode, world = 'moon', stormId = DEFAULT_STORM_ID, moonStars = 0, storm = null })
 initialState with status 'playing', mode, world, stormId, moonStars, lastFact null,
 and a first log line. On Mars it says how many supply crates were waiting.
+`storm` is an optional ready-made storm object (Level 3: Live Sun). If `isValidStorm(storm)`,
+it is kept in `state.storm` and `stormId` becomes `storm.id`. Otherwise `state.storm` is null
+and the saved storm from `stormId` plays, so a bad live storm never breaks the game.
+
+## Ready-made storms
+- `isValidStorm(storm)`: id and title text, exactly 6 stages, each with label,
+  missionControlSees and a whole-number `incoming` inside `STORM_LIMITS` in balance.js
+  (min 0, 0, 0, 30, 10, 0; max 0, 10, 15, 50, 30, 0).
+- `getGameStorm(state)`: `state.storm` or `getStorm(state.stormId)`. Use this for the end
+  screen, not `getStorm(state.stormId)`, which cannot find a live storm.
+- The engine never calls DONKI and never picks at random. Dev 4's code builds the storm.
+- Tests check all 16 corners of STORM_LIMITS on both levels: careless play loses and a
+  3-star plan exists.
 
 ## sendWarning(state, warning)
 Ignored if not 'playing' or not in WARNINGS. One per turn: a new one replaces the old.

@@ -15,6 +15,7 @@ export const initialState = {
   meters: { power: 100, oxygen: 100, radiationDose: 0, crewHealth: 100 },
   science: 0,
   stormId: null,
+  storm: null,         // ready-made storm object (Level 3: Live Sun), or null to use stormId
   stormStage: 0,
   inbox: [],           // warnings delivered to the Astronaut: { turn, warning }
   outbox: [],          // warnings not yet delivered (Mars delay): { turnSent, warning }

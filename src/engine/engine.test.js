@@ -5,9 +5,11 @@ import {
   applyMove,
   getAstronautView,
   getMissionControlView,
-  getStorm
+  getStorm,
+  getGameStorm,
+  isValidStorm
 } from './index.js';
-import { RADIATION_LIMIT, LEVELS } from './balance.js';
+import { RADIATION_LIMIT, LEVELS, STORM_LIMITS } from './balance.js';
 import { MOVES, initialState } from '../shared/contract.js';
 
 const moon = () => createGame({ mode: 'split', world: 'moon' });
@@ -316,6 +318,102 @@ function allPlans() {
   }
   return plans;
 }
+
+// A ready-made storm (Level 3: Live Sun) with the given incoming radiation per stage.
+function makeStorm(incoming, extra = {}) {
+  return {
+    id: 'live-test',
+    title: 'Test Live Storm',
+    realDates: 'Test',
+    savedOn: null,
+    source: { name: 'NASA DONKI', url: '' },
+    scalingNote: 'Test',
+    whatReallyHappened: ['Test'],
+    stages: incoming.map((n, i) => ({
+      label: `Live stage ${i}`,
+      missionControlSees: `Live stage ${i} text`,
+      incoming: n,
+      realData: {},
+      fact: { text: `Live fact ${i}`, source: { name: 'NASA', url: '' } }
+    })),
+    ...extra
+  };
+}
+
+describe('ready-made storm (Level 3: Live Sun)', () => {
+  const live = makeStorm([0, 5, 10, 45, 20, 0]);
+
+  it('createGame keeps a valid storm in the state and uses its id', () => {
+    const s = createGame({ world: 'mars', moonStars: 2, storm: live });
+    expect(s.storm).toBe(live);
+    expect(s.stormId).toBe('live-test');
+    expect(getGameStorm(s)).toBe(live);
+  });
+
+  it('without a storm, nothing changes: storm is null and the saved storm plays', () => {
+    const s = moon();
+    expect(s.storm).toBeNull();
+    expect(getGameStorm(s)).toBe(getStorm(s.stormId));
+  });
+
+  it('the storm drives radiation, the Mission Control view and lastFact', () => {
+    const s = atStage(createGame({ storm: live }), PEAK);
+    expect(getMissionControlView(s).stage.label).toBe('Live stage 3');
+    expect(getMissionControlView(s).forecast).toBe('Live stage 4');
+    const s2 = applyMove(s, 'raiseShield');
+    expect(s2.meters.radiationDose).toBe(14); // round(45 * 0.3)
+    expect(s2.lastFact.text).toBe('Live fact 3');
+    expect(s2.storm).toBe(live);
+  });
+
+  it('an invalid storm falls back to the saved storm', () => {
+    const bad = [
+      null,
+      'storm',
+      { ...live, id: '' },
+      { ...live, title: undefined },
+      { ...live, stages: live.stages.slice(0, 5) },
+      makeStorm([0, 5, 10, 60, 20, 0]), // peak too high
+      makeStorm([0, 5, 10, 20, 20, 0]), // peak too low
+      makeStorm([5, 5, 10, 40, 20, 0]), // first stage must be quiet
+      makeStorm([0, 5, 10, 40.5, 20, 0]), // not a whole number
+      { ...live, stages: live.stages.map((st, i) => (i === 2 ? { ...st, label: '' } : st)) }
+    ];
+    for (const storm of bad) {
+      expect(isValidStorm(storm)).toBe(false);
+      const s = createGame({ storm });
+      expect(s.storm).toBeNull();
+      expect(s.stormId).toBe(moon().stormId);
+    }
+  });
+
+  it('the saved storms are valid storms too', () => {
+    expect(isValidStorm(getStorm(moon().stormId))).toBe(true);
+    expect(isValidStorm(getStorm('placeholder'))).toBe(true);
+  });
+
+  it('every corner of STORM_LIMITS stays fair on both levels', () => {
+    const { minIncoming, maxIncoming } = STORM_LIMITS;
+    const plans = allPlans();
+    // Only stages 1-4 have a range, so 2^4 = 16 corners.
+    const ranged = minIncoming.map((lo, i) => i).filter((i) => minIncoming[i] !== maxIncoming[i]);
+    for (let mask = 0; mask < 1 << ranged.length; mask++) {
+      const incoming = [...minIncoming];
+      ranged.forEach((stage, bit) => {
+        if ((mask >> bit) & 1) incoming[stage] = maxIncoming[stage];
+      });
+      const storm = makeStorm(incoming);
+      expect(isValidStorm(storm)).toBe(true);
+      for (const world of ['moon', 'mars']) {
+        const start = createGame({ world, moonStars: 0, storm });
+        expect(play(start, Array(6).fill('doScience')).status).toBe('lost');
+        expect(play(start, Array(6).fill('shelter')).stars).toBeLessThanOrEqual(1);
+        const threeStarPlan = plans.find((plan) => play(start, plan).stars === 3);
+        expect(threeStarPlan, `${world} ${incoming} has no 3-star plan`).toBeDefined();
+      }
+    }
+  }, 30000);
+});
 
 describe('balance: full Moon games', () => {
   it('doScience every turn loses by radiation', () => {

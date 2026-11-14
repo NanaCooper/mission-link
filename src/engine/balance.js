@@ -26,6 +26,16 @@ export const MOVE_EFFECTS = {
 // Stars when the crew survives: 1, 2 if healthy, 3 if also did enough science.
 export const STARS = { healthForTwo: 60, scienceForThree: 2 };
 
+// Limits for a ready-made storm passed to createGame (Level 3: Live Sun).
+// A storm must have exactly 6 stages, and each stage's incoming radiation must sit
+// inside these per-stage ranges, or the engine plays the saved storm instead.
+// engine.test.js checks every corner of these ranges stays winnable.
+export const STORM_LIMITS = {
+  stages: 6,
+  minIncoming: [0, 0, 0, 30, 10, 0],
+  maxIncoming: [0, 10, 15, 50, 30, 0]
+};
+
 // What changes between the two levels. dustStages and blackoutStages hold stage indexes.
 // On a blackout stage the Sun blocks the signal and no warning gets through.
 export const LEVELS = {

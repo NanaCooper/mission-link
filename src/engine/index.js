@@ -9,7 +9,8 @@ import {
   METER_MAX,
   MOVE_EFFECTS,
   STARS,
-  LEVELS
+  LEVELS,
+  STORM_LIMITS
 } from './balance.js';
 import { getStorm, DEFAULT_STORM_ID } from './storms/index.js';
 
@@ -19,9 +20,33 @@ const clamp = (n) => Math.min(METER_MAX, Math.max(METER_MIN, n));
 
 const levelOf = (state) => LEVELS[state.world] ?? LEVELS.moon;
 
+const isText = (v) => typeof v === 'string' && v.length > 0;
+
+// True if a ready-made storm is safe to play: an id, a title, and 6 stages with a
+// label, missionControlSees text and incoming radiation inside STORM_LIMITS.
+export function isValidStorm(storm) {
+  if (!storm || typeof storm !== 'object' || !isText(storm.id) || !isText(storm.title)) return false;
+  const { stages } = storm;
+  if (!Array.isArray(stages) || stages.length !== STORM_LIMITS.stages) return false;
+  return stages.every(
+    (s, i) =>
+      s &&
+      isText(s.label) &&
+      isText(s.missionControlSees) &&
+      Number.isInteger(s.incoming) &&
+      s.incoming >= STORM_LIMITS.minIncoming[i] &&
+      s.incoming <= STORM_LIMITS.maxIncoming[i]
+  );
+}
+
+// The storm this game is playing: the ready-made one in the state, or the saved one by id.
+export function getGameStorm(state) {
+  return state.storm ?? getStorm(state.stormId);
+}
+
 // The stage being played now. After the last turn it stays on the last stage.
 function currentStage(state) {
-  const { stages } = getStorm(state.stormId);
+  const { stages } = getGameStorm(state);
   return stages[Math.min(state.stormStage, stages.length - 1)];
 }
 
@@ -35,7 +60,16 @@ function isBlackoutStage(state) {
 
 const BLACKOUT_TEXT = 'The Sun is blocking the signal. Your message could not get through!';
 
-export function createGame({ mode = 'split', world = 'moon', stormId = DEFAULT_STORM_ID, moonStars = 0 } = {}) {
+// storm: an optional ready-made storm object (Level 3: Live Sun). If it is not valid,
+// the game plays the saved storm from stormId instead, so a bad storm never breaks the game.
+export function createGame({
+  mode = 'split',
+  world = 'moon',
+  stormId = DEFAULT_STORM_ID,
+  moonStars = 0,
+  storm = null
+} = {}) {
+  const liveStorm = isValidStorm(storm) ? storm : null;
   const level = LEVELS[world] ?? LEVELS.moon;
   const stars = world === 'mars' ? moonStars : 0;
   const power = clamp(initialState.meters.power - level.powerPenalty + stars * level.powerPerStar);
@@ -50,7 +84,8 @@ export function createGame({ mode = 'split', world = 'moon', stormId = DEFAULT_S
     status: 'playing',
     mode,
     world,
-    stormId: getStorm(stormId).id,
+    stormId: liveStorm ? liveStorm.id : getStorm(stormId).id,
+    storm: liveStorm,
     moonStars,
     meters: { ...initialState.meters, power },
     inbox: [],
@@ -208,7 +243,7 @@ export function getAstronautView(state) {
 }
 
 export function getMissionControlView(state) {
-  const { stages } = getStorm(state.stormId);
+  const { stages } = getGameStorm(state);
   const stage = currentStage(state);
   const level = levelOf(state);
   const next = stages[state.stormStage + 1];
