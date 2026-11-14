@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import WorldMap from './WorldMap.jsx';
 import { useGameNumber } from './useGameNumber.js';
+import { moveConfirm } from './dialogs.jsx';
 import { placeCorner, TILE } from './worldMap.js';
 import { BASE_MAP, BASE_START, PLACE_MOVES, PLACE_NAMES, BIG_HIT } from './baseMapData.js';
 import { NOVA } from './heroes.js';
@@ -103,6 +105,22 @@ export default function BaseMap({ view, onMove, hit = 0, overlay, active = true 
     `Picture: the ${look.name} base. ${WHAT_HAPPENED[lastMove] ?? 'Nova stands by the base.'}` +
     (hit > 0 ? ' Radiation hit the base.' : '');
 
+  // "Raise shield? [Yes] [No]": which place is asking, and on which turn. A new turn, a step,
+  // Yes or No closes it.
+  const [asking, setAsking] = useState(null); // { place, turn }
+  const close = () => setAsking(null);
+  const askingPlace = asking && asking.turn === turn && view.status === 'playing' ? asking.place : null;
+  const dialog = askingPlace
+    ? moveConfirm(askingPlace, {
+        turn,
+        onNo: close,
+        onYes: (move) => {
+          close();
+          onMove(move);
+        }
+      })
+    : null;
+
   const describeUse = (spot) => {
     const info = MOVE_INFO[PLACE_MOVES[spot.id]];
     // "Shelter: Costs 5 power...", not "Shelter: Shelter. Costs 5 power..."
@@ -125,7 +143,10 @@ export default function BaseMap({ view, onMove, hit = 0, overlay, active = true 
       hiddenKey={sheltering ? `shelter-${turn}` : null}
       placeNames={PLACE_NAMES}
       describeUse={describeUse}
-      onUse={(spot) => onMove(PLACE_MOVES[spot.id])}
+      onUse={(spot) => setAsking({ place: spot.id, turn })}
+      dialog={dialog}
+      onDialogClose={close}
+      onStep={close}
       canUse={view.status === 'playing'}
       active={active}
       ground={look.ground}

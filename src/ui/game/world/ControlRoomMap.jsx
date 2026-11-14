@@ -4,17 +4,10 @@ import { placeCorner, TILE } from './worldMap.js';
 import { ROOM_MAP, ROOM_START, ROOM_PLACE_NAMES, ROOM_PLACE_USE } from './controlRoomData.js';
 import { SOLA } from './heroes.js';
 import { useGameNumber } from './useGameNumber.js';
+import { roomDialog } from './dialogs.jsx';
 import { spriteRects, diskRects } from '../../components/pixel/spriteRects.jsx';
 import { PALETTE } from '../../components/pixel/sprites.js';
-import { BigButton, PixelIcon, SpeechBox, Portrait } from '../../components/index.js';
-import {
-  CHARACTERS,
-  WARNING_INFO,
-  MOVE_INFO,
-  MARS_DELAY_NOTE,
-  BLACKOUT_NOTE,
-  novaMood
-} from '../labels.js';
+import { PixelIcon } from '../../components/index.js';
 
 // Mission Control's map: the control room on Earth, seen from above like an old role-playing game.
 // Commander Sola walks to a place and uses it:
@@ -75,9 +68,21 @@ export default function ControlRoomMap({ view, onWarn, active = true }) {
   const playing = view.status === 'playing';
   const blackout = Boolean(view.stage.blackout);
 
-  // Which text box is open, and on which turn. A new turn or a step closes it.
+  // Which text box is open, and on which turn. A new turn, a step or a choice closes it.
   const [open, setOpen] = useState(null); // { id, turn }
-  const openId = open && open.turn === view.turn ? open.id : null;
+  const openId = open && open.turn === view.turn && playing ? open.id : null;
+  const close = () => setOpen(null);
+
+  // Sending a warning closes the box. The screen's own pop-up then says "Sent: ...".
+  const dialog =
+    openId &&
+    roomDialog(openId, view, {
+      close,
+      onWarn: (warning) => {
+        close();
+        onWarn(warning);
+      }
+    });
 
   const telescope = place('telescope');
   const monitor = place('monitor');
@@ -115,9 +120,9 @@ export default function ControlRoomMap({ view, onWarn, active = true }) {
       canUse={playing}
       active={active}
       ground={PALETTE.k}
-      onStep={() => setOpen(null)}
-      onDialogClose={() => setOpen(null)}
-      dialog={openId && <RoomDialog id={openId} view={view} onWarn={onWarn} onClose={() => setOpen(null)} />}
+      onStep={close}
+      onDialogClose={close}
+      dialog={dialog || null}
     >
       {/* Floor tiles */}
       <rect width={width} height={ROOM_MAP.height * TILE} fill={PALETTE.k} />
@@ -164,77 +169,5 @@ export default function ControlRoomMap({ view, onWarn, active = true }) {
         )
       )}
     </WorldMap>
-  );
-}
-
-// The text box for each place, like in a role-playing game.
-function RoomDialog({ id, view, onWarn, onClose }) {
-  const close = (
-    <button type="button" className="screen-tools__button world__close" onClick={onClose}>
-      Close
-    </button>
-  );
-
-  if (id === 'telescope') {
-    const director = CHARACTERS.director;
-    return (
-      <>
-        <SpeechBox who={director.who} mood="alert" name={director.name} size={40} text={view.stage.missionControlSees}>
-          <p>
-            <PixelIcon name="next" size={16} /> {view.forecast ? `Coming next: ${view.forecast}` : 'This is the last turn'}
-          </p>
-        </SpeechBox>
-        {close}
-      </>
-    );
-  }
-
-  if (id === 'monitor') {
-    const astronaut = CHARACTERS.astronaut;
-    const mood = novaMood({ crewHealth: view.crewHealth });
-    const move = view.lastMove ? MOVE_INFO[view.lastMove] : null;
-    return (
-      <>
-        <p className="world__dialog-title">Crew monitor</p>
-        <div className="world__monitor">
-          <Portrait who={astronaut.who} mood={mood} size={40} label={`${astronaut.name} looks ${mood}`} />
-          <div>
-            <p>{move ? `${astronaut.name}'s last move: ${move.label}` : `${astronaut.name} has not moved yet.`}</p>
-            <p>Crew health: {view.crewHealth}</p>
-          </div>
-        </div>
-        {close}
-      </>
-    );
-  }
-
-  // The radio desk
-  const blackout = Boolean(view.stage.blackout);
-  const sent = view.warningThisTurn ? WARNING_INFO[view.warningThisTurn] : null;
-  return (
-    <>
-      <p className="world__dialog-title">Radio desk</p>
-      {blackout ? (
-        <p>{BLACKOUT_NOTE}</p>
-      ) : (
-        <>
-          {view.delayTurns === 1 && <p>{MARS_DELAY_NOTE}</p>}
-          <div className="world__menu">
-            {Object.entries(WARNING_INFO).map(([key, info]) => (
-              <BigButton
-                key={key}
-                icon={<PixelIcon name={info.sprite} size={24} />}
-                label={info.label}
-                selected={key === view.warningThisTurn}
-                disabled={view.status !== 'playing'}
-                onClick={() => onWarn(key)}
-              />
-            ))}
-          </div>
-          {sent && <p role="status">Sent: {sent.label}!</p>}
-        </>
-      )}
-      {close}
-    </>
   );
 }

@@ -66,12 +66,31 @@ describe('bindMapKeys', () => {
     expect(commands).toHaveLength(1);
   });
 
-  it('sends menu, pick and close while the text box is open', () => {
-    const { page, commands } = setup({ isTalking: () => true });
-    page.dispatchEvent(key('keydown', 'ArrowDown'));
-    page.dispatchEvent(key('keydown', 'Enter'));
+  // Changed on purpose: the map now says which kind of text box is open.
+  it('sends highlight, pick and close while a Yes / No box is open', () => {
+    const { page, commands } = setup({ dialog: () => 'confirm' });
+    page.dispatchEvent(key('keydown', 'ArrowRight'));
+    page.dispatchEvent(key('keydown', ' '));
     page.dispatchEvent(key('keydown', 'Escape'));
-    expect(commands).toEqual([{ type: 'menu', step: 1 }, { type: 'pick' }, { type: 'close' }]);
+    expect(commands).toEqual([{ type: 'highlight', step: 1 }, { type: 'pick' }, { type: 'close' }]);
+  });
+
+  it('holding Space on a Yes / No box picks nothing until a new press', () => {
+    const { page, commands } = setup({ dialog: () => 'confirm' });
+    page.dispatchEvent(key('keydown', ' ', { repeat: true }));
+    page.dispatchEvent(key('keydown', ' ', { repeat: true }));
+    expect(commands).toEqual([]);
+  });
+
+  it('an arrow in an info box closes it and keeps walking while held', () => {
+    let open = 'info';
+    const { page, commands, stops } = setup({ dialog: () => open });
+    page.dispatchEvent(key('keydown', 'ArrowUp'));
+    open = null; // the box closed
+    page.dispatchEvent(key('keydown', 'ArrowUp', { repeat: true }));
+    expect(commands).toEqual([{ type: 'closeAndWalk', direction: 'up' }]);
+    page.dispatchEvent(key('keyup', 'ArrowUp'));
+    expect(stops()).toBe(1);
   });
 
   it('leaves a key alone when something else already handled it', () => {

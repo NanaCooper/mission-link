@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { spriteRects } from '../../components/pixel/spriteRects.jsx';
 import { PALETTE } from '../../components/pixel/sprites.js';
-import { TILE, WALK_REPEAT_MS, stepHero, placeNearHero, placeTop } from './worldMap.js';
+import { TILE, WALK_REPEAT_MS, stepHero, placeNearHero, placeTop, nextChoice } from './worldMap.js';
 import { bindMapKeys } from './mapKeys.js';
 import Joystick from './Joystick.jsx';
 import '../scenes/scenes.css';
@@ -36,11 +36,18 @@ import './world.css';
 //   active        true (default) if this map listens to the keyboard. In one-device mode only
 //                 the map on show is active, so only that character moves.
 //   ground        colour of the bars around the map when the box has another shape
-//   dialog        optional HTML for the text box over the bottom of the map, like the text box
-//                 in a role-playing game (for example the radio menu). The screen decides when.
-//                 While it is open the arrow keys move between its buttons, Enter picks and
-//                 Escape closes.
-//   onDialogClose optional: called when Escape closes the text box
+//   dialog        optional text box over the bottom of the map, like a role-playing game.
+//                 The map component decides when it is open; WorldMap draws it and runs it:
+//                   { id, kind, title, icon?, body?, choices, highlight?, layout?, onChoose }
+//                   id         changes when a new box opens (the highlight starts again)
+//                   kind       'confirm' (Yes / No), 'menu' (a list to pick from) or 'info'
+//                   choices    [{ id, label, icon?, disabled? }]; info boxes have one, "OK"
+//                   highlight  the choice highlighted when it opens (default 0, the first)
+//                   layout     'row' | 'grid' | 'list' how the choices sit
+//                   onChoose   (choiceId) => the map does it and closes the box
+//                 Keys: arrows move the highlight, Space / E / Enter picks it, Escape closes.
+//                 In an info box Space / E / Enter closes it, and an arrow closes it and walks.
+//   onDialogClose optional: called to close the box (Escape, or the info box's keys)
 //   onStep        optional: called after every step (the screen can close its text box)
 
 const HERO_W = 10;
@@ -50,6 +57,12 @@ const HERO_H = 14;
 const ARROW = ['.......', '...K...', '..KWK..', '.KWWWK.', 'KWWWWWK', 'KKKKKKK', '.......'];
 
 const KEYS_HINT = 'Arrow keys to walk, Space to use';
+const BOX_HINT = {
+  confirm: 'Arrow keys to choose, Space to pick',
+  menu: 'Arrow keys to choose, Space to pick',
+  info: 'Space to close'
+};
+const DEFAULT_LAYOUT = { confirm: 'row', menu: 'grid', info: 'row' };
 
 export default function WorldMap({
   map,
@@ -89,6 +102,17 @@ export default function WorldMap({
   const usable = Boolean(near && use && canUse);
   const talking = Boolean(dialog);
 
+  // Which choice of the text box is highlighted. A new box (new id) starts on its own highlight.
+  const dialogId = dialog?.id ?? null;
+  const startAt = dialog?.highlight ?? 0;
+  const [highlight, setHighlight] = useState({ id: dialogId, index: startAt });
+  if (highlight.id !== dialogId) setHighlight({ id: dialogId, index: startAt });
+  const chosen = highlight.id === dialogId ? highlight.index : startAt;
+  const choose = (index) => {
+    const choice = dialog?.choices[index];
+    if (choice && !choice.disabled) dialog.onChoose(choice.id);
+  };
+
   // hiddenKey only changes after USE, never while walking, so this value is never stale.
   const walk = (direction) => {
     setPosition((current) => stepHero(map, current, direction));
@@ -101,9 +125,15 @@ export default function WorldMap({
   };
 
   // The latest handlers, for the timer and the window listeners (which outlive one render).
-  const latest = useRef({ walk, act, talking, onDialogClose });
+  const box = {
+    kind: dialog?.kind ?? null,
+    pick: () => choose(chosen),
+    move: (step) => dialog && setHighlight({ id: dialogId, index: nextChoice(dialog.choices, chosen, step) }),
+    close: () => onDialogClose?.()
+  };
+  const latest = useRef({ walk, act, box });
   useEffect(() => {
-    latest.current = { walk, act, talking, onDialogClose };
+    latest.current = { walk, act, box };
   });
 
   // Walking while a key, an arrow button or the joystick is held: one step now, then one
@@ -120,41 +150,28 @@ export default function WorldMap({
   };
   useEffect(() => stopWalking, []);
 
-  // The text box: arrow keys move between its buttons, Enter picks.
-  const textBox = useRef(null);
-  const choices = () => [...(textBox.current?.querySelectorAll('button:not([disabled])') ?? [])];
-  const moveInTextBox = (step) => {
-    const list = choices();
-    if (!list.length) return;
-    const index = list.indexOf(document.activeElement);
-    const next = index < 0 ? (step > 0 ? 0 : list.length - 1) : (index + step + list.length) % list.length;
-    list.at(next).focus();
-  };
-  const pickInTextBox = () => {
-    const list = choices();
-    const index = list.indexOf(document.activeElement);
-    // Nothing chosen yet: show the first choice, so one key press never sends a warning by accident.
-    if (index < 0) list.at(0)?.focus();
-    else list.at(index).click();
-  };
-
   // The keyboard, on the whole page, but only while this map is active (see mapKeys.js).
+  // The text box keeps its highlight itself, so the keys never get lost in the browser's focus.
   useEffect(
     () =>
       bindMapKeys(typeof window === 'undefined' ? null : window, {
         active,
-        isTalking: () => latest.current.talking,
-        textBox: () => textBox.current,
+        dialog: () => latest.current.box.kind,
         onCommand: (command) => {
+          const { box: current } = latest.current;
           if (command.type === 'walk') startWalking(command.direction);
           else if (command.type === 'use') latest.current.act();
-          else if (command.type === 'menu') moveInTextBox(command.step);
-          else if (command.type === 'pick') pickInTextBox();
-          else if (command.type === 'close') latest.current.onDialogClose?.();
+          else if (command.type === 'highlight') current.move(command.step);
+          else if (command.type === 'pick') current.pick();
+          else if (command.type === 'close') current.close();
+          else if (command.type === 'closeAndWalk') {
+            current.close();
+            startWalking(command.direction);
+          }
         },
         onStop: stopWalking
       }),
-    // startWalking, stopWalking and the text box helpers only read refs, so `active` is enough.
+    // startWalking and stopWalking only read refs, so `active` is enough.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [active]
   );
@@ -248,8 +265,44 @@ export default function WorldMap({
       </div>
 
       {talking && (
-        <div ref={textBox} className="world__textbox pixel-box">
-          {dialog}
+        <div className={`world__textbox world__textbox--${dialog.kind} pixel-box`} role="dialog" aria-label={dialog.title}>
+          <p className={dialog.kind === 'confirm' ? 'world__ask' : 'world__dialog-title'}>
+            {dialog.icon && (
+              <span className="world__ask-icon" aria-hidden="true">
+                {dialog.icon}
+              </span>
+            )}
+            {dialog.title}
+          </p>
+          {dialog.body}
+          <div className={`world__choices world__choices--${dialog.layout ?? DEFAULT_LAYOUT[dialog.kind]}`}>
+            {dialog.choices.map((choice, index) => (
+              <button
+                key={choice.id}
+                type="button"
+                className={`world__choice${index === chosen ? ' is-highlighted' : ''}`}
+                aria-current={index === chosen ? 'true' : undefined}
+                disabled={choice.disabled}
+                // A click never leaves the focus on the button, so the next key goes to the map.
+                onMouseDown={(event) => event.preventDefault()}
+                onPointerEnter={() => !choice.disabled && setHighlight({ id: dialogId, index })}
+                onClick={() => choose(index)}
+              >
+                <span className="world__choice-marker" aria-hidden="true">
+                  {index === chosen ? '▶' : ''}
+                </span>
+                {choice.icon && (
+                  <span className="world__choice-icon" aria-hidden="true">
+                    {choice.icon}
+                  </span>
+                )}
+                <span>{choice.label}</span>
+              </button>
+            ))}
+          </div>
+          <p className="world__box-hint" aria-hidden="true">
+            {BOX_HINT[dialog.kind]}
+          </p>
         </div>
       )}
 
@@ -276,13 +329,20 @@ export default function WorldMap({
                   onPointerUp={stopWalking}
                   onPointerLeave={stopWalking}
                   onPointerCancel={stopWalking}
+                  // A click never leaves the focus on the arrow, so Space still means "use".
+                  onMouseDown={(event) => event.preventDefault()}
                   onContextMenu={(event) => event.preventDefault()}
+                  // Reached with Tab: holding Space or Enter walks at the same steady pace.
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
-                      walk(direction);
+                      if (!event.repeat) startWalking(direction);
                     }
                   }}
+                  onKeyUp={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') stopWalking();
+                  }}
+                  onBlur={stopWalking}
                 >
                   <svg viewBox="0 0 7 7" shapeRendering="crispEdges" aria-hidden="true" focusable="false">
                     {spriteRects(ARROW, { id: `arrow-${direction}` })}
@@ -294,7 +354,13 @@ export default function WorldMap({
 
           {/* Pops in next to a place, hides when nothing is near. Space / Enter / E do the same. */}
           {usable && (
-            <button key={near.id} type="button" className="world__action" onClick={act}>
+            <button
+              key={near.id}
+              type="button"
+              className="world__action"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={act}
+            >
               {use.icon && (
                 <span className="world__action-icon" aria-hidden="true">
                   {use.icon}

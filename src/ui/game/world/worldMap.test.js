@@ -10,6 +10,7 @@ import {
   KEY_TO_DIRECTION,
   joystickDirection,
   mapKeyCommand,
+  nextChoice,
   JOYSTICK_DEAD_ZONE
 } from './worldMap.js';
 
@@ -128,22 +129,62 @@ describe('mapKeyCommand', () => {
     expect(press('ArrowUp', { target: { inModal: true } })).toBeNull();
   });
 
-  it('lets a focused button keep its own Space and Enter, but arrows still walk', () => {
-    expect(press(' ', { target: { tag: 'BUTTON', control: true } })).toBeNull();
-    expect(press('Enter', { target: { tag: 'BUTTON', control: true } })).toBeNull();
-    expect(press('ArrowDown', { target: { tag: 'BUTTON', control: true } })).toEqual({ type: 'walk', direction: 'down' });
+  // Changed on purpose: a button only keeps Space and Enter if it was reached with Tab.
+  // A button that has focus because it was clicked (Sound, Menu...) no longer blocks the map.
+  it('a button reached with Tab keeps its own Space and Enter; a clicked one does not', () => {
+    const tabbed = { target: { tag: 'BUTTON', control: true, focusVisible: true } };
+    const clicked = { target: { tag: 'BUTTON', control: true, focusVisible: false } };
+    expect(press(' ', tabbed)).toBeNull();
+    expect(press('Enter', tabbed)).toBeNull();
+    expect(press(' ', clicked)).toEqual({ type: 'use' });
+    expect(press('Enter', clicked)).toEqual({ type: 'use' });
+    expect(press('ArrowDown', tabbed)).toEqual({ type: 'walk', direction: 'down' });
   });
 
-  it('with the text box open: arrows move between choices, Enter picks, Escape closes', () => {
-    const open = { dialogOpen: true };
-    expect(press('ArrowUp', open)).toEqual({ type: 'menu', step: -1 });
-    expect(press('ArrowLeft', open)).toEqual({ type: 'menu', step: -1 });
-    expect(press('ArrowDown', open)).toEqual({ type: 'menu', step: 1 });
-    expect(press('s', open)).toEqual({ type: 'menu', step: 1 });
-    expect(press('Enter', open)).toEqual({ type: 'pick' });
-    expect(press('Escape', open)).toEqual({ type: 'close' });
+  it('E always uses, even on a button reached with Tab (browsers never press buttons with E)', () => {
+    expect(press('e', { target: { tag: 'BUTTON', control: true, focusVisible: true } })).toEqual({ type: 'use' });
+  });
+
+  // Changed on purpose: three kinds of text box instead of one.
+  it('Yes / No box and warning menu: arrows move the highlight, Space / E / Enter pick, Escape closes', () => {
+    for (const dialog of ['confirm', 'menu']) {
+      expect(press('ArrowUp', { dialog })).toEqual({ type: 'highlight', step: -1 });
+      expect(press('ArrowLeft', { dialog })).toEqual({ type: 'highlight', step: -1 });
+      expect(press('ArrowRight', { dialog })).toEqual({ type: 'highlight', step: 1 });
+      expect(press('s', { dialog })).toEqual({ type: 'highlight', step: 1 });
+      for (const key of [' ', 'Enter', 'e']) expect(press(key, { dialog })).toEqual({ type: 'pick' });
+      expect(press('Escape', { dialog })).toEqual({ type: 'close' });
+    }
     expect(press('Escape')).toBeNull(); // nothing to close
-    // A choice that already has the focus presses itself (the browser does it)
-    expect(press('Enter', { ...open, target: { tag: 'BUTTON', control: true, inDialog: true } })).toBeNull();
+  });
+
+  it('a held key never picks: only a new press says Yes', () => {
+    expect(press(' ', { dialog: 'confirm', repeat: true })).toEqual({ type: 'held' });
+    expect(press('Enter', { dialog: 'menu', repeat: true })).toEqual({ type: 'held' });
+    expect(press('ArrowRight', { dialog: 'confirm', repeat: true })).toEqual({ type: 'held' });
+  });
+
+  it('info box: the same key closes it, and an arrow closes it and walks on', () => {
+    for (const key of [' ', 'Enter', 'e', 'E', 'Escape']) expect(press(key, { dialog: 'info' })).toEqual({ type: 'close' });
+    expect(press('ArrowLeft', { dialog: 'info' })).toEqual({ type: 'closeAndWalk', direction: 'left' });
+    expect(press(' ', { dialog: 'info', repeat: true })).toEqual({ type: 'held' });
+  });
+
+  it('a choice reached with Tab presses itself (the browser does it)', () => {
+    expect(press('Enter', { dialog: 'confirm', target: { tag: 'BUTTON', control: true, focusVisible: true } })).toBeNull();
+  });
+});
+
+describe('nextChoice', () => {
+  const choices = [{ id: 'a' }, { id: 'b', disabled: true }, { id: 'c' }];
+
+  it('moves to the next or previous choice and wraps round', () => {
+    expect(nextChoice(choices, 0, 1)).toBe(2); // skips the disabled one
+    expect(nextChoice(choices, 2, 1)).toBe(0); // wraps
+    expect(nextChoice(choices, 0, -1)).toBe(2);
+  });
+
+  it('stays put when nothing else can be picked', () => {
+    expect(nextChoice([{ id: 'only' }], 0, 1)).toBe(0);
   });
 });

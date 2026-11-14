@@ -56,11 +56,35 @@ describe('WorldMap', () => {
     expect(html).toContain('Arrow keys to walk, Space to use');
   });
 
+  // Changed on purpose: `dialog` describes the box; WorldMap draws it and keeps the highlight.
+  const confirmBox = {
+    id: 'tower-1',
+    kind: 'confirm',
+    title: 'Raise shield?',
+    body: <p>Costs 20 power.</p>,
+    choices: [
+      { id: 'yes', label: 'Yes' },
+      { id: 'no', label: 'No' }
+    ],
+    onChoose: () => {}
+  };
+
   it('opens the text box over the map and puts the controls away while it is open', () => {
-    const html = render({ start: nextToTower, dialog: <p>Radio desk</p> });
-    expect(html).toMatch(/class="world__textbox pixel-box"><p>Radio desk<\/p>/);
+    const html = render({ start: nextToTower, dialog: confirmBox });
+    expect(html).toMatch(/class="world__textbox world__textbox--confirm pixel-box" role="dialog" aria-label="Raise shield\?"/);
+    expect(html).toContain('Costs 20 power.');
     expect(html).not.toContain('world__controls');
     expect(html).not.toContain('world__bubble');
+  });
+
+  it('highlights the first choice (Yes) with an arrow, not only a colour', () => {
+    const html = render({ dialog: confirmBox });
+    expect(html).toMatch(/class="world__choice is-highlighted" aria-current="true">.*▶.*Yes/);
+    expect(html).toMatch(/class="world__choice">.*No/);
+  });
+
+  it('can start on another choice', () => {
+    expect(render({ dialog: { ...confirmBox, highlight: 1 } })).toMatch(/is-highlighted" aria-current="true">.*▶.*No/);
   });
 
   it('puts the speech bubble on the side away from the character', () => {

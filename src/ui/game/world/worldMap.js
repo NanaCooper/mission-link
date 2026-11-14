@@ -47,49 +47,70 @@ export function joystickDirection(dx, dy, deadZone = JOYSTICK_DEAD_ZONE) {
 
 const TYPING_TAGS = ['INPUT', 'TEXTAREA', 'SELECT'];
 
+// The kinds of text box a map can open (see WorldMap's `dialog` prop).
+//   confirm  "Raise shield? [Yes] [No]"     arrows move the highlight, Space / E / Enter picks
+//   menu     the radio desk's warnings      arrows move the highlight, Space / E / Enter picks
+//   info     the telescope, the monitor     Space / E / Enter closes; an arrow closes it and walks
+export const DIALOG_KINDS = ['confirm', 'menu', 'info'];
+
 // What a key press on the page should do to the map. Pure, so it is easy to test.
 //   key, repeat    from the keyboard event (repeat = the OS repeating a held key)
 //   modifier       true if Ctrl, Alt or Meta is held (leave shortcuts to the browser)
 //   target         where the key press happened:
-//                    tag         its tag name ('BUTTON', 'INPUT', ...)
-//                    editable    true for contenteditable
-//                    control     true for a button, link or tab (it has its own Enter / Space)
-//                    inDialog    true if it is inside this map's text box
-//                    inModal     true if it is inside some other full-screen dialog
-//   dialogOpen     true while this map's text box (e.g. the radio menu) is open
+//                    tag           its tag name ('BUTTON', 'INPUT', ...)
+//                    editable      true for contenteditable
+//                    control       true for a button, link or tab (it has its own Enter / Space)
+//                    focusVisible  true if that control was reached with the keyboard (Tab).
+//                                  A button that only has focus because it was clicked does not
+//                                  keep Space and Enter: the map takes them.
+//                    inModal       true if it is inside some other full-screen dialog
+//   dialog         null, or the kind of text box that is open: 'confirm' | 'menu' | 'info'
 // Returns null (leave the key alone) or one of:
-//   { type: 'walk', direction }   start walking (held keys keep walking at WALK_REPEAT_MS)
-//   { type: 'held' }              the OS repeating a key we already handle: swallow it
-//   { type: 'use' }               use the place in front
-//   { type: 'menu', step }        text box open: move to the previous (-1) or next (+1) choice
-//   { type: 'pick' }              text box open: choose (highlights the first choice if none is)
-//   { type: 'close' }             text box open: close it
-export function mapKeyCommand({ key, repeat = false, modifier = false, target = {}, dialogOpen = false }) {
+//   { type: 'walk', direction }          start walking (held keys keep walking at WALK_REPEAT_MS)
+//   { type: 'held' }                     the OS repeating a key: swallow it. A held key never
+//                                        uses, picks or closes anything twice.
+//   { type: 'use' }                      use the place in front
+//   { type: 'highlight', step }          move the highlight to the previous (-1) or next (+1) choice
+//   { type: 'pick' }                     choose the highlighted choice
+//   { type: 'close' }                    close the text box
+//   { type: 'closeAndWalk', direction }  info box: close it and start walking
+export function mapKeyCommand({ key, repeat = false, modifier = false, target = {}, dialog = null }) {
   if (modifier) return null;
   if (TYPING_TAGS.includes(target.tag) || target.editable) return null;
   if (target.inModal) return null;
 
   const direction = KEY_TO_DIRECTION[key];
   const isUse = USE_KEYS.includes(key);
+  // Space and Enter press a button the player reached with Tab. E is never a button key.
+  if ((key === ' ' || key === 'Enter') && target.control && target.focusVisible) return null;
 
-  if (dialogOpen) {
+  if (dialog === 'info') {
+    if (key === 'Escape' || isUse) return repeat ? { type: 'held' } : { type: 'close' };
+    if (direction) return repeat ? { type: 'held' } : { type: 'closeAndWalk', direction };
+    return null;
+  }
+
+  if (dialog) {
     if (key === 'Escape') return { type: 'close' };
-    if (direction) return { type: 'menu', step: direction === 'up' || direction === 'left' ? -1 : 1 };
-    if (key === 'Enter' || key === ' ') {
-      // A focused choice in the text box presses itself (the browser does it).
-      if (target.inDialog && target.control) return null;
-      return repeat ? { type: 'held' } : { type: 'pick' };
-    }
+    if (direction) return repeat ? { type: 'held' } : { type: 'highlight', step: direction === 'up' || direction === 'left' ? -1 : 1 };
+    if (isUse) return repeat ? { type: 'held' } : { type: 'pick' };
     return null;
   }
 
   if (direction) return repeat ? { type: 'held' } : { type: 'walk', direction };
-  if (isUse) {
-    // Space or Enter on a focused button belongs to that button, not to the map.
-    if (target.control) return null;
-    return repeat ? { type: 'held' } : { type: 'use' };
-  }
+  if (isUse) return repeat ? { type: 'held' } : { type: 'use' };
   return null;
+}
+
+// The next choice to highlight, skipping choices that cannot be picked. Wraps round.
+// Returns `from` if nothing else can be picked.
+export function nextChoice(choices, from, step) {
+  const count = choices.length;
+  for (let i = 1; i <= count; i += 1) {
+    const index = (((from + step * i) % count) + count) % count;
+    if (!choices[index]?.disabled) return index;
+  }
+  return from;
 }
 
 // Builds a map from rows of letters.

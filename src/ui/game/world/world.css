@@ -309,21 +309,94 @@
   margin: 0;
 }
 
-.world__menu {
+/* The question in a Yes / No box: "Raise shield?" with its icon, and the cost under it */
+.world__ask {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.world__ask-icon {
+  display: inline-flex;
+}
+
+.world__ask-hint {
+  color: var(--text);
+}
+
+/* The choices: Yes / No in a row, the warnings in two columns */
+.world__choices {
   display: grid;
   gap: 8px;
+}
+
+.world__choices--row {
+  grid-template-columns: repeat(auto-fit, minmax(120px, max-content));
+}
+
+.world__choices--grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.world__menu .big-button {
-  min-height: var(--tap);
-  padding-left: 8px;
-  padding-right: 8px;
+.world__choice {
+  --edge: var(--panel-border);
+  display: flex;
+  align-items: center;
   gap: 6px;
+  min-height: var(--tap);
+  padding: 8px 14px 8px 8px;
+  font-family: var(--font);
+  font-size: 18px;
+  line-height: 1.2;
+  text-align: left;
+  color: var(--text);
+  background: var(--bg-2);
+  border: var(--px) solid var(--edge);
+  clip-path: var(--notch);
+  cursor: pointer;
 }
 
-.world__close {
-  justify-self: end;
+/* The highlighted choice: an arrow AND a bright edge, never colour alone */
+.world__choice.is-highlighted {
+  --edge: var(--accent);
+  background: var(--panel);
+  font-weight: 700;
+}
+
+.world__choice:disabled {
+  color: var(--text-dim);
+  cursor: default;
+}
+
+.world__choice:focus-visible {
+  --edge: var(--focus);
+  outline: none;
+}
+
+.world__choice-marker {
+  display: inline-block;
+  width: 1em;
+  color: var(--accent);
+}
+
+.world__choice-icon {
+  display: inline-flex;
+}
+
+/* "Arrow keys to choose, Space to pick": computers only, like the walking hint */
+.world__box-hint {
+  display: none;
+  font-size: 18px;
+  color: var(--text-dim);
+}
+
+@media (pointer: fine) and (hover: hover) {
+  .world__box-hint {
+    display: block;
+  }
 }
 
 /* Crew monitor: Nova's face next to her last move and health */
