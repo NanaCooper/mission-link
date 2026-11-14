@@ -50,6 +50,22 @@ describe('BaseScene (what the Astronaut sees)', () => {
     expect(renderToStaticMarkup(<BaseScene lastMove="shelter" />)).not.toContain('px-bob');
   });
 
+  it('does not make Nova walk on the first picture (she is already at her spot)', () => {
+    for (const lastMove of [null, 'raiseShield', 'shelter', 'savePower', 'doScience']) {
+      const html = renderToStaticMarkup(<BaseScene lastMove={lastMove} turn={3} />);
+      expect(html).toContain('scene__walker');
+      expect(html).not.toContain('is-walking');
+      expect(html).toContain('--walk:0s');
+    }
+  });
+
+  it('waits for Nova before showing the shield, the open door and the dark windows', () => {
+    expect(renderToStaticMarkup(<BaseScene lastMove="raiseShield" />)).toMatch(/scene__after-walk[^>]*><g class="scene__shield"/);
+    expect(renderToStaticMarkup(<BaseScene lastMove="shelter" />)).toContain('scene__after-walk');
+    expect(renderToStaticMarkup(<BaseScene lastMove="savePower" />)).toContain('scene__until-walk');
+    expect(renderToStaticMarkup(<BaseScene />)).not.toContain('scene__until-walk');
+  });
+
   it('makes the base lights flicker when power is low', () => {
     expect(renderToStaticMarkup(<BaseScene lowPower />)).toContain('px-flicker');
     expect(renderToStaticMarkup(<BaseScene />)).not.toContain('px-flicker');

@@ -1,10 +1,14 @@
+import { useState } from 'react';
 import SceneFrame, { SCENE_WIDTH, SCENE_HEIGHT } from './SceneFrame.jsx';
 import { spriteRects } from '../../components/pixel/spriteRects.jsx';
 import { PIECES, PALETTE } from '../../components/pixel/sprites.js';
+import { nextWalkMemo, walkPlan, NOVA_BODY, NOVA_LEGS, NOVA_LEGS_Y } from './novaWalk.js';
 
 // The Astronaut's picture: the base on the Moon or on Mars, with Nova outside.
 // The picture shows what Nova did last turn (shield up, lights off, ...).
 // It never shows the storm: the Astronaut cannot see it. Only Mission Control can.
+// When a turn is played, Nova walks from where she was to where the new move happens
+// (see novaWalk.js). The shield, the lights and the shelter door change when she gets there.
 //
 // Props:
 //   world      'moon' | 'mars'
@@ -66,7 +70,15 @@ export default function BaseScene({ world = 'moon', lastMove = null, lowPower = 
   const sheltering = lastMove === 'shelter';
   const saving = lastMove === 'savePower';
   const science = lastMove === 'doScience';
-  const novaX = science ? 52 : 47;
+
+  // Where Nova was and where she is now. Updated while drawing, when the turn changes.
+  const [memo, setMemo] = useState(() => nextWalkMemo(null, turn, lastMove));
+  const walkMemo = nextWalkMemo(memo, turn, lastMove);
+  if (walkMemo !== memo) setMemo(walkMemo);
+  const walk = walkPlan(walkMemo.from, walkMemo.at);
+  const novaX = walkMemo.at;
+  // Things that change "when Nova gets there" wait this long. Keyed by turn so they replay.
+  const timing = { '--walk': `${walk.seconds}s` };
 
   const label = `Picture: the ${look.name} base. ${WHAT_HAPPENED[lastMove] ?? 'Nova stands by the base.'}`;
 
@@ -120,54 +132,84 @@ export default function BaseScene({ world = 'moon', lastMove = null, lowPower = 
       {/* Solar panel. It sparkles when Nova saves power. */}
       <g>{spriteRects(PIECES.solarPanel, { x: 5, y: GROUND - 8, id: 'panel' })}</g>
       {saving && (
-        <>
+        <g key={`sparkle-${turn}`} className="scene__after-walk" style={timing}>
           <rect x={7} y={GROUND - 7} width={1} height={1} fill={PALETTE.W} className="px-twinkle" />
           <rect x={11} y={GROUND - 6} width={1} height={1} fill={PALETTE.W} className="px-twinkle px-twinkle--late" />
           <rect x={15} y={GROUND - 7} width={1} height={1} fill={PALETTE.W} className="px-blink-fast" />
-        </>
+        </g>
       )}
 
       {/* The base */}
       <g>{spriteRects(PIECES.mast, { x: 31, y: GROUND - 17, id: 'mast' })}</g>
       <rect x={32} y={GROUND - 17} width={1} height={1} fill={PALETTE.K} className="px-blink-slow" />
       <g>{spriteRects(PIECES.dome, { x: 20, y: GROUND - 13, id: 'dome' })}</g>
-      {!saving && (
-        <g className={lowPower ? 'px-flicker' : undefined}>
+      {/* The lights. When Nova saves power they stay on until she reaches the solar panel. */}
+      <g key={`lights-${turn}`} className={saving ? 'scene__until-walk' : undefined} style={timing}>
+        <g className={lowPower && !saving ? 'px-flicker' : undefined}>
           <rect x={27} y={GROUND - 7} width={2} height={2} fill={PALETTE.Y} />
           <rect x={35} y={GROUND - 7} width={2} height={2} fill={PALETTE.Y} />
         </g>
-      )}
+      </g>
       {sheltering && (
-        <>
+        <g key={`door-${turn}`} className="scene__after-walk" style={timing}>
           <rect x={31} y={GROUND - 3} width={2} height={2} fill={PALETTE.k} />
           <rect x={31} y={GROUND - 5} width={2} height={1} fill={PALETTE.L} className="px-blink-slow" />
-        </>
+        </g>
       )}
 
-      {/* Nova. Inside the shelter she cannot be seen. */}
-      {!sheltering && <g className="px-bob">{spriteRects(PIECES.novaBody, { x: novaX, y: GROUND - 14, id: 'nova' })}</g>}
+      {/* Nova walks to her spot. At the shelter she walks to the door, then goes inside. */}
+      <Nova key={`nova-${turn}`} x={novaX} y={GROUND - 14} walk={walk} goesInside={sheltering} />
 
       {/* The science robot car */}
       <g>{spriteRects(PIECES.rover, { x: 64, y: GROUND - 6, id: 'rover' })}</g>
       {science && (
-        <>
+        <g key={`science-${turn}`} className="scene__after-walk" style={timing}>
           <rect x={66} y={GROUND - 9} width={1} height={1} fill={PALETTE.L} className="px-rise" />
           <rect x={69} y={GROUND - 10} width={1} height={1} fill={PALETTE.C} className="px-rise px-rise--late" />
           <rect x={64} y={GROUND - 10} width={1} height={1} fill={PALETTE.Y} className="px-rise px-rise--later" />
-        </>
+        </g>
       )}
 
-      {/* The shield: a glowing dome over everything */}
+      {/* The shield: a glowing dome over everything. It pops up when Nova reaches the switch. */}
       {shielded && (
-        <g key={turn} className="scene__shield">
-          {SHIELD_OUTER.map(([x, y]) => (
-            <rect key={`so-${x}-${y}`} x={x} y={y} width={1} height={1} fill={PALETTE.C} />
-          ))}
-          {SHIELD_INNER.map(([x, y]) => (
-            <rect key={`si-${x}-${y}`} x={x} y={y} width={1} height={1} fill={PALETTE.b} />
-          ))}
+        <g key={turn} className="scene__after-walk" style={timing}>
+          <g className="scene__shield">
+            {SHIELD_OUTER.map(([x, y]) => (
+              <rect key={`so-${x}-${y}`} x={x} y={y} width={1} height={1} fill={PALETTE.C} />
+            ))}
+            {SHIELD_INNER.map(([x, y]) => (
+              <rect key={`si-${x}-${y}`} x={x} y={y} width={1} height={1} fill={PALETTE.b} />
+            ))}
+          </g>
         </g>
       )}
     </SceneFrame>
+  );
+}
+
+// Nova, drawn where she ends up. While she walks, the whole group slides in from where
+// she was, one square per step, and her legs swap. Then she stands (and bobs) again.
+// The parent gives it a new key each turn, so the walk plays again.
+function Nova({ x, y, walk, goesInside }) {
+  const walking = walk.seconds > 0;
+  const style = {
+    '--walk': `${walk.seconds}s`,
+    '--walk-from': `${walk.offset}px`,
+    '--walk-cycles': walk.cycles,
+    animationTimingFunction: walking ? `steps(${walk.steps})` : undefined
+  };
+  const legs = (frame, className) => (
+    <g className={className}>{spriteRects(NOVA_LEGS[frame], { x, y: y + NOVA_LEGS_Y, id: `nova-${frame}` })}</g>
+  );
+
+  return (
+    <g className={walking ? 'scene__walker is-walking' : 'scene__walker'} style={style}>
+      <g className={goesInside ? 'scene__until-walk' : 'px-bob'}>
+        {spriteRects(NOVA_BODY, { x, y, id: 'nova' })}
+        {legs('stand', 'scene__legs scene__legs--stand')}
+        {walking && legs('stepLeft', 'scene__legs scene__legs--left')}
+        {walking && legs('stepRight', 'scene__legs scene__legs--right')}
+      </g>
+    </g>
   );
 }
