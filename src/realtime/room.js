@@ -11,10 +11,13 @@ const CODE_PREFIX = 'MOON-';
 /** Events a room carries. The first three are from docs/CONTRACT.md. 'ping' is only for the dev test page. */
 export const EVENTS = ['requestState', 'stateUpdate', 'sendWarning', 'ping'];
 
-/** A new room code like MOON-4821. The Astronaut's Lobby screen shows it. */
-export function createRoom(random = Math.random) {
+/** A new room code like MOON-4821. The Astronaut's Lobby screen shows it. (Name from docs/CONTRACT.md.) */
+export function makeRoomCode(random = Math.random) {
   return CODE_PREFIX + String(1000 + Math.floor(random() * 9000));
 }
+
+/** Same as makeRoomCode(). Kept so older code keeps working. */
+export const createRoom = makeRoomCode;
 
 /**
  * Clean up what a player typed: "4821", "moon 4821" and "MOON-4821" all give "MOON-4821".

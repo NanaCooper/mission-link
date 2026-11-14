@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { ROLES } from '../shared/contract.js';
-import * as engine from './engineSource.js';
+import * as engine from './engineAdapter.js';
 import { hasSupabase } from './supabaseClient.js';
 import { openRoom } from './room.js';
 import { createGuestSession, createHostSession, lobbyState, splitReducer } from './session.js';

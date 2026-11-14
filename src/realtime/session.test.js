@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { MOVES, WARNINGS } from '../shared/contract.js';
 import * as engine from './fakeEngine.js';
-import * as realEngine from './engineSource.js';
+import * as realEngine from './engineAdapter.js';
 import { createHostSession, createGuestSession, splitReducer } from './session.js';
 
 // Two linked fake rooms. Messages only arrive while both sides are connected, like the real thing.
@@ -214,7 +214,7 @@ describe('split mode reducer', () => {
   });
 });
 
-describe('with the real engine (engineSource.js)', () => {
+describe('with the real engine (engineAdapter.js)', () => {
   for (const world of ['moon', 'mars']) {
     it(`plays a full ${world} game in sync and stops at the end`, () => {
       const net = memoryRooms();
