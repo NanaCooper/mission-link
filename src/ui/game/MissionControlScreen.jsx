@@ -2,8 +2,11 @@ import { Meter, BigButton, Panel, WhyCard, SpeechBox, Portrait, PixelIcon } from
 import SpaceScene from './scenes/SpaceScene.jsx';
 import { stormLook, solaMoodForLook } from './scenes/stormLook.js';
 import { useMeterDeltas } from './useMeterDeltas.js';
+import { useGameSounds } from './sound.js';
+import { ScreenTools } from './AstronautScreen.jsx';
 import {
   CHARACTERS,
+  missionControlReadText,
   WARNING_INFO,
   MOVE_INFO,
   MARS_DELAY_NOTE,
@@ -26,6 +29,8 @@ export default function MissionControlScreen({ view, onWarn }) {
   const blackout = Boolean(stage.blackout);
   const canWarn = playing && !blackout;
   const director = CHARACTERS.director;
+
+  useGameSounds(view);
 
   return (
     <div className={`mission-control-screen world-${view.world}`}>
@@ -56,6 +61,8 @@ export default function MissionControlScreen({ view, onWarn }) {
           </div>
         }
       />
+
+      <ScreenTools readText={missionControlReadText(view)} />
 
       <SpeechBox
         className="mc-brief"

@@ -117,7 +117,8 @@ describe('MissionControlScreen', () => {
 
   it('shows all four warning buttons, none selected when no warning sent', () => {
     const html = render({ ...fakeMissionControlView, warningThisTurn: null });
-    expect(html.match(/<button/g)).toHaveLength(4);
+    // Count the warning buttons only: the "Sound on/off" button is always there too.
+    expect(html.match(/<button[^>]*class="big-button/g)).toHaveLength(4);
     expect(html).not.toContain('aria-pressed="true"');
   });
 
@@ -142,9 +143,10 @@ describe('MissionControlScreen', () => {
     }
   });
 
-  it('disables every button when the game is won', () => {
+  it('disables every warning button when the game is won', () => {
     const html = render({ ...fakeMissionControlView, status: 'won' });
-    const buttons = html.match(/<button[^>]*>/g) || [];
+    // "Sound on/off" stays usable on purpose, so only the warning buttons are checked.
+    const buttons = html.match(/<button[^>]*class="big-button[^>]*>/g) || [];
     expect(buttons).toHaveLength(4);
     for (const button of buttons) expect(button).toContain('disabled');
   });
@@ -157,5 +159,14 @@ describe('MissionControlScreen', () => {
   it('shows the Why? card from lastFact', () => {
     expect(render(fakeMissionControlView)).toContain('Why?');
     expect(render({ ...fakeMissionControlView, lastFact: null })).not.toContain('Why?');
+  });
+});
+
+describe('MissionControlScreen: sound and read-aloud', () => {
+  it('shows the sound button, which stays usable when the game is over', () => {
+    const html = render({ ...fakeMissionControlView, status: 'won' });
+    expect(html).toMatch(/<button type="button" class="screen-tools__button">/);
+    expect(html).toContain('Sound on');
+    expect(html).not.toContain('Read to me'); // tests run without speechSynthesis
   });
 });

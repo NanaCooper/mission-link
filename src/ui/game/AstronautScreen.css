@@ -94,3 +94,62 @@
   display: grid;
   gap: var(--gap);
 }
+
+/* ---------- Sound on/off and Read to me (also used by MissionControlScreen) ---------- */
+.screen-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.screen-tools__button {
+  --edge: var(--panel-border);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap);
+  padding: 8px 10px;
+  font-family: var(--font);
+  font-size: 18px;
+  color: var(--text);
+  background: var(--panel);
+  border: var(--px) solid var(--edge);
+  clip-path: var(--notch);
+  cursor: pointer;
+}
+
+.screen-tools__button:hover {
+  --edge: var(--accent);
+}
+
+.screen-tools__button:focus-visible {
+  --edge: var(--focus);
+  outline: none;
+}
+
+.screen-tools__button.is-off {
+  color: var(--text-dim);
+}
+
+/* ---------- Prediction prompt (peak turn) ---------- */
+.astronaut-screen__predict-answers {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.astronaut-screen__predict-answers .screen-tools__button {
+  justify-content: flex-start;
+  width: 100%;
+  text-align: left;
+}
+
+.astronaut-screen__guess {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 18px;
+  color: var(--accent-contrast);
+  background: var(--accent);
+  clip-path: var(--notch);
+}

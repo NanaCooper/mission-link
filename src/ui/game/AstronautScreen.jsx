@@ -1,8 +1,18 @@
+import { useState } from 'react';
 import { Meter, BigButton, Panel, WhyCard, InfoTip, SpeechBox, Portrait, PixelIcon } from '../components/index.js';
 import BaseScene from './scenes/BaseScene.jsx';
 import { useMeterDeltas } from './useMeterDeltas.js';
+import { useGameSounds, useSoundOn, setSoundOn, unlockAudio } from './sound.js';
+import { useReadAloud } from './useReadAloud.js';
 import {
   CHARACTERS,
+  PREDICTION,
+  predictionResultText,
+  astronautReadText,
+  SOUND_ON_LABEL,
+  SOUND_OFF_LABEL,
+  READ_ALOUD_LABEL,
+  READ_ALOUD_STOP_LABEL,
   MOVE_INFO,
   MOVE_SCENE_TAG,
   WARNING_INFO,
@@ -27,6 +37,9 @@ export default function AstronautScreen({ view, onMove }) {
   const lastLog = view.log.length > 0 ? view.log[view.log.length - 1] : null;
   const robot = CHARACTERS.robot;
   const moveTag = MOVE_SCENE_TAG[view.lastMove];
+  const guess = usePrediction(view);
+
+  useGameSounds(view);
 
   return (
     <div className={`astronaut-screen world-${view.world}`}>
@@ -50,27 +63,22 @@ export default function AstronautScreen({ view, onMove }) {
         }
       />
 
+      <ScreenTools readText={astronautReadText(view)} />
+
       <MissionControlMessage view={view} />
 
       <StatusPanel view={view} />
 
-      <section className="astronaut-screen__moves" aria-label="Pick your move">
-        <h2 className="astronaut-screen__moves-title pixel-title">Pick your move</h2>
-        <div className="astronaut-screen__buttons">
-          {Object.entries(MOVE_INFO).map(([moveKey, info]) => (
-            <BigButton
-              key={moveKey}
-              icon={<PixelIcon name={info.sprite} size={30} />}
-              label={info.label}
-              hint={info.hint}
-              disabled={!isPlaying}
-              onClick={() => onMove(moveKey)}
-            />
-          ))}
-        </div>
-      </section>
+      {guess.asking && <PredictionQuestion onAnswer={guess.answer} />}
+
+      <MoveButtons disabled={!isPlaying} onMove={onMove} />
 
       <div className="astronaut-screen__result">
+        {guess.result && (
+          <p className="astronaut-screen__guess" role="status">
+            {guess.result}
+          </p>
+        )}
         {lastLog && (
           <SpeechBox
             className="astronaut-screen__log"
@@ -83,6 +91,94 @@ export default function AstronautScreen({ view, onMove }) {
         <WhyCard fact={view.lastFact} name={robot.name} />
       </div>
     </div>
+  );
+}
+
+// The four move buttons.
+export function MoveButtons({ disabled, onMove }) {
+  return (
+    <section className="astronaut-screen__moves" aria-label="Pick your move">
+      <h2 className="astronaut-screen__moves-title pixel-title">Pick your move</h2>
+      <div className="astronaut-screen__buttons">
+        {Object.entries(MOVE_INFO).map(([moveKey, info]) => (
+          <BigButton
+            key={moveKey}
+            icon={<PixelIcon name={info.sprite} size={30} />}
+            label={info.label}
+            hint={info.hint}
+            disabled={disabled}
+            onClick={() => onMove(moveKey)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// "Sound on / off" and "Read to me", shown on both player screens.
+// Read to me is hidden when the browser cannot speak.
+export function ScreenTools({ readText }) {
+  const soundOn = useSoundOn();
+  const voice = useReadAloud();
+
+  const toggleSound = () => {
+    unlockAudio();
+    setSoundOn(!soundOn);
+  };
+
+  return (
+    <div className="screen-tools" role="group" aria-label="Sound and reading">
+      <button
+        type="button"
+        className={`screen-tools__button${soundOn ? '' : ' is-off'}`}
+        onClick={toggleSound}
+      >
+        <span aria-hidden="true">{soundOn ? '🔊' : '🔇'}</span>
+        <span>{soundOn ? SOUND_ON_LABEL : SOUND_OFF_LABEL}</span>
+      </button>
+      {voice.supported && (
+        <button
+          type="button"
+          className="screen-tools__button"
+          onClick={() => (voice.speaking ? voice.stop() : voice.read(readText))}
+        >
+          <span aria-hidden="true">{voice.speaking ? '⏹️' : '🗣️'}</span>
+          <span>{voice.speaking ? READ_ALOUD_STOP_LABEL : READ_ALOUD_LABEL}</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
+// The prediction prompt. Kept in this screen's state only: never sent to the session or the engine.
+// Asked on PREDICTION.turn, answered or skipped (the move buttons always work),
+// then "You guessed ..." shows with the result of that turn.
+function usePrediction(view) {
+  const [guess, setGuess] = useState(null); // { turn, answer }
+
+  // A new game started: forget the old guess.
+  if (guess && view.turn < guess.turn) setGuess(null);
+
+  const asking = view.status !== 'lost' && view.status !== 'won' && view.turn === PREDICTION.turn && !guess;
+  const result = guess && view.turn === guess.turn + 1 ? predictionResultText(guess.answer) : null;
+
+  return { asking, result, answer: (answer) => setGuess({ turn: view.turn, answer }) };
+}
+
+function PredictionQuestion({ onAnswer }) {
+  const robot = CHARACTERS.robot;
+  return (
+    <section className="astronaut-screen__predict" aria-label="Make a guess">
+      <SpeechBox who={robot.who} name={robot.name} size={48} text={PREDICTION.question}>
+        <div className="astronaut-screen__predict-answers">
+          {PREDICTION.answers.map((answer) => (
+            <button key={answer} type="button" className="screen-tools__button" onClick={() => onAnswer(answer)}>
+              {answer}
+            </button>
+          ))}
+        </div>
+      </SpeechBox>
+    </section>
   );
 }
 

@@ -10,9 +10,14 @@ import {
   RADIATION_EXPLAINER,
   MARS_DELAY_NOTE,
   novaMood,
+  astronautReadText,
+  missionControlReadText,
+  PREDICTION,
+  predictionResultText,
   solaMoodForWarning,
   turnText
 } from './labels.js';
+import { fakeAstronautView, fakeMissionControlView } from '../fakeState.js';
 
 describe('characters and pixel icons', () => {
   it('has three characters, each with a name and a face that exists', () => {
@@ -104,5 +109,40 @@ describe('screen labels', () => {
     expect(turnText({ turn: 0, maxTurns: 6 })).toBe('Turn 1 of 6');
     expect(turnText({ turn: 3, maxTurns: 6 })).toBe('Turn 4 of 6');
     expect(turnText({ turn: 6, maxTurns: 6 })).toBe('Turn 6 of 6');
+  });
+});
+
+describe('read-aloud text and the prediction prompt', () => {
+  it('Astronaut: reads a new message from Commander Sola, then BLIP\'s line', () => {
+    const text = astronautReadText(fakeAstronautView); // shelterNow arrived on turn 3
+    expect(text).toMatch(/^Commander Sola says: Shelter now!/);
+    expect(text).toContain(`BLIP says: ${fakeAstronautView.log.at(-1).text}`);
+  });
+
+  it('Astronaut: says when there is no new message, or no message at all', () => {
+    expect(astronautReadText({ ...fakeAstronautView, turn: 4 })).toContain('No new message this turn. Last message: Shelter now.');
+    const none = astronautReadText({ ...fakeAstronautView, inbox: [], log: [] });
+    expect(none).toContain('No message from Mission Control yet.');
+    expect(none).not.toContain('BLIP');
+  });
+
+  it('Mission Control: reads the briefing, what comes next and BLIP\'s fact', () => {
+    const text = missionControlReadText(fakeMissionControlView);
+    expect(text).toContain(`Commander Sola says: ${fakeMissionControlView.stage.missionControlSees}`);
+    expect(text).toContain(`Coming next: ${fakeMissionControlView.forecast}.`);
+    expect(text).toContain(`BLIP says: ${fakeMissionControlView.lastFact.text}`);
+  });
+
+  it('Mission Control: mentions the blackout and the last turn', () => {
+    const view = { ...fakeMissionControlView, forecast: null, stage: { ...fakeMissionControlView.stage, blackout: true } };
+    const text = missionControlReadText(view);
+    expect(text).toContain('This is the last turn.');
+    expect(text).toContain('blocking the signal');
+  });
+
+  it('prediction prompt: asked on view.turn 3 with three answers', () => {
+    expect(PREDICTION.turn).toBe(3);
+    expect(PREDICTION.answers).toEqual(['Nothing much', 'The crew takes a lot of radiation', 'Not sure']);
+    expect(predictionResultText('Not sure')).toBe('You guessed "Not sure". Here is what happened.');
   });
 });

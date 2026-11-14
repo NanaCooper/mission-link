@@ -56,6 +56,63 @@ export const NO_MESSAGE_TEXT = 'No message from Mission Control yet';
 export const NO_MESSAGE_HINT = "You can't see the storm from here. Ask what the Sun is doing!";
 export const NO_NEW_MESSAGE_TEXT = 'No new message this turn.';
 
+// ---------- Sound and read-aloud buttons ----------
+export const SOUND_ON_LABEL = 'Sound on';
+export const SOUND_OFF_LABEL = 'Sound off';
+export const READ_ALOUD_LABEL = 'Read to me';
+export const READ_ALOUD_STOP_LABEL = 'Stop reading';
+
+// ---------- Prediction prompt (Astronaut only, never sent anywhere) ----------
+// Asked on the turn the storm may peak. "Turn 4 of 6" on screen is view.turn 3.
+// It only asks. It changes no rules and no score.
+export const PREDICTION = {
+  turn: 3,
+  question: 'The storm may be about to peak. What do you think will happen if you do science now?',
+  answers: ['Nothing much', 'The crew takes a lot of radiation', 'Not sure']
+};
+
+export function predictionResultText(answer) {
+  return `You guessed "${answer}". Here is what happened.`;
+}
+
+// ---------- What "Read to me" says ----------
+// Built only from what the screen already shows.
+
+// Astronaut: Commander Sola's message, then BLIP's line about the last turn.
+export function astronautReadText(view) {
+  const { director, robot } = CHARACTERS;
+  const newest = view.inbox.length > 0 ? view.inbox[view.inbox.length - 1] : null;
+  const warning = newest ? WARNING_INFO[newest.warning] : null;
+  const lastLog = view.log.length > 0 ? view.log[view.log.length - 1] : null;
+
+  let sola;
+  if (warning && newest.turn === view.turn) sola = `${director.name} says: ${warning.label}!`;
+  else if (warning) sola = `${director.name} says: ${NO_NEW_MESSAGE_TEXT} Last message: ${warning.label}.`;
+  else sola = `${director.name} says: ${NO_MESSAGE_TEXT}. ${NO_MESSAGE_HINT}`;
+
+  const parts = [sola];
+  if (lastLog) parts.push(`${robot.name} says: ${lastLog.text}`);
+  return joinSentences(parts);
+}
+
+// Mission Control: Commander Sola's briefing and what comes next, then BLIP's fact.
+export function missionControlReadText(view) {
+  const { director, robot } = CHARACTERS;
+  const parts = [`${director.name} says: ${view.stage.missionControlSees}`];
+  parts.push(view.forecast ? `Coming next: ${view.forecast}` : 'This is the last turn');
+  if (view.stage.blackout) parts.push(BLACKOUT_NOTE);
+  if (view.lastFact?.text) parts.push(`${robot.name} says: ${view.lastFact.text}`);
+  return joinSentences(parts);
+}
+
+function joinSentences(parts) {
+  return parts
+    .filter((part) => typeof part === 'string' && part.trim().length > 0)
+    .map((part) => part.trim())
+    .map((part) => (/[.!?]$/.test(part) ? part : `${part}.`))
+    .join(' ');
+}
+
 // The engine counts turns from 0, and turn reaches maxTurns when the game ends.
 export function turnText(view) {
   return `Turn ${Math.min(view.turn + 1, view.maxTurns)} of ${view.maxTurns}`;

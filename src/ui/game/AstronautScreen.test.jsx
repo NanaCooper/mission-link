@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import AstronautScreen from './AstronautScreen.jsx';
-import { MOVE_INFO } from './labels.js';
+import AstronautScreen, { MoveButtons } from './AstronautScreen.jsx';
+import { MOVE_INFO, PREDICTION } from './labels.js';
 import {
   fakeAstronautView,
   fakeMarsAstronautView,
@@ -165,7 +165,9 @@ describe('AstronautScreen', () => {
 
   it('calls onMove with the move key when a button is clicked', () => {
     const moves = [];
-    const element = AstronautScreen({ view: fakeAstronautView, onMove: (m) => moves.push(m) });
+    // MoveButtons, not AstronautScreen: the screen now uses hooks (sounds, the guess),
+    // and hooks cannot run when a component is called as a plain function.
+    const element = MoveButtons({ disabled: false, onMove: (m) => moves.push(m) });
     const buttons = findAll(element, (el) => el.props && typeof el.props.onClick === 'function' && 'hint' in el.props);
     buttons.forEach((button) => button.props.onClick());
     expect(moves).toEqual(Object.keys(MOVE_INFO));
@@ -182,3 +184,25 @@ function findAll(node, test, found = []) {
   }
   return found;
 }
+
+describe('AstronautScreen: sound, read-aloud and the prediction prompt', () => {
+  it('shows the sound button; Read to me is hidden when the browser cannot speak', () => {
+    const html = render(fakeAstronautView);
+    expect(html).toContain('Sound on');
+    expect(html).not.toContain('Read to me'); // tests run without speechSynthesis
+  });
+
+  it('asks the prediction question on the peak turn (Turn 4 of 6) without locking the moves', () => {
+    const html = render(fakeAstronautView); // view.turn 3
+    expect(html).toContain('Turn 4 of 6');
+    expect(html).toContain('The storm may be about to peak.');
+    for (const answer of PREDICTION.answers) expect(html).toContain(answer);
+    expect(html).not.toContain('disabled');
+  });
+
+  it('does not ask on other turns or after the game ends', () => {
+    expect(render({ ...fakeAstronautView, turn: 2 })).not.toContain('about to peak');
+    expect(render({ ...fakeAstronautView, turn: 4 })).not.toContain('about to peak');
+    expect(render({ ...fakeWonAstronautView, turn: 3 })).not.toContain('about to peak');
+  });
+});
