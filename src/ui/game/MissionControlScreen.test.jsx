@@ -35,7 +35,8 @@ describe('MissionControlScreen: Mars signal blackout', () => {
   });
 
   it('still works if an older view has no blackout field', () => {
-    const { blackout, ...stageWithoutBlackout } = fakeMissionControlView.stage;
+    const stageWithoutBlackout = { ...fakeMissionControlView.stage };
+    delete stageWithoutBlackout.blackout;
     const html = render({ ...fakeMissionControlView, stage: stageWithoutBlackout });
     expect(html).not.toContain('Signal blocked');
     expect(html).not.toContain('disabled');
