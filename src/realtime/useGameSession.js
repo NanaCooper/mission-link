@@ -1,0 +1,146 @@
+// The ONE hook the screens use (docs/CONTRACT.md):
+//   const { state, sendMove, sendWarning, connected, partnerConnected, error } =
+//     useGameSession({ mode, role, code, world, stormId })
+//
+// mode 'split':  both players on one device. No network. Always works.
+// mode 'online': role 'astronaut' is the host (runs the engine), role 'missionControl' is the guest.
+// `world` ('moon' | 'mars') and `stormId` are optional extras (proposed to the team) used when
+// the game is created. `state` is never null: before the game starts it has status 'lobby'.
+
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { ROLES } from '../shared/contract.js';
+import * as engine from './engineSource.js';
+import { hasSupabase } from './supabaseClient.js';
+import { openRoom } from './room.js';
+import { createGuestSession, createHostSession, lobbyState, splitReducer } from './session.js';
+
+// Kid-facing messages the screens can show as they are.
+export const SESSION_TEXT = {
+  noSetup: 'Online play is not set up here. Try Play on one device.',
+  lostLink: 'We lost the radio link. Check the internet, or play on one device.',
+  roomFull: 'This room already has two players.',
+};
+
+const reduceSplit = splitReducer(engine);
+
+// The host saves the game in this tab, so a page reload continues it instead of starting over.
+const saveKey = (code) => `missionlink:${code}`;
+function loadSaved(code) {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(saveKey(code)));
+    return saved && typeof saved.turn === 'number' && saved.meters ? saved : null;
+  } catch {
+    return null;
+  }
+}
+function save(code, state) {
+  try {
+    sessionStorage.setItem(saveKey(code), JSON.stringify(state));
+  } catch {
+    // Storage blocked (private mode, etc.): a reload will start a new game. Play still works.
+  }
+}
+
+const blankOnline = (key, world) => ({
+  key,
+  state: lobbyState({ mode: 'online', world }),
+  connected: false,
+  partnerConnected: false,
+  error: null,
+});
+
+export function useGameSession({ mode, role, code, world = 'moon', stormId = null }) {
+  const online = mode === 'online';
+  const isHost = role === ROLES.ASTRONAUT;
+  const key = online ? `${role}|${code}|${world}|${stormId}` : null;
+
+  const [splitState, dispatch] = useReducer(reduceSplit, null, () =>
+    engine.createGame({ mode: 'split', world, stormId }),
+  );
+  const [net, setNet] = useState(null);
+  const sessionRef = useRef(null);
+
+  useEffect(() => {
+    if (!online || !code || !hasSupabase) return undefined;
+
+    // Only keep values that belong to this room + role (ignore leftovers from an older one).
+    const patch = (p) => setNet((n) => ({ ...(n?.key === key ? n : blankOnline(key, world)), ...p }));
+
+    const room = openRoom({ code, role });
+    const session = isHost
+      ? createHostSession({
+          room,
+          engine,
+          world,
+          stormId,
+          restored: loadSaved(code),
+          onChange: (s) => {
+            save(code, s);
+            patch({ state: s });
+          },
+        })
+      : createGuestSession({ room, onChange: (s) => patch({ state: s }) });
+    sessionRef.current = session;
+    patch({ state: session.getState() });
+
+    let offs = [];
+    let stopped = false;
+    const stop = () => {
+      if (stopped) return;
+      stopped = true;
+      offs.forEach((off) => off());
+      session.close();
+      room.close();
+      if (sessionRef.current === session) sessionRef.current = null;
+    };
+
+    offs = [
+      room.onStatus((status) => {
+        if (status === 'SUBSCRIBED') patch({ connected: true, error: null });
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          patch({ connected: false, error: SESSION_TEXT.lostLink }); // Supabase keeps retrying
+        } else if (status === 'CLOSED') patch({ connected: false });
+      }),
+      room.onPresence(({ partnerConnected, full }) => {
+        if (full) {
+          patch({ connected: false, partnerConnected: false, error: SESSION_TEXT.roomFull });
+          stop();
+        } else {
+          patch({ partnerConnected });
+        }
+      }),
+    ];
+    return stop;
+  }, [online, isHost, role, code, world, stormId, key]);
+
+  // Astronaut only: one move per turn.
+  const sendMove = useCallback(
+    (move) => {
+      if (!online) dispatch({ type: 'move', move });
+      else if (isHost) sessionRef.current?.sendMove(move);
+    },
+    [online, isHost],
+  );
+
+  // Mission Control only: up to one warning per turn.
+  const sendWarning = useCallback(
+    (warning) => {
+      if (!online) dispatch({ type: 'warning', warning });
+      else if (role === ROLES.MISSION_CONTROL) sessionRef.current?.sendWarning(warning);
+    },
+    [online, role],
+  );
+
+  if (!online) {
+    return { state: splitState, sendMove, sendWarning, connected: true, partnerConnected: true, error: null };
+  }
+  const view = net?.key === key ? net : blankOnline(key, world);
+  return {
+    state: view.state,
+    sendMove,
+    sendWarning,
+    connected: view.connected,
+    partnerConnected: view.partnerConnected,
+    error: hasSupabase ? view.error : SESSION_TEXT.noSetup,
+  };
+}
