@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
 import { ROLES } from '../shared/contract.js';
 import { createRoom, openRoom } from './room.js';
-import * as engine from './engineSource.js';
+import * as engine from './engineAdapter.js';
 import { createGuestSession, createHostSession } from './session.js';
 
 const url = import.meta.env?.VITE_SUPABASE_URL;
@@ -94,6 +94,14 @@ describe.skipIf(!live)('live Supabase room', () => {
       }
       expect(['won', 'lost']).toContain(guest.getState().status);
       expect(same()).toBe(true);
+
+      // "Fly to Mars" in the same room: Mission Control follows the host.
+      host.restart({ world: 'mars', moonStars: host.getState().stars });
+      await waitFor(
+        () => guest.getState().world === 'mars' && guest.getState().turn === 0 && same(),
+        'guest follows the restart to Mars',
+      );
+      expect(guest.getState().status).toBe('playing');
     } finally {
       host.close();
       guest.close();

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ROLES } from '../shared/contract.js';
-import { createRoom, joinRoom, readPresence } from './room.js';
+import { createRoom, joinRoom, makeRoomCode, readPresence } from './room.js';
+import * as adapter from './engineAdapter.js';
 
 const A = ROLES.ASTRONAUT;
 const MC = ROLES.MISSION_CONTROL;
@@ -8,6 +9,9 @@ const meta = (role, joinedAt) => [{ role, joinedAt, presence_ref: 'x' }];
 
 describe('room codes', () => {
   it('look like MOON-4821', () => {
+    expect(makeRoomCode()).toMatch(/^MOON-\d{4}$/);
+    expect(makeRoomCode(() => 0.4821)).toBe('MOON-5338');
+    expect(createRoom).toBe(makeRoomCode);
     expect(createRoom()).toMatch(/^MOON-\d{4}$/);
     expect(createRoom(() => 0)).toBe('MOON-1000');
     expect(createRoom(() => 0.9999)).toBe('MOON-9999');
@@ -24,6 +28,14 @@ describe('room codes', () => {
     expect(joinRoom('482100')).toBeNull();
     expect(joinRoom('')).toBeNull();
     expect(joinRoom(undefined)).toBeNull();
+  });
+});
+
+describe('engineAdapter (what screens import)', () => {
+  it('has every engine function from docs/CONTRACT.md', () => {
+    for (const name of ['createGame', 'sendWarning', 'applyMove', 'getAstronautView', 'getMissionControlView', 'getStorm']) {
+      expect(typeof adapter[name]).toBe('function');
+    }
   });
 });
 
