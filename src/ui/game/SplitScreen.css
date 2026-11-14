@@ -1,0 +1,51 @@
+/* SplitScreen layout (Dev 3). Mobile first: stacked, Mission Control on top. */
+.split-screen {
+  display: grid;
+  gap: 12px;
+}
+
+.split-screen__half {
+  min-width: 0; /* lets long words wrap instead of pushing the page sideways */
+}
+
+.split-screen__divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  color: var(--text-dim);
+  font-weight: 700;
+  border-top: 2px dashed var(--panel-border);
+  border-bottom: 2px dashed var(--panel-border);
+  text-align: center;
+}
+
+.split-screen__divider-label--side {
+  display: none;
+}
+
+/* Wider than 900px: side by side with a thin vertical divider */
+@media (min-width: 901px) {
+  .split-screen {
+    grid-template-columns: 1fr auto 1fr;
+    align-items: start;
+  }
+
+  .split-screen__divider {
+    align-self: stretch;
+    padding: 12px 4px;
+    border: none;
+    border-left: 2px dashed var(--panel-border);
+    border-right: 2px dashed var(--panel-border);
+    writing-mode: vertical-rl;
+  }
+
+  .split-screen__divider-label--stacked {
+    display: none;
+  }
+
+  .split-screen__divider-label--side {
+    display: inline;
+  }
+}

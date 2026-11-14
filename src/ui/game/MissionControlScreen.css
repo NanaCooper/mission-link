@@ -1,0 +1,128 @@
+/* Mission Control screen layout. Global look and shared components live in src/index.css. */
+
+.mission-control-screen {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.mc-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.mc-header__title {
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.mc-header__turn {
+  margin: 0;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+/* Storm panel: the stage in big words */
+.mc-storm {
+  display: grid;
+  gap: 8px;
+}
+
+.mc-storm__kicker {
+  margin: 0;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.mc-storm__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.mc-storm__stage {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+
+/* Badge: icon + words, with a border so it is not colour alone */
+.mc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  font-weight: 800;
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  background: var(--bg-2);
+}
+
+.mc-storm__sees {
+  margin: 0;
+}
+
+.mc-storm__next {
+  margin: 0;
+  font-weight: 700;
+}
+
+/* Crew panel */
+.mc-crew {
+  display: grid;
+  gap: 12px;
+}
+
+.mc-crew__move {
+  margin: 0;
+  font-weight: 700;
+}
+
+/* Warning buttons */
+.mc-warn {
+  display: grid;
+  gap: 12px;
+}
+
+.mc-warn__title {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.mc-warn__buttons {
+  display: grid;
+  gap: var(--gap);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 560px) {
+  .mc-warn__buttons {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Mars delay note: a clear box above the buttons */
+.mc-delay {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0;
+  padding: 12px 16px;
+  font-weight: 700;
+  background: var(--bg-2);
+  border: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+}
+
+.mc-delay__icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex: none;
+}
