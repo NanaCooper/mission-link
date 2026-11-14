@@ -1,0 +1,268 @@
+/* Flow screens (Dev 4): home, lobby, end, how to play, data sources.
+   Uses Dev 3's variables from src/index.css. Mobile first: works at 360px wide. */
+
+.flow-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.flow-hero {
+  text-align: center;
+}
+
+.flow-title {
+  margin: 8px 0;
+  font-size: 1.75rem;
+  line-height: 1.2;
+  user-select: none;
+}
+
+.flow-lead {
+  margin: 0;
+  color: var(--text-dim);
+}
+
+.flow-subtitle {
+  margin: 8px 0 4px;
+  font-size: 1.1rem;
+}
+
+.flow-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+/* Join a room */
+.flow-join {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--panel-border);
+}
+
+.flow-join__label {
+  font-weight: 600;
+}
+
+.flow-join__input {
+  min-height: var(--tap);
+  padding: 0 14px;
+  border: 2px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.25rem;
+  letter-spacing: 0.08em;
+}
+
+.flow-join__input:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.flow-join__input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.flow-join__help {
+  margin: 0;
+  color: var(--danger);
+}
+
+/* Small links under a screen */
+.flow-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.flow-link {
+  min-height: var(--tap);
+  padding: 0 16px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.flow-link:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Lobby */
+.flow-code {
+  margin: 8px 0;
+  font-size: clamp(1.75rem, 10.5vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: var(--accent);
+  white-space: nowrap; /* the code is read out loud, so never split it */
+}
+
+.flow-waiting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 8px 0;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.flow-waiting__dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: flow-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes flow-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-waiting__dot { animation: none; }
+}
+
+.flow-error {
+  margin: 8px 0;
+  padding: 12px;
+  border: 2px solid var(--danger);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.flow-note {
+  margin: 8px 0 0;
+  color: var(--text-dim);
+}
+
+/* End screen */
+.flow-result {
+  text-align: center;
+}
+
+.flow-result--won {
+  border-color: var(--health);
+}
+
+.flow-result--lost {
+  border-color: var(--danger);
+}
+
+.flow-result__icon {
+  margin: 0;
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.flow-result__title {
+  margin: 8px 0;
+  font-size: 1.5rem;
+  line-height: 1.25;
+}
+
+.flow-result__reason {
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.flow-badge {
+  display: inline-block;
+  margin: 0 0 8px;
+  padding: 4px 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  font-size: 0.9rem;
+}
+
+.flow-list {
+  margin: 8px 0;
+  padding-left: 1.25em;
+}
+
+.flow-list li + li {
+  margin-top: 6px;
+}
+
+.flow-small {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+}
+
+/* How to play */
+.flow-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.flow-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.flow-step__icon {
+  flex: none;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.flow-step__title,
+.flow-step__text {
+  display: block;
+}
+
+/* Data sources */
+.flow-sources {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.flow-sources li {
+  padding: 12px 0;
+  border-top: 1px solid var(--panel-border);
+}
+
+.flow-sources li:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.flow-sources p {
+  margin: 0;
+}
+
+.flow-sources a,
+.flow-small a {
+  overflow-wrap: anywhere;
+}
