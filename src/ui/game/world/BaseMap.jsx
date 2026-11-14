@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import WorldMap from './WorldMap.jsx';
+import { useGameNumber } from './useGameNumber.js';
 import { placeCorner, TILE } from './worldMap.js';
 import { BASE_MAP, BASE_START, PLACE_MOVES, PLACE_NAMES, BIG_HIT } from './baseMapData.js';
 import { NOVA } from './heroes.js';
@@ -82,17 +82,6 @@ const SHIELD_OUTER = arc(60, 38, 40, 26);
 const SHIELD_INNER = arc(60, 38, 37, 23, 3);
 
 const place = (id) => placeCorner(BASE_MAP.places.find((p) => p.id === id));
-
-// Counts games: goes up when the turn goes back (Play again, Fly to Mars), so Nova returns to the start.
-function useGameNumber(turn) {
-  const [game, setGame] = useState({ turn, number: 0 });
-  if (turn !== game.turn) {
-    const next = { turn, number: turn < game.turn ? game.number + 1 : game.number };
-    setGame(next);
-    return next.number;
-  }
-  return game.number;
-}
 
 export default function BaseMap({ view, onMove, hit = 0, overlay }) {
   const look = LOOK[view.world] ?? LOOK.moon;

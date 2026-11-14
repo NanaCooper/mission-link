@@ -71,6 +71,12 @@
   font-size: 14px;
 }
 
+.mc-warn__hint {
+  margin: 0;
+  font-size: 18px;
+  color: var(--text-dim);
+}
+
 /* Two by two, even on a phone: the labels are short */
 .mc-warn__buttons {
   display: grid;

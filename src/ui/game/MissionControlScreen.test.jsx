@@ -54,7 +54,8 @@ describe('MissionControlScreen: Mars signal blackout', () => {
 
   it('disables all four warning buttons during a blackout', () => {
     const html = render(fakeMarsBlackoutMissionControlView);
-    expect(html.match(/<button[^>]*disabled/g)).toHaveLength(4);
+    // The warning buttons only: the control room's USE button has its own rule (Sola must be near a place).
+    expect(html.match(/<button[^>]*class="big-button[^>]*disabled/g)).toHaveLength(4);
   });
 
   it('hides the delay note during a blackout, since no message is sent at all', () => {
@@ -74,7 +75,7 @@ describe('MissionControlScreen: Mars signal blackout', () => {
     delete stageWithoutBlackout.blackout;
     const html = render({ ...fakeMissionControlView, stage: stageWithoutBlackout });
     expect(html).not.toContain('Signal blocked');
-    expect(html).not.toContain('disabled');
+    expect(html).not.toMatch(/<button[^>]*class="big-button[^>]*disabled/);
   });
 });
 
@@ -151,9 +152,9 @@ describe('MissionControlScreen', () => {
     for (const button of buttons) expect(button).toContain('disabled');
   });
 
-  it('enables the buttons while playing', () => {
+  it('enables the warning buttons while playing', () => {
     const html = render(fakeMissionControlView);
-    expect(html).not.toMatch(/<button[^>]*disabled/);
+    expect(html).not.toMatch(/<button[^>]*class="big-button[^>]*disabled/);
   });
 
   it('shows the Why? card from lastFact', () => {

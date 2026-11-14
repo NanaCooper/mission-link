@@ -232,9 +232,24 @@ with `./src/index.css`. Run `npm run dev` and open `/ui-preview.html`.
   is sent). Wired in `AstronautScreen` and `MissionControlScreen`.
 - Checked at 360px and 1024px wide: no sideways scroll, every button at least 48px tall.
 
+### Walkable maps (14 Nov evening, branch `dev3/world-map`)
+Both players now walk a top-down pixel map, like an old role-playing game (`src/ui/game/world/`).
+- `worldMap.js`: pure map logic (blocked squares, one step at a time, the place in front). Tested.
+- `WorldMap.jsx`: draws a map; on-screen arrows (hold to keep walking), arrow keys or WASD,
+  a USE button (also Space / Enter), and an optional text box (`dialog`).
+- `BaseMap.jsx` + `baseMapData.js`: Nova on the Moon or Mars base. Solar panel = Save power,
+  Shelter = Shelter, Shield tower = Raise shield, Science rover = Do science. Shows the shield,
+  lights off, Nova inside, the radiation flash. Never the storm. Replaces `scenes/BaseScene.jsx`.
+- `ControlRoomMap.jsx` + `controlRoomData.js`: Commander Sola in the control room on Earth.
+  Radio desk = the warning menu, Telescope = what the storm is doing, Crew monitor = Nova's
+  last move and health. The big space picture (`SpaceScene`) stays above it.
+- `heroes.js`: Nova and Sola sprites (front, back, stepping legs).
+- The four move buttons and four warning buttons stay as "Quick moves" / "Quick warnings".
+- Each player's position stays on their own device; it is not sent online.
+
 ### Still open
 - The "Sound on / off" and "Read to me" buttons use emoji. Pixel icons need new sprites in
   `components/pixel/sprites.js` (Agent 1's files).
-- Nova always faces the front. A side-on walking sprite, or a body for Commander Sola, is new pixel art.
+- On the maps the characters have a front and a back view, but no side view when walking left or right.
 - Not checked by ear: the sounds and the voice. Try them on a real phone.
 - WP7, the demo video, is for a person to record.

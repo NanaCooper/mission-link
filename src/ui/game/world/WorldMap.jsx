@@ -33,6 +33,9 @@ import './world.css';
 //   describeUse (place) -> { label, hint, icon } what the USE button does there
 //   onUse       (place) -> called when the character uses a place
 //   canUse      false when the game is over: walking still works, using does not
+//   dialog      optional HTML shown under the map, like the text box in a role-playing game
+//               (for example the radio menu). The screen decides when to show it.
+//   onStep      optional: called after every step (the screen can close its dialog)
 
 const HERO_W = 10;
 const HERO_H = 14;
@@ -54,7 +57,9 @@ export default function WorldMap({
   placeNames = {},
   describeUse,
   onUse,
-  canUse = true
+  canUse = true,
+  dialog = null,
+  onStep
 }) {
   const [position, setPosition] = useState(start);
   const [steps, setSteps] = useState(0);
@@ -78,6 +83,7 @@ export default function WorldMap({
     setPosition((current) => stepHero(map, current, direction));
     setSteps((count) => count + 1);
     setRevealedKey(hiddenKey);
+    onStep?.();
   };
   const act = () => {
     if (usable) onUse(near);
@@ -181,6 +187,8 @@ export default function WorldMap({
           `Walk ${hero.name} to a place, then press USE.`
         )}
       </p>
+
+      {dialog && <div className="world__dialog pixel-box">{dialog}</div>}
 
       <div className="world__controls">
         <div className="world__pad" role="group" aria-label="Walk">

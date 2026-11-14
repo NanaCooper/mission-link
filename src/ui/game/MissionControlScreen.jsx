@@ -1,5 +1,6 @@
 import { Meter, BigButton, Panel, WhyCard, SpeechBox, Portrait, PixelIcon } from '../components/index.js';
 import SpaceScene from './scenes/SpaceScene.jsx';
+import ControlRoomMap from './world/ControlRoomMap.jsx';
 import { stormLook, solaMoodForLook } from './scenes/stormLook.js';
 import { useMeterDeltas } from './useMeterDeltas.js';
 import { useGameSounds } from './sound.js';
@@ -18,6 +19,8 @@ import {
 import './MissionControlScreen.css';
 
 // Mission Control on Earth: sees the storm, cannot act, can only send a warning.
+// The big screen shows space. Below it, Commander Sola walks around the control room
+// (radio desk, telescope, crew monitor). The warning buttons stay as a quick backup.
 // Props only (no session hook, no engine): { view, onWarn }
 //   view    the Mission Control view (see src/ui/DEV3_PLAN.md)
 //   onWarn  called with a warning key, e.g. onWarn('shelterNow')
@@ -85,10 +88,13 @@ export default function MissionControlScreen({ view, onWarn }) {
         </p>
       </SpeechBox>
 
+      <ControlRoomMap view={view} onWarn={onWarn} />
+
       <CrewStatus view={view} />
 
-      <section className="mc-warn" aria-label="Send a warning">
-        <h3 className="mc-warn__title pixel-title">Send a warning</h3>
+      <section className="mc-warn" aria-label="Quick warnings">
+        <h3 className="mc-warn__title pixel-title">Quick warnings</h3>
+        <p className="mc-warn__hint">No time to walk to the radio? Tap a warning here.</p>
 
         {blackout && (
           <p className="mc-note mc-note--blackout" role="status">
