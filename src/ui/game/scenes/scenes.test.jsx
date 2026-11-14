@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import BaseScene from './BaseScene.jsx';
+import BaseScene, { BIG_HIT } from './BaseScene.jsx';
 import SpaceScene from './SpaceScene.jsx';
 import { stormLook, solaMoodForLook } from './stormLook.js';
 
@@ -66,6 +66,18 @@ describe('BaseScene (what the Astronaut sees)', () => {
     expect(renderToStaticMarkup(<BaseScene />)).not.toContain('scene__until-walk');
   });
 
+  it('flashes when radiation hits the base: faintly for a small hit, strongly for a big one', () => {
+    const none = renderToStaticMarkup(<BaseScene hit={0} />);
+    expect(none).not.toContain('scene__hit');
+    expect(none).not.toContain('Radiation hit the base.');
+
+    const small = renderToStaticMarkup(<BaseScene hit={BIG_HIT - 1} />);
+    expect(small).toContain('class="scene__hit"');
+    expect(small).toContain('Radiation hit the base.');
+
+    expect(renderToStaticMarkup(<BaseScene hit={BIG_HIT} />)).toContain('scene__hit--big');
+  });
+
   it('makes the base lights flicker when power is low', () => {
     expect(renderToStaticMarkup(<BaseScene lowPower />)).toContain('px-flicker');
     expect(renderToStaticMarkup(<BaseScene />)).not.toContain('px-flicker');
@@ -73,7 +85,7 @@ describe('BaseScene (what the Astronaut sees)', () => {
 
   it('never shows the storm: no flying particles, no flare, no gas cloud', () => {
     for (const lastMove of [null, 'raiseShield', 'shelter', 'savePower', 'doScience']) {
-      const html = renderToStaticMarkup(<BaseScene world="mars" lastMove={lastMove} lowPower />);
+      const html = renderToStaticMarkup(<BaseScene world="mars" lastMove={lastMove} lowPower hit={40} />);
       expect(particles(html)).toBe(0);
       expect(html).not.toContain('scene__flare');
       expect(html).not.toContain('scene__cloud');
@@ -125,6 +137,25 @@ describe('SpaceScene (what Mission Control sees)', () => {
     const open = scene({ world: 'mars', turn: 4 });
     expect(open).toContain('px-signal');
     expect(open).not.toContain('scene__cut');
+  });
+
+  it('shows a message packet on its way once a warning is sent', () => {
+    const idle = scene({ world: 'moon' });
+    expect(idle).not.toContain('scene__message');
+    expect(idle).not.toContain('A message is on its way');
+
+    const sent = scene({ world: 'moon', messageSent: true });
+    expect(sent).toContain('scene__message');
+    expect(sent).toContain('A message is on its way to the base.');
+    expect(sent).toContain('--dur:0.9s');
+    expect(scene({ world: 'mars', messageSent: true })).toContain('--dur:3.2s');
+  });
+
+  it('sends no message packet during a blackout, even if one was asked for', () => {
+    const blocked = scene({ world: 'mars', turn: 4, blackout: true, messageSent: true });
+    expect(blocked).toContain('scene__cut');
+    expect(blocked).not.toContain('scene__message');
+    expect(blocked).not.toContain('px-signal');
   });
 
   it('sends the message slowly to Mars and quickly to the Moon', () => {

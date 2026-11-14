@@ -202,9 +202,9 @@ Give the file to Dev 2.
 - 322 tests pass, lint clean, build OK. Checked at 360px and 1280px.
 
 ### Known issues (start here)
-1. Scene tag "Signal blocked" (`.scene__tag--danger` in `scenes/scenes.css`) blinks to 25% opacity: hard to read.
-   Blink the border or background instead, or blink 3 times then stay.
-2. At 360px that tag wraps to a second row and covers the gas cloud in the picture.
+1. FIXED (14 Nov, `dev3/finish`): the "Signal blocked" tag now blinks three times, then stays solid.
+2. FIXED (14 Nov, `dev3/finish`): the dust and blackout tags sit in the bottom left corner of the picture
+   (`scene__corner scene__corner--stack`), so they no longer wrap over it at 360px.
 3. Dev 4's flow screens (Home, Lobby, End, How to play, Data sources) still use emoji. They get the pixel
    panels and buttons automatically, but no characters. Dev 4 owns them: suggest, don't edit.
 
@@ -218,3 +218,23 @@ with `./src/index.css`. Run `npm run dev` and open `/ui-preview.html`.
 - **Agent 2, scenes + the "what happened" moment:** `src/ui/game/scenes/**`
 - **Agent 3, sound, read-aloud, prediction prompt:** `src/ui/game/AstronautScreen.*`, `MissionControlScreen.*`,
   `SplitScreen.*`, `labels.js`, new `src/ui/game/sound.js`, `src/ui/game/useReadAloud.js` (+ their tests)
+
+### Status after 14 Nov evening (Agent 2 and Agent 3 work is done)
+- **Sound** (`sound.js`): Web Audio beeps for a warning, a move, the shield, a radiation hit, win and lose.
+  `soundFor(previousView, view)` picks them. "Sound on / off" on both screens, remembered on the device.
+- **Read to me** (`useReadAloud.js`): on both screens, hidden when the browser cannot speak. The words come
+  from `astronautReadText` / `missionControlReadText` in `labels.js`.
+- **Prediction prompt**: Astronaut screen at `view.turn === 3`. Optional, React state only (`PREDICTION` in `labels.js`).
+- **Nova walks** (`scenes/novaWalk.js`): she walks to a spot for each move, with stepping legs. The lights,
+  the door, the sparkles and the shield wait for her (`scene__after-walk`, `scene__until-walk`, `--walk`).
+- **"What happened" moment**: `BaseScene hit` (radiation change this turn; a purple flash after the walk,
+  stronger from `BIG_HIT`) and `SpaceScene messageSent` (a message packet travels from Earth once a warning
+  is sent). Wired in `AstronautScreen` and `MissionControlScreen`.
+- Checked at 360px and 1024px wide: no sideways scroll, every button at least 48px tall.
+
+### Still open
+- The "Sound on / off" and "Read to me" buttons use emoji. Pixel icons need new sprites in
+  `components/pixel/sprites.js` (Agent 1's files).
+- Nova always faces the front. A side-on walking sprite, or a body for Commander Sola, is new pixel art.
+- Not checked by ear: the sounds and the voice. Try them on a real phone.
+- WP7, the demo video, is for a person to record.

@@ -45,20 +45,28 @@ export default function MissionControlScreen({ view, onWarn }) {
         stageName={stage.label}
         dust={Boolean(stage.dust)}
         blackout={blackout}
+        messageSent={Boolean(view.warningThisTurn)}
         overlay={
-          <div className="scene__top">
-            <p className="scene__title">{stage.label}</p>
-            {stage.dust && (
-              <p className="scene__tag">
-                <PixelIcon name="wind" size={14} /> Dust storm
-              </p>
+          <>
+            <div className="scene__top">
+              <p className="scene__title">{stage.label}</p>
+            </div>
+            {/* Tags sit in the bottom corner: on a phone they would wrap over the picture up top. */}
+            {(stage.dust || blackout) && (
+              <div className="scene__corner scene__corner--stack">
+                {stage.dust && (
+                  <p className="scene__tag">
+                    <PixelIcon name="wind" size={14} /> Dust storm
+                  </p>
+                )}
+                {blackout && (
+                  <p className="scene__tag scene__tag--danger">
+                    <PixelIcon name="noSignal" size={14} /> {BLACKOUT_BADGE}
+                  </p>
+                )}
+              </div>
             )}
-            {blackout && (
-              <p className="scene__tag scene__tag--danger">
-                <PixelIcon name="noSignal" size={14} /> {BLACKOUT_BADGE}
-              </p>
-            )}
-          </div>
+          </>
         }
       />
 

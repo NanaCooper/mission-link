@@ -38,6 +38,8 @@ export default function AstronautScreen({ view, onMove }) {
   const robot = CHARACTERS.robot;
   const moveTag = MOVE_SCENE_TAG[view.lastMove];
   const guess = usePrediction(view);
+  // How much each meter changed this turn (null before the first move).
+  const deltas = useMeterDeltas(view.turn, view.meters);
 
   useGameSounds(view);
 
@@ -48,6 +50,7 @@ export default function AstronautScreen({ view, onMove }) {
         lastMove={view.lastMove}
         lowPower={view.meters.power < 25}
         turn={view.turn}
+        hit={Math.max(0, deltas?.radiationDose ?? 0)}
         overlay={
           <>
             <header className="scene__top scene__top--spread">
@@ -67,7 +70,7 @@ export default function AstronautScreen({ view, onMove }) {
 
       <MissionControlMessage view={view} />
 
-      <StatusPanel view={view} />
+      <StatusPanel view={view} deltas={deltas} />
 
       {guess.asking && <PredictionQuestion onAnswer={guess.answer} />}
 
@@ -229,9 +232,8 @@ function MissionControlMessage({ view }) {
 }
 
 // Nova's face and the four base meters. After a move, each meter shows how much it changed.
-function StatusPanel({ view }) {
+function StatusPanel({ view, deltas }) {
   const { meters } = view;
-  const deltas = useMeterDeltas(view.turn, meters);
   const mood = novaMood({ ...meters, radiationLimit: view.radiationLimit });
   const name = CHARACTERS.astronaut.name;
 

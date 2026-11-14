@@ -15,7 +15,13 @@ import { nextWalkMemo, walkPlan, NOVA_BODY, NOVA_LEGS, NOVA_LEGS_Y } from './nov
 //   lastMove   the Astronaut's last move, or null before the first move
 //   lowPower   true when power is low: the base lights flicker
 //   turn       the turn number, so the shield "pops" again each time it is raised
+//   hit        how much the storm radiation budget went up this turn (0 = no hit). The picture
+//              flashes purple when Nova has arrived: the Astronaut feels the hit, but still
+//              never sees the storm itself.
 //   overlay    optional: HTML shown on top of the picture (name, turn, tags)
+
+// A hit this big or bigger flashes the whole picture three times. Smaller hits flash once, faintly.
+export const BIG_HIT = 10;
 
 const GROUND = 23; // the row where the ground starts
 
@@ -64,7 +70,7 @@ const WHAT_HAPPENED = {
   doScience: 'Nova is doing science outside.'
 };
 
-export default function BaseScene({ world = 'moon', lastMove = null, lowPower = false, turn = 0, overlay }) {
+export default function BaseScene({ world = 'moon', lastMove = null, lowPower = false, turn = 0, hit = 0, overlay }) {
   const look = LOOK[world] ?? LOOK.moon;
   const shielded = lastMove === 'raiseShield';
   const sheltering = lastMove === 'shelter';
@@ -80,7 +86,10 @@ export default function BaseScene({ world = 'moon', lastMove = null, lowPower = 
   // Things that change "when Nova gets there" wait this long. Keyed by turn so they replay.
   const timing = { '--walk': `${walk.seconds}s` };
 
-  const label = `Picture: the ${look.name} base. ${WHAT_HAPPENED[lastMove] ?? 'Nova stands by the base.'}`;
+  const wasHit = hit > 0;
+  const label =
+    `Picture: the ${look.name} base. ${WHAT_HAPPENED[lastMove] ?? 'Nova stands by the base.'}` +
+    (wasHit ? ' Radiation hit the base.' : '');
 
   return (
     <SceneFrame label={label} className={`scene--base scene--${world}`} overlay={overlay}>
@@ -182,6 +191,18 @@ export default function BaseScene({ world = 'moon', lastMove = null, lowPower = 
             ))}
           </g>
         </g>
+      )}
+
+      {/* A radiation hit: the picture flashes purple once Nova has arrived */}
+      {wasHit && (
+        <rect
+          key={`hit-${turn}`}
+          className={hit >= BIG_HIT ? 'scene__hit scene__hit--big' : 'scene__hit'}
+          style={timing}
+          width={SCENE_WIDTH}
+          height={SCENE_HEIGHT}
+          fill={PALETTE.p}
+        />
       )}
     </SceneFrame>
   );

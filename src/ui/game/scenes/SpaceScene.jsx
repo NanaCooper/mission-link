@@ -13,7 +13,12 @@ import { stormLook } from './stormLook.js';
 //   stageName  the storm stage in words, for screen readers
 //   dust       true on the Mars dust stage: a dust haze covers Mars
 //   blackout   true when the Sun blocks the signal: the line from Earth is cut
+//   messageSent  true once Mission Control has sent a warning this turn: the line lights up
+//                and a message packet travels from Earth to the base
 //   overlay    optional: HTML shown on top of the picture (title, tags)
+
+// The message packet that travels along the line (3 x 3)
+const MESSAGE_PACKET = ['CCC', 'CWC', 'CCC'];
 
 // How many particles fly for each look of the storm (see stormLook.js)
 const PARTICLE_COUNT = { quiet: 0, flare: 3, cloud: 6, peak: 18, fading: 7, clear: 0 };
@@ -46,8 +51,18 @@ function particle(index) {
   };
 }
 
-export default function SpaceScene({ world = 'moon', turn = 0, stageName = '', dust = false, blackout = false, overlay }) {
+export default function SpaceScene({
+  world = 'moon',
+  turn = 0,
+  stageName = '',
+  dust = false,
+  blackout = false,
+  messageSent = false,
+  overlay
+}) {
   const planet = PLANET[world] ?? PLANET.moon;
+  const sending = messageSent && !blackout;
+  const signalTiming = world === 'mars' ? '3.2s' : '0.9s';
   const look = stormLook(turn);
   const particles = Array.from({ length: PARTICLE_COUNT[look] }, (_, index) => particle(index));
   const cloudX = CLOUD_X[look];
@@ -56,7 +71,13 @@ export default function SpaceScene({ world = 'moon', turn = 0, stageName = '', d
   const signalDots = [];
   for (let x = signalStart; x < BASE_X - 1; x += 2) signalDots.push(x);
 
-  const label = `Picture: the Sun on the left, Earth in the middle, and the ${planet.name} base on the right. ${stageName}`.trim();
+  const label = [
+    `Picture: the Sun on the left, Earth in the middle, and the ${planet.name} base on the right.`,
+    stageName,
+    sending ? 'A message is on its way to the base.' : ''
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <SceneFrame label={label} className={`scene--space scene--${world}`} overlay={overlay}>
@@ -96,13 +117,22 @@ export default function SpaceScene({ world = 'moon', turn = 0, stageName = '', d
       {/* Earth, and the message line from Earth to the base */}
       <g>{spriteRects(PIECES.earth, { x: planet.earthX, y: SIGNAL_ROW - 4, id: 'earth' })}</g>
       {signalDots.map((x) => (
-        <rect key={`dot-${x}`} x={x} y={SIGNAL_ROW} width={1} height={1} fill={blackout ? PALETTE.R : PALETTE.g} />
+        <rect
+          key={`dot-${x}`}
+          x={x}
+          y={SIGNAL_ROW}
+          width={1}
+          height={1}
+          fill={blackout ? PALETTE.R : sending ? PALETTE.b : PALETTE.g}
+        />
       ))}
-      {blackout ? (
+      {blackout && (
         <g className="scene__cut px-blink-slow">
           {spriteRects(['r.r', '.r.', 'r.r'], { x: Math.round((signalStart + BASE_X) / 2) - 1, y: SIGNAL_ROW - 1, id: 'cut' })}
         </g>
-      ) : (
+      )}
+      {/* No warning sent yet: a small dot shows the line is open. */}
+      {!blackout && !sending && (
         <rect
           x={signalStart}
           y={SIGNAL_ROW}
@@ -110,8 +140,17 @@ export default function SpaceScene({ world = 'moon', turn = 0, stageName = '', d
           height={1}
           fill={PALETTE.C}
           className="px-signal"
-          style={{ '--fly': `${BASE_X - signalStart - 2}px`, '--dur': world === 'mars' ? '3.2s' : '0.9s' }}
+          style={{ '--fly': `${BASE_X - signalStart - 2}px`, '--dur': signalTiming }}
         />
+      )}
+      {/* Warning sent: a bigger message packet travels to the base. Slowly to Mars. */}
+      {sending && (
+        <g
+          className="px-signal scene__message"
+          style={{ '--fly': `${BASE_X - signalStart - 3}px`, '--dur': signalTiming }}
+        >
+          {spriteRects(MESSAGE_PACKET, { x: signalStart, y: SIGNAL_ROW - 1, id: 'message' })}
+        </g>
       )}
 
       {/* The Moon or Mars, with the tiny base on its edge */}

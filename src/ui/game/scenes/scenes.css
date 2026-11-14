@@ -80,9 +80,18 @@
   background: var(--accent);
 }
 
+/* Blinks three times to catch the eye, then stays solid so it is easy to read */
 .scene__tag--danger {
   background: var(--danger);
-  animation: px-blink 1s steps(1) infinite;
+  animation: px-blink 0.6s steps(1) 3;
+}
+
+/* Tags stacked in the bottom left corner, so they never cover the middle of the picture */
+.scene__corner--stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
 
 .scene__tag--move {
@@ -167,6 +176,33 @@
 .scene__until-walk {
   opacity: 0;
   animation: px-shown var(--walk, 0s) steps(1) 1;
+}
+
+/* A radiation hit on the base: a purple flash after Nova arrives. Invisible before and after. */
+.scene__hit {
+  opacity: 0;
+  pointer-events: none;
+  animation: px-hit-small 0.4s steps(1) 1;
+  animation-delay: var(--walk, 0s);
+}
+
+.scene__hit--big {
+  animation-name: px-hit-big;
+  animation-duration: 1.5s; /* two flashes a second: gentle on the eyes */
+}
+
+@keyframes px-hit-small {
+  0%, 60% { opacity: 0.18; }
+  61%, 100% { opacity: 0; }
+}
+
+@keyframes px-hit-big {
+  0%, 18% { opacity: 0.4; }
+  19%, 36% { opacity: 0; }
+  37%, 54% { opacity: 0.4; }
+  55%, 72% { opacity: 0; }
+  73%, 90% { opacity: 0.4; }
+  91%, 100% { opacity: 0; }
 }
 
 @keyframes px-walk {

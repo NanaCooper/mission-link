@@ -170,3 +170,19 @@ describe('MissionControlScreen: sound and read-aloud', () => {
     expect(html).not.toContain('Read to me'); // tests run without speechSynthesis
   });
 });
+
+describe('MissionControlScreen: the picture', () => {
+  it('keeps the dust and blackout tags in the bottom corner, not next to the title', () => {
+    for (const view of [fakeMarsMissionControlView, fakeMarsBlackoutMissionControlView]) {
+      const html = render(view);
+      expect(html).toContain('scene__corner scene__corner--stack');
+      expect(html).toMatch(/<div class="scene__top"><p class="scene__title">[^<]*<\/p><\/div>/);
+    }
+    expect(render(fakeMissionControlView)).not.toContain('scene__corner');
+  });
+
+  it('shows the message packet only after a warning is sent', () => {
+    expect(render({ ...fakeMissionControlView, warningThisTurn: 'shelterNow' })).toContain('scene__message');
+    expect(render({ ...fakeMissionControlView, warningThisTurn: null })).not.toContain('scene__message');
+  });
+});
