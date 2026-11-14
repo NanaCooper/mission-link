@@ -58,21 +58,21 @@ describe('fake Astronaut views', () => {
 
   it('the base view has the agreed numbers', () => {
     expect(fakeAstronautView).toMatchObject({
-      status: 'playing', turn: 3, maxTurns: 6, world: 'moon', radiationLimit: 40, science: 2,
+      status: 'playing', turn: 1, maxTurns: 3, world: 'moon', radiationLimit: 40, science: 2,
       lastMove: 'raiseShield', lostReason: null, stars: 0
     });
     expect(fakeAstronautView.meters).toEqual({ power: 45, oxygen: 90, radiationDose: 22, crewHealth: 81 });
-    expect(fakeAstronautView.inbox).toEqual([{ turn: 3, warning: 'shelterNow' }]);
+    expect(fakeAstronautView.inbox).toEqual([{ turn: 1, warning: 'shelterNow' }]);
     expect(fakeAstronautView.log).toHaveLength(3);
   });
 
   it('the Mars inbox item says when it was sent', () => {
     expect(fakeMarsAstronautView.world).toBe('mars');
-    expect(fakeMarsAstronautView.inbox).toEqual([{ turn: 3, turnSent: 2, warning: 'shelterNow' }]);
+    expect(fakeMarsAstronautView.inbox).toEqual([{ turn: 1, turnSent: 0, warning: 'shelterNow' }]);
   });
 
   it('the won and lost views have their end states', () => {
-    expect(fakeWonAstronautView).toMatchObject({ status: 'won', turn: 6, stars: 2 });
+    expect(fakeWonAstronautView).toMatchObject({ status: 'won', turn: 3, stars: 2 });
     expect(fakeLostAstronautView).toMatchObject({ status: 'lost', lostReason: 'radiation', stars: 0 });
     expect(fakeLostAstronautView.meters.radiationDose).toBe(40);
   });

@@ -19,7 +19,7 @@ import './hud.css';
 // Props:
 //   label         words for screen readers: whose screen this is, e.g. "Astronaut's screen"
 //   active        false while hidden on one device: Escape and full screen leave it alone
-//   title, turn   the words in the top bar, e.g. "Moon base", "Turn 4 of 6"
+//   title, turn   the words in the top bar, e.g. "Moon base", "Wave 2 of 3"
 //   clock         the signal clock (MissionClock), shown small in the top bar
 //   vitals        the crew's meters (Vitals.jsx), always in the top bar
 //   pauses        true: opening the menu pauses the game (one device).

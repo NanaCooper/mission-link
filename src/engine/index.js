@@ -1,5 +1,5 @@
 // Game engine. Pure functions: same input, same output. Never changes the input state.
-import { initialState, MOVES, WARNINGS } from '../shared/contract.js';
+import { initialState, MOVES, WARNINGS, WAVES } from '../shared/contract.js';
 import {
   RADIATION_LIMIT,
   BASE_POWER_USE,
@@ -98,6 +98,8 @@ export function createGame({
   return {
     ...initialState,
     status: 'playing',
+    maxTurns: WAVES.length,
+    stormStage: WAVES[0], // wave 1
     mode,
     world,
     stormId: liveStorm ? liveStorm.id : getStorm(stormId).id,
@@ -211,9 +213,9 @@ export function applyMove(state, move) {
   if (powerOut) text += ' Power ran out, so oxygen went down!';
   const log = [...state.log, { turn: state.turn + 1, text }];
 
-  // 7. Next turn
+  // 7. Next turn: the next wave's storm stage (after the last wave it stays on the last one)
   const turn = state.turn + 1;
-  const stormStage = state.stormStage + 1;
+  const stormStage = WAVES[turn] ?? state.stormStage;
 
   // 8. Mars: warnings sent last turn arrive now
   let { inbox, outbox } = state;
@@ -291,7 +293,8 @@ export function getMissionControlView(state) {
   const { stages } = getGameStorm(state);
   const stage = currentStage(state);
   const level = levelOf(state);
-  const next = stages[state.stormStage + 1];
+  const nextStage = WAVES[state.turn + 1];
+  const next = nextStage === undefined ? null : stages[nextStage];
   const sentNow = warningSentThisTurn(state);
 
   return {

@@ -113,10 +113,10 @@ describe('screen labels', () => {
     expect(MARS_DELAY_NOTE).toMatch(/next turn/);
   });
 
-  it('turnText counts from 1 and never goes past maxTurns', () => {
-    expect(turnText({ turn: 0, maxTurns: 6 })).toBe('Turn 1 of 6');
-    expect(turnText({ turn: 3, maxTurns: 6 })).toBe('Turn 4 of 6');
-    expect(turnText({ turn: 6, maxTurns: 6 })).toBe('Turn 6 of 6');
+  it('turnText says the wave, counts from 1 and never goes past maxTurns', () => {
+    expect(turnText({ turn: 0, maxTurns: 3 })).toBe('Wave 1 of 3');
+    expect(turnText({ turn: 1, maxTurns: 3 })).toBe('Wave 2 of 3');
+    expect(turnText({ turn: 3, maxTurns: 3 })).toBe('Wave 3 of 3');
   });
 });
 
@@ -179,8 +179,8 @@ describe('read-aloud text and the prediction prompt', () => {
     expect(text).toContain('blocking the signal');
   });
 
-  it('prediction prompt: asked on view.turn 3 with three answers', () => {
-    expect(PREDICTION.turn).toBe(3);
+  it('prediction prompt: asked on wave 2 (the peak, view.turn 1) with three answers', () => {
+    expect(PREDICTION.turn).toBe(1);
     expect(PREDICTION.answers).toEqual(['Nothing much', 'The crew takes a lot of radiation', 'Not sure']);
     expect(predictionResultText('Not sure')).toBe('You guessed "Not sure". Here is what happened.');
   });

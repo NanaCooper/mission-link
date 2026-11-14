@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ROLES, initialState, MOVES, WARNINGS, WORLDS } from './contract.js';
+import { ROLES, initialState, MOVES, WARNINGS, WORLDS, WAVES } from './contract.js';
 
 describe('shared contract', () => {
   it('has the two roles', () => {
@@ -14,9 +14,10 @@ describe('shared contract', () => {
     expect(WARNINGS).toEqual(['stormComing', 'shelterNow', 'savePower', 'allClear']);
   });
 
-  it('starts in the lobby with a 6-turn game and full meters', () => {
+  it('starts in the lobby with a 3-wave game and full meters', () => {
     expect(initialState.status).toBe('lobby');
-    expect(initialState.maxTurns).toBe(6);
+    expect(initialState.maxTurns).toBe(3);
+    expect(WAVES).toHaveLength(initialState.maxTurns);
     expect(initialState.meters).toEqual({
       power: 100,
       oxygen: 100,

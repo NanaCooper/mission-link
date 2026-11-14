@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { initialState, MOVES, WARNINGS } from '../shared/contract.js';
+import { initialState, MOVES, WARNINGS, WAVES } from '../shared/contract.js';
 import { LEVELS, STORM_LIMITS } from '../engine/balance.js'; // read-only: Dev 1's numbers, so this test never hard-codes them
 import * as engine from './fakeEngine.js';
 import * as realEngine from './engineAdapter.js';
@@ -512,10 +512,11 @@ describe('ready-made storm (Level 3: Live Sun)', () => {
     host.restart({ world: 'mars', moonStars: 2, storm: live });
     expect(guest.getState()).toEqual(host.getState());
     expect(guest.getState().storm).toEqual(live);
-    expect(realEngine.getMissionControlView(guest.getState()).stage.label).toBe('Live stage 1');
+    // Labels count from 1, so wave n shows 'Live stage <WAVES[n] + 1>'.
+    expect(realEngine.getMissionControlView(guest.getState()).stage.label).toBe(`Live stage ${WAVES[0] + 1}`);
 
     host.sendMove('shelter');
-    expect(realEngine.getMissionControlView(guest.getState()).stage.label).toBe('Live stage 2');
+    expect(realEngine.getMissionControlView(guest.getState()).stage.label).toBe(`Live stage ${WAVES[1] + 1}`);
     expect(guest.getState()).toEqual(host.getState());
   });
 

@@ -11,17 +11,17 @@ const placeholderFact = {
 // What the Astronaut sees on the Moon, halfway through the storm
 export const fakeAstronautView = {
   status: 'playing',
-  turn: 3,
-  maxTurns: 6,
+  turn: 1, // wave 2 of 3: the peak
+  maxTurns: 3,
   world: 'moon',
   meters: { power: 45, oxygen: 90, radiationDose: 22, crewHealth: 81 },
   radiationLimit: 40,
   science: 2,
-  inbox: [{ turn: 3, warning: 'shelterNow' }],
+  inbox: [{ turn: 1, warning: 'shelterNow' }],
   log: [
-    { turn: 0, text: 'You did science. The Sun is quiet today.' },
-    { turn: 1, text: 'A solar flare! You saved power.' },
-    { turn: 2, text: 'You raised the shield. It blocked most radiation.' }
+    { turn: 0, text: 'Welcome to the Moon base! Listen to Mission Control to stay safe.' },
+    { turn: 0, text: 'A solar flare! You did science anyway.' },
+    { turn: 1, text: 'You raised the shield. It blocked most radiation.' }
   ],
   lastMove: 'raiseShield',
   lastFact: placeholderFact,
@@ -36,8 +36,8 @@ export const fakeAstronautView = {
 // What Mission Control sees on the Moon at the same moment
 export const fakeMissionControlView = {
   status: 'playing',
-  turn: 3,
-  maxTurns: 6,
+  turn: 1, // wave 2 of 3: the peak
+  maxTurns: 3,
   world: 'moon',
   delayTurns: 0,
   stage: {
@@ -62,7 +62,7 @@ export const fakeMissionControlView = {
 export const fakeMarsAstronautView = {
   ...fakeAstronautView,
   world: 'mars',
-  inbox: [{ turn: 3, turnSent: 2, warning: 'shelterNow' }]
+  inbox: [{ turn: 1, turnSent: 0, warning: 'shelterNow' }]
 };
 
 export const fakeMarsMissionControlView = {
@@ -79,7 +79,7 @@ export const fakeMarsMissionControlView = {
 // Mars signal blackout: the Sun blocks the signal, so no warning can be sent this turn
 export const fakeMarsBlackoutMissionControlView = {
   ...fakeMarsMissionControlView,
-  turn: 4,
+  turn: 2, // wave 3: the storm fading
   stage: {
     label: 'Storm fading',
     missionControlSees: 'The storm is getting weaker, but the Sun is now between Earth and Mars.',
@@ -94,7 +94,7 @@ export const fakeMarsBlackoutMissionControlView = {
 export const fakeWonAstronautView = {
   ...fakeAstronautView,
   status: 'won',
-  turn: 6,
+  turn: 3,
   stars: 2
 };
 

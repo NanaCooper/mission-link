@@ -83,7 +83,7 @@ describe('MissionControlScreen', () => {
   it('shows the header, turn, storm stage and forecast', () => {
     const html = render(fakeMissionControlView);
     expect(html).toContain('Mission Control, Earth');
-    expect(html).toContain('Turn 4 of 6');
+    expect(html).toContain('Wave 2 of 3');
     expect(html).toContain('Particles arrive');
     expect(html).toContain('Coming next: Storm fading');
   });

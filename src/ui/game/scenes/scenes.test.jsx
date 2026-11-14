@@ -1,20 +1,24 @@
 import { describe, it, expect } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import SpaceScene from './SpaceScene.jsx';
-import { stormLook, solaMoodForLook } from './stormLook.js';
+import { stormLook, stageLook, solaMoodForLook } from './stormLook.js';
 
 const count = (html, text) => html.split(text).length - 1;
 const particles = (html) => count(html, 'class="px-fly"');
 
 describe('stormLook', () => {
-  it('follows the 6 storm stages in order', () => {
-    expect([0, 1, 2, 3, 4, 5].map(stormLook)).toEqual(['quiet', 'flare', 'cloud', 'peak', 'fading', 'clear']);
+  it('has a picture for each of the 6 storm stages', () => {
+    expect([0, 1, 2, 3, 4, 5].map(stageLook)).toEqual(['quiet', 'flare', 'cloud', 'peak', 'fading', 'clear']);
   });
 
-  it('never goes past the first or the last stage', () => {
-    expect(stormLook(-1)).toBe('quiet');
-    expect(stormLook(6)).toBe('clear');
-    expect(stormLook(undefined)).toBe('quiet');
+  it('plays 3 waves: the flare, the peak, the storm fading', () => {
+    expect([0, 1, 2].map(stormLook)).toEqual(['flare', 'peak', 'fading']);
+  });
+
+  it('never goes past the first or the last wave', () => {
+    expect(stormLook(-1)).toBe('flare');
+    expect(stormLook(3)).toBe('fading'); // the level is over: the last picture stays
+    expect(stormLook(undefined)).toBe('flare');
   });
 
   it('gives Commander Sola a calm face only when the Sun is calm', () => {
@@ -27,26 +31,22 @@ describe('stormLook', () => {
 describe('SpaceScene (what Mission Control sees)', () => {
   const scene = (props) => renderToStaticMarkup(<SpaceScene world="moon" {...props} />);
 
-  it('shows no particles on a quiet Sun, the most at the peak, and none when it is all clear', () => {
-    const perTurn = [0, 1, 2, 3, 4, 5].map((turn) => particles(scene({ turn })));
-    expect(perTurn[0]).toBe(0);
-    expect(perTurn[5]).toBe(0);
-    expect(Math.max(...perTurn)).toBe(perTurn[3]);
-    expect(perTurn[3]).toBeGreaterThan(perTurn[2]);
-    expect(perTurn[3]).toBeGreaterThan(perTurn[4]);
-    expect(perTurn[4]).toBeGreaterThan(0);
+  it('shows a few particles on wave 1, the most at the peak (wave 2), and fewer as it fades', () => {
+    const perWave = [0, 1, 2].map((turn) => particles(scene({ turn })));
+    expect(perWave[0]).toBeGreaterThan(0);
+    expect(perWave[1]).toBeGreaterThan(perWave[0]);
+    expect(perWave[1]).toBeGreaterThan(perWave[2]);
+    expect(perWave[2]).toBeGreaterThan(0);
   });
 
-  it('shows the flare on the flare turn only', () => {
-    expect(scene({ turn: 1 })).toContain('scene__flare');
-    expect(scene({ turn: 0 })).not.toContain('scene__flare');
-    expect(scene({ turn: 3 })).not.toContain('scene__flare');
+  it('shows the flare on wave 1 only', () => {
+    expect(scene({ turn: 0 })).toContain('scene__flare');
+    expect(scene({ turn: 1 })).not.toContain('scene__flare');
+    expect(scene({ turn: 2 })).not.toContain('scene__flare');
   });
 
-  it('shows the gas cloud from the launch until the storm fades', () => {
-    expect([0, 1, 2, 3, 4, 5].map((turn) => scene({ turn }).includes('scene__cloud'))).toEqual([
-      false, false, true, true, true, false
-    ]);
+  it('shows the gas cloud on waves 2 and 3', () => {
+    expect([0, 1, 2].map((turn) => scene({ turn }).includes('scene__cloud'))).toEqual([false, true, true]);
   });
 
   it('shows the dust haze only when told to', () => {

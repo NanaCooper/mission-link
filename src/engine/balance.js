@@ -18,7 +18,7 @@ export const METER_MAX = 100;
 // What each Astronaut move does.
 export const MOVE_EFFECTS = {
   raiseShield: { power: -20, minPower: 20, multiplier: 0.3, failedMultiplier: 1 },
-  shelter: { power: -5, multiplier: 0.1, crewHealth: -10 },
+  shelter: { power: -5, multiplier: 0.1, crewHealth: -15 }, // 15 (was 10) so 3 shelters in 3 waves earn 1 star
   savePower: { power: 15, dustPower: 5, multiplier: 1 },
   doScience: { power: -10, multiplier: 1, science: 1, quietScience: 2 }
 };
@@ -27,19 +27,19 @@ export const MOVE_EFFECTS = {
 export const STARS = { healthForTwo: 60, scienceForThree: 2 };
 
 // The signal clock: each turn, Mission Control has this many seconds to send a warning.
-// If the clock reaches 0 first, the crew is lost ('time'). 6 turns x 60 s = 6 minutes.
+// If the clock reaches 0 first, the crew is lost ('time'). 3 waves x 60 s = 3 minutes.
 export const SIGNAL_SECONDS = 60;
 // Not used yet: the other idea, one clock for the whole level. Kept so a switch is a small change.
 export const MISSION_SECONDS = 360;
 
 // Limits for a ready-made storm passed to createGame (Level 3: Live Sun).
-// A storm must have exactly 6 stages, and each stage's incoming radiation must sit
+// A storm must have exactly 6 stages (a level plays 3 of them, see WAVES in the contract), and each stage's incoming radiation must sit
 // inside these per-stage ranges, or the engine plays the saved storm instead.
 // engine.test.js checks every corner of these ranges stays winnable.
 export const STORM_LIMITS = {
   stages: 6,
   minIncoming: [0, 0, 0, 30, 10, 0],
-  maxIncoming: [0, 10, 15, 50, 30, 0]
+  maxIncoming: [0, 10, 15, 50, 24, 0] // stage 4 max 24 (was 30): with 3 waves every storm keeps a 3-star plan
 };
 
 // What changes between the two levels. dustStages and blackoutStages hold stage indexes.

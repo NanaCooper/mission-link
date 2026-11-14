@@ -14,7 +14,7 @@ export const initialState = {
   mode: 'split',       // 'split' | 'online'
   world: 'moon',       // 'moon' | 'mars'
   turn: 0,
-  maxTurns: 6,
+  maxTurns: 3,         // one turn per wave (see WAVES)
   meters: { power: 100, oxygen: 100, radiationDose: 0, crewHealth: 100 },
   science: 0,
   stormId: null,
@@ -29,6 +29,11 @@ export const initialState = {
   stars: 0,
   moonStars: 0         // 0-3 stars won on the Moon, used for Mars supply crates
 };
+
+// The waves of a level. Every storm has 6 stages; a level plays 3 of them, one per turn:
+//   wave 1 = stage 1 (flare spotted), wave 2 = stage 3 (particles arrive: the peak),
+//   wave 3 = stage 4 (storm fading). stormStage is WAVES[turn] during a game.
+export const WAVES = [1, 3, 4];
 
 // The two levels: the Moon (level 1) and Mars (level 2)
 export const WORLDS = ['moon', 'mars'];
@@ -84,7 +89,7 @@ isValidStorm(storm)   // true if a ready-made storm is safe to play (see STORM_L
 - `stage.dust` is true on the Mars dust stage (Save power gives less).
 - `stage.blackout` is true on the Mars signal blackout stage (no warning gets through).
 - The Astronaut view never includes storm data, `dust` or `blackout`.
-- `forecast` is the next stage's label, or `null` on the last turn.
+- `forecast` is the next wave's stage label, or `null` on the last wave.
 - The signal clock: each turn Mission Control has `signalLimit` seconds (`SIGNAL_SECONDS`
   in balance.js, 60 for now) to send a warning. `clockRunning` is false once a warning is
   sent this turn (on Mars too, even though it arrives next turn), during the Mars blackout,
@@ -103,7 +108,7 @@ Dev 4 adds one line per real storm and tells Dev 1. Every storm keeps 6 stages w
 `incoming` 0, 5, 10, 40, 20, 0 so the balance stays the same.
 
 A ready-made (live) storm has the same shape. Its `incoming` per stage must stay inside
-`STORM_LIMITS` in `src/engine/balance.js`: min 0, 0, 0, 30, 10, 0 and max 0, 10, 15, 50, 30, 0.
+`STORM_LIMITS` in `src/engine/balance.js`: min 0, 0, 0, 30, 10, 0 and max 0, 10, 15, 50, 24, 0 (stage 4 max lowered from 30 so every storm keeps a 3-star plan in 3 waves).
 The engine tests check every corner of that range stays winnable on both levels.
 
 ## Realtime (Dev 2): `src/realtime/`

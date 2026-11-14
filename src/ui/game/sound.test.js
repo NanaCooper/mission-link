@@ -38,8 +38,8 @@ describe('soundFor', () => {
   });
 
   it('plays the warning sound again when the warning is changed this turn', () => {
-    const before = astro({ inbox: [{ turn: 3, warning: 'stormComing' }] });
-    const after = { ...before, inbox: [{ turn: 3, warning: 'shelterNow' }] };
+    const before = astro({ inbox: [{ turn: 1, warning: 'stormComing' }] });
+    const after = { ...before, inbox: [{ turn: 1, warning: 'shelterNow' }] };
     expect(soundFor(before, after)).toEqual(['warning']);
   });
 

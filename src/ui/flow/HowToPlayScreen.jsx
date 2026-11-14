@@ -45,10 +45,11 @@ export default function HowToPlayScreen({ onBack }) {
         ))}
       </ol>
 
-      <Panel title="Survive 6 turns">
+      <Panel title="Survive 3 waves">
         <p>
-          Keep power, oxygen and crew health up, and keep radiation under the storm budget. Win
-          stars by keeping the crew healthy and doing science.
+          The storm comes in 3 waves, and the second is the strongest. Keep power, oxygen and crew
+          health up, and keep radiation under the storm budget. Win stars by keeping the crew healthy
+          and doing science.
         </p>
       </Panel>
 

@@ -11,7 +11,7 @@ import {
   tick
 } from './index.js';
 import { RADIATION_LIMIT, LEVELS, STORM_LIMITS, SIGNAL_SECONDS } from './balance.js';
-import { MOVES, initialState } from '../shared/contract.js';
+import { MOVES, WAVES, initialState } from '../shared/contract.js';
 
 const moon = () => createGame({ mode: 'split', world: 'moon' });
 const mars = (moonStars = 0) => createGame({ mode: 'split', world: 'mars', moonStars });
@@ -25,8 +25,9 @@ function play(state, moves) {
   return state;
 }
 
-// Jump to a given stage with full meters, to test a single move there.
-const atStage = (state, stage) => ({ ...state, turn: stage, stormStage: stage });
+// Jump to a given storm stage with full meters, to test a single move there.
+// The turn is that stage's wave (WAVES), or 0 for a stage no wave plays.
+const atStage = (state, stage) => ({ ...state, turn: Math.max(0, WAVES.indexOf(stage)), stormStage: stage });
 
 const QUIET = 0; // incoming 0
 const PEAK = 3; // incoming 40
@@ -81,12 +82,12 @@ describe('move effects', () => {
   it('shelter at a quiet stage and at the peak', () => {
     const q = applyMove(atStage(moon(), QUIET), 'shelter');
     expect(q.meters.power).toBe(85);
-    expect(q.meters.crewHealth).toBe(90);
+    expect(q.meters.crewHealth).toBe(85);
     expect(q.meters.radiationDose).toBe(0);
 
     const p = applyMove(atStage(moon(), PEAK), 'shelter');
     expect(p.meters.radiationDose).toBe(4);
-    expect(p.meters.crewHealth).toBe(89); // -10 cramped, -1 radiation
+    expect(p.meters.crewHealth).toBe(84); // -15 cramped, -1 radiation
   });
 
   it('savePower at a quiet stage and at the peak', () => {
@@ -204,7 +205,7 @@ describe('Mars signal blackout', () => {
 
   it('the same stage on the Moon has no blackout', () => {
     const s = sendWarning(atStage(moon(), blackoutStage), 'shelterNow');
-    expect(s.inbox).toEqual([{ turn: blackoutStage, warning: 'shelterNow' }]);
+    expect(s.inbox).toEqual([{ turn: WAVES.indexOf(blackoutStage), warning: 'shelterNow' }]);
   });
 
   it('Mission Control sees blackout only on the Mars blackout stage', () => {
@@ -309,7 +310,7 @@ describe('the signal clock', () => {
 describe('views', () => {
   it('after a move, both views carry lastFact from the stage just played', () => {
     const s = applyMove(moon(), 'doScience');
-    const fact = getStorm(s.stormId).stages[0].fact;
+    const fact = getStorm(s.stormId).stages[WAVES[0]].fact;
     expect(getAstronautView(s).lastFact).toEqual(fact);
     expect(getMissionControlView(s).lastFact).toEqual(fact);
   });
@@ -326,15 +327,15 @@ describe('views', () => {
 
   it('mission control view shows the stage and forecast but no other meters', () => {
     const v = getMissionControlView(moon());
-    expect(v.stage.label).toBe(getStorm(moon().stormId).stages[0].label);
-    expect(v.forecast).toBe(getStorm(moon().stormId).stages[1].label);
+    expect(v.stage.label).toBe(getStorm(moon().stormId).stages[WAVES[0]].label);
+    expect(v.forecast).toBe(getStorm(moon().stormId).stages[WAVES[1]].label);
     expect(v.delayTurns).toBe(0);
     expect(v).not.toHaveProperty('meters');
     expect(v.crewHealth).toBe(100);
   });
 
-  it('forecast is null on the last turn', () => {
-    expect(getMissionControlView(atStage(moon(), 5)).forecast).toBeNull();
+  it('forecast is null on the last wave', () => {
+    expect(getMissionControlView(atStage(moon(), WAVES[WAVES.length - 1])).forecast).toBeNull();
   });
 });
 
@@ -360,7 +361,7 @@ describe('end of game', () => {
   });
 
   it('wins with 1, 2 and 3 stars', () => {
-    const last = atStage(moon(), 5);
+    const last = atStage(moon(), WAVES[WAVES.length - 1]); // the last wave
     const withMeters = (m, science) => ({ ...last, science, meters: { ...last.meters, ...m } });
 
     expect(applyMove(withMeters({ crewHealth: 40 }, 0), 'savePower').stars).toBe(1);
@@ -397,7 +398,7 @@ describe('safety', () => {
 // Every possible six-move plan: 4^6 = 4096.
 function allPlans() {
   const plans = [[]];
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < WAVES.length; i++) {
     const next = [];
     for (const p of plans) for (const m of MOVES) next.push([...p, m]);
     plans.splice(0, plans.length, ...next);
@@ -492,8 +493,8 @@ describe('ready-made storm (Level 3: Live Sun)', () => {
       expect(isValidStorm(storm)).toBe(true);
       for (const world of ['moon', 'mars']) {
         const start = createGame({ world, moonStars: 0, storm });
-        expect(play(start, Array(6).fill('doScience')).status).toBe('lost');
-        expect(play(start, Array(6).fill('shelter')).stars).toBeLessThanOrEqual(1);
+        expect(play(start, Array(WAVES.length).fill('doScience')).status).toBe('lost');
+        expect(play(start, Array(WAVES.length).fill('shelter')).stars).toBeLessThanOrEqual(1);
         const threeStarPlan = plans.find((plan) => play(start, plan).stars === 3);
         expect(threeStarPlan, `${world} ${incoming} has no 3-star plan`).toBeDefined();
       }
@@ -501,36 +502,81 @@ describe('ready-made storm (Level 3: Live Sun)', () => {
   }, 30000);
 });
 
-describe('balance: full Moon games', () => {
-  it('doScience every turn loses by radiation', () => {
-    expect(play(moon(), Array(6).fill('doScience')).lostReason).toBe('radiation');
+describe('3 waves', () => {
+  it('a level is 3 waves: flare spotted, particles arrive (the peak), storm fading', () => {
+    const s = moon();
+    expect(s.maxTurns).toBe(3);
+    expect(s.stormStage).toBe(WAVES[0]);
+    const stages = getStorm(s.stormId).stages;
+    expect(WAVES.map((i) => stages[i].label)).toEqual(['Flare spotted', 'Particles arrive', 'Storm fading']);
   });
 
-  it('raiseShield every turn loses by radiation', () => {
-    expect(play(moon(), Array(6).fill('raiseShield')).lostReason).toBe('radiation');
+  it('each move moves on to the next wave, and the third move ends the level', () => {
+    let s = moon();
+    s = applyMove(s, 'raiseShield');
+    expect([s.turn, s.stormStage, s.status]).toEqual([1, WAVES[1], 'playing']);
+    s = applyMove(s, 'raiseShield');
+    expect([s.turn, s.stormStage, s.status]).toEqual([2, WAVES[2], 'playing']);
+    s = applyMove(s, 'raiseShield');
+    expect(s.turn).toBe(3);
+    expect(s.status).toBe('won');
+  });
+
+  it('the Mars dust is on wave 1 and the Mars blackout on wave 3', () => {
+    expect(LEVELS.mars.dustStages).toEqual([WAVES[0]]);
+    expect(LEVELS.mars.blackoutStages).toEqual([WAVES[2]]);
+  });
+});
+
+describe('balance: full Moon games', () => {
+  it('doScience every turn loses by radiation', () => {
+    expect(play(moon(), Array(3).fill('doScience')).lostReason).toBe('radiation');
+  });
+
+  it('not protecting the crew at the peak (wave 2) always loses', () => {
+    for (const first of MOVES) {
+      for (const peak of ['savePower', 'doScience']) {
+        for (const last of MOVES) {
+          expect(play(moon(), [first, peak, last]).status, `${first},${peak},${last}`).toBe('lost');
+          expect(play(mars(), [first, peak, last]).status, `mars ${first},${peak},${last}`).toBe('lost');
+        }
+      }
+    }
+  });
+
+  it('the same move every turn never earns 3 stars', () => {
+    for (const move of MOVES) expect(play(moon(), Array(3).fill(move)).stars).toBeLessThan(3);
+  });
+
+  it('raiseShield every turn is safe but earns no science (2 stars)', () => {
+    const s = play(moon(), Array(3).fill('raiseShield'));
+    expect(s.status).toBe('won');
+    expect(s.stars).toBe(2);
   });
 
   it('shelter every turn earns no more than 1 star', () => {
-    expect(play(moon(), Array(6).fill('shelter')).stars).toBeLessThanOrEqual(1);
+    expect(play(moon(), Array(3).fill('shelter')).stars).toBeLessThanOrEqual(1);
   });
 
-  it('a smart plan wins with 3 stars', () => {
-    const s = play(moon(), ['doScience', 'savePower', 'raiseShield', 'shelter', 'raiseShield', 'doScience']);
-    expect(s.status).toBe('won');
-    expect(s.stars).toBe(3);
+  it('a smart plan wins with 3 stars: science, protect at the peak, science', () => {
+    for (const protect of ['shelter', 'raiseShield']) {
+      const s = play(moon(), ['doScience', protect, 'doScience']);
+      expect(s.status).toBe('won');
+      expect(s.stars).toBe(3);
+    }
   });
 });
 
 describe('balance: full Mars games (0 Moon stars)', () => {
   it('doScience every turn loses', () => {
-    expect(play(mars(), Array(6).fill('doScience')).status).toBe('lost');
+    expect(play(mars(), Array(3).fill('doScience')).status).toBe('lost');
   });
 
   it('shelter every turn earns no more than 1 star', () => {
-    expect(play(mars(), Array(6).fill('shelter')).stars).toBeLessThanOrEqual(1);
+    expect(play(mars(), Array(3).fill('shelter')).stars).toBeLessThanOrEqual(1);
   });
 
-  it('at least one of the 4096 plans wins with 3 stars', () => {
+  it('at least one of the 64 plans wins with 3 stars', () => {
     const count = (world) => {
       const tally = { won: 0, threeStars: 0 };
       for (const plan of allPlans()) {
@@ -543,8 +589,8 @@ describe('balance: full Mars games (0 Moon stars)', () => {
     const m = count('moon');
     const r = count('mars');
     console.log(
-      `Balance: Moon ${m.won}/4096 plans win (${m.threeStars} with 3 stars). ` +
-        `Mars ${r.won}/4096 win (${r.threeStars} with 3 stars).`
+      `Balance: Moon ${m.won}/64 plans win (${m.threeStars} with 3 stars). ` +
+        `Mars ${r.won}/64 win (${r.threeStars} with 3 stars).`
     );
     expect(r.threeStars).toBeGreaterThan(0);
   });

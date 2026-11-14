@@ -64,10 +64,10 @@ export const READ_ALOUD_LABEL = 'Read to me';
 export const READ_ALOUD_STOP_LABEL = 'Stop reading';
 
 // ---------- Prediction prompt (Astronaut only, never sent anywhere) ----------
-// Asked on the turn the storm may peak. "Turn 4 of 6" on screen is view.turn 3.
+// Asked on the wave where the storm peaks. "Wave 2 of 3" on screen is view.turn 1.
 // It only asks. It changes no rules and no score.
 export const PREDICTION = {
-  turn: 3,
+  turn: 1, // wave 2: the peak (particles arrive)
   question: 'The storm may be about to peak. What do you think will happen if you do science now?',
   answers: ['Nothing much', 'The crew takes a lot of radiation', 'Not sure']
 };
@@ -213,8 +213,9 @@ export function sentText(warningLabel, delayTurns) {
 }
 
 // The engine counts turns from 0, and turn reaches maxTurns when the game ends.
+// A level has 3 waves of the storm, one per turn, so the top bar says "Wave 2 of 3".
 export function turnText(view) {
-  return `Turn ${Math.min(view.turn + 1, view.maxTurns)} of ${view.maxTurns}`;
+  return `Wave ${Math.min(view.turn + 1, view.maxTurns)} of ${view.maxTurns}`;
 }
 
 // ---------- Faces ----------

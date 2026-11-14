@@ -11,12 +11,12 @@ export const initialState = {
   mode: 'split',       // 'split' | 'online'
   world: 'moon',       // 'moon' | 'mars'
   turn: 0,
-  maxTurns: 6,
+  maxTurns: 3,         // one turn per wave (see WAVES)
   meters: { power: 100, oxygen: 100, radiationDose: 0, crewHealth: 100 },
   science: 0,
   stormId: null,
   storm: null,         // ready-made storm object (Level 3: Live Sun), or null to use stormId
-  stormStage: 0,
+  stormStage: 0,      // which of the storm's 6 stages is playing now (WAVES[turn] during a game)
   inbox: [],           // warnings delivered to the Astronaut: { turn, warning }
   outbox: [],          // warnings not yet delivered (Mars delay): { turnSent, warning }
   lastMove: null,
@@ -26,6 +26,12 @@ export const initialState = {
   stars: 0,
   moonStars: 0         // 0-3 stars won on the Moon, used for Mars supply crates
 };
+
+// The waves of a level. Every storm has 6 stages (quiet Sun, flare spotted, cloud launched,
+// particles arrive, storm fading, all clear); a level plays 3 of them, one per turn:
+//   wave 1 = stage 1 (flare spotted), wave 2 = stage 3 (particles arrive: the peak),
+//   wave 3 = stage 4 (storm fading). The Mars dust (stage 1) and blackout (stage 4) stay in.
+export const WAVES = [1, 3, 4];
 
 // The two levels: the Moon (level 1) and Mars (level 2)
 export const WORLDS = ['moon', 'mars'];

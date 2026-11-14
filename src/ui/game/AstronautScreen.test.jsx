@@ -75,7 +75,7 @@ describe('AstronautScreen', () => {
   it('shows the Moon base, the turn and the Moon theme', () => {
     const html = render(fakeAstronautView);
     expect(html).toContain('Moon base');
-    expect(html).toContain('Turn 4 of 6');
+    expect(html).toContain('Wave 2 of 3');
     expect(html).toContain('class="astronaut-screen world-moon"');
   });
 
@@ -192,9 +192,9 @@ describe('AstronautScreen: sound, read-aloud and the prediction prompt', () => {
     expect(html).not.toContain('Read to me'); // tests run without speechSynthesis
   });
 
-  it('asks the prediction question on the peak turn (Turn 4 of 6) without locking the moves', () => {
+  it('asks the prediction question on the peak turn (Wave 2 of 3) without locking the moves', () => {
     const html = render(fakeAstronautView); // view.turn 3
-    expect(html).toContain('Turn 4 of 6');
+    expect(html).toContain('Wave 2 of 3');
     expect(html).toContain('The storm may be about to peak.');
     for (const answer of PREDICTION.answers) expect(html).toContain(answer);
     expect(html).not.toMatch(/class="big-button"[^>]*disabled/);
