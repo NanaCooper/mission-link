@@ -41,12 +41,14 @@ describe('the control room map', () => {
 });
 
 describe('ControlRoomMap', () => {
-  it('shows the room, the arrows and the USE button, with no dialog until a place is used', () => {
+  // Changed on purpose (dev3/controls): the USE button pops in only next to a place, and the
+  // text box is now `world__textbox` over the bottom of the map.
+  it('shows the room, the joystick and the arrows, with no text box until a place is used', () => {
     const html = render(fakeMissionControlView);
     expect(html).toContain('Picture: the control room on Earth.');
     expect(html).toContain('aria-label="Walk up"');
-    expect(html).toContain('world__use');
-    expect(html).not.toContain('world__dialog');
+    expect(html).toContain('world__joystick');
+    expect(html).not.toContain('world__textbox');
     expect(html).toContain('Walk Commander Sola to a place, then press USE.');
   });
 

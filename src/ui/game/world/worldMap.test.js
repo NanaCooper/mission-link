@@ -1,5 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { buildMap, canStand, stepHero, placeNearHero, placeCorner, placeTop, TILE, KEY_TO_DIRECTION } from './worldMap.js';
+import {
+  buildMap,
+  canStand,
+  stepHero,
+  placeNearHero,
+  placeCorner,
+  placeTop,
+  TILE,
+  KEY_TO_DIRECTION,
+  joystickDirection,
+  mapKeyCommand,
+  JOYSTICK_DEAD_ZONE
+} from './worldMap.js';
 
 // . floor   # wall   A and B are places
 const MAP = buildMap(['#####', '#A..#', '#..B#', '#####'], { blocked: '#', places: { A: 'alpha', B: 'beta' } });
@@ -71,5 +83,67 @@ describe('where to draw a place', () => {
     const wide = buildMap(['....', '.AA.'], { places: { A: 'alpha' } }).places[0];
     expect(placeCorner(wide)).toEqual({ x: TILE, y: TILE });
     expect(placeTop(wide)).toEqual({ x: 2 * TILE, y: TILE });
+  });
+});
+
+describe('joystickDirection', () => {
+  it('points nowhere inside the dead zone', () => {
+    expect(joystickDirection(0, 0)).toBeNull();
+    expect(joystickDirection(JOYSTICK_DEAD_ZONE - 1, 0)).toBeNull();
+    expect(joystickDirection(5, 5, 10)).toBeNull();
+  });
+
+  it('only walks up, down, left or right: the longer pull wins', () => {
+    expect(joystickDirection(30, 0)).toBe('right');
+    expect(joystickDirection(-30, 4)).toBe('left');
+    expect(joystickDirection(3, -30)).toBe('up');
+    expect(joystickDirection(-20, 25)).toBe('down');
+  });
+
+  it('ignores numbers that are not numbers', () => {
+    expect(joystickDirection(NaN, 40)).toBeNull();
+  });
+});
+
+describe('mapKeyCommand', () => {
+  const press = (key, more = {}) => mapKeyCommand({ key, ...more });
+
+  it('walks with the arrow keys and WASD, and uses with Space, Enter or E', () => {
+    expect(press('ArrowUp')).toEqual({ type: 'walk', direction: 'up' });
+    expect(press('d')).toEqual({ type: 'walk', direction: 'right' });
+    for (const key of [' ', 'Enter', 'e', 'E']) expect(press(key)).toEqual({ type: 'use' });
+    expect(press('x')).toBeNull();
+  });
+
+  it('swallows the key repeat of a held key, so our own timer sets the walking pace', () => {
+    expect(press('ArrowLeft', { repeat: true })).toEqual({ type: 'held' });
+    expect(press(' ', { repeat: true })).toEqual({ type: 'held' });
+  });
+
+  it('leaves typing, shortcuts and other dialogs alone', () => {
+    expect(press('a', { target: { tag: 'INPUT' } })).toBeNull();
+    expect(press('ArrowUp', { target: { tag: 'TEXTAREA' } })).toBeNull();
+    expect(press('w', { target: { tag: 'DIV', editable: true } })).toBeNull();
+    expect(press('ArrowUp', { modifier: true })).toBeNull();
+    expect(press('ArrowUp', { target: { inModal: true } })).toBeNull();
+  });
+
+  it('lets a focused button keep its own Space and Enter, but arrows still walk', () => {
+    expect(press(' ', { target: { tag: 'BUTTON', control: true } })).toBeNull();
+    expect(press('Enter', { target: { tag: 'BUTTON', control: true } })).toBeNull();
+    expect(press('ArrowDown', { target: { tag: 'BUTTON', control: true } })).toEqual({ type: 'walk', direction: 'down' });
+  });
+
+  it('with the text box open: arrows move between choices, Enter picks, Escape closes', () => {
+    const open = { dialogOpen: true };
+    expect(press('ArrowUp', open)).toEqual({ type: 'menu', step: -1 });
+    expect(press('ArrowLeft', open)).toEqual({ type: 'menu', step: -1 });
+    expect(press('ArrowDown', open)).toEqual({ type: 'menu', step: 1 });
+    expect(press('s', open)).toEqual({ type: 'menu', step: 1 });
+    expect(press('Enter', open)).toEqual({ type: 'pick' });
+    expect(press('Escape', open)).toEqual({ type: 'close' });
+    expect(press('Escape')).toBeNull(); // nothing to close
+    // A choice that already has the focus presses itself (the browser does it)
+    expect(press('Enter', { ...open, target: { tag: 'BUTTON', control: true, inDialog: true } })).toBeNull();
   });
 });

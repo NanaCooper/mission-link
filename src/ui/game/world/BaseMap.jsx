@@ -19,6 +19,7 @@ import { MOVE_INFO } from '../labels.js';
 //   onMove   called with a move key, e.g. onMove('savePower')
 //   hit      how much the storm radiation budget went up this turn (0 = no hit)
 //   overlay  HTML on top of the picture (name, turn, tags)
+//   active   true (default) if this map listens to the keyboard (only the screen on show)
 
 // Where things are, and what each place does, live in baseMapData.js.
 
@@ -83,7 +84,7 @@ const SHIELD_INNER = arc(60, 38, 37, 23, 3);
 
 const place = (id) => placeCorner(BASE_MAP.places.find((p) => p.id === id));
 
-export default function BaseMap({ view, onMove, hit = 0, overlay }) {
+export default function BaseMap({ view, onMove, hit = 0, overlay, active = true }) {
   const look = LOOK[view.world] ?? LOOK.moon;
   const { lastMove, turn } = view;
   const gameNumber = useGameNumber(turn);
@@ -126,6 +127,8 @@ export default function BaseMap({ view, onMove, hit = 0, overlay }) {
       describeUse={describeUse}
       onUse={(spot) => onMove(PLACE_MOVES[spot.id])}
       canUse={view.status === 'playing'}
+      active={active}
+      ground={look.ground}
       foreground={
         <>
           {/* The shield: a glowing dome over the base */}

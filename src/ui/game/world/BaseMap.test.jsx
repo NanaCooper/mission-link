@@ -95,10 +95,12 @@ describe('BaseMap (what the Astronaut sees)', () => {
     }
   });
 
-  it('shows the arrows, the USE button and the words it is given', () => {
+  // Changed on purpose (dev3/controls): the USE button now pops in only next to a place, so at
+  // the start it is not there; the joystick is new. WorldMap.test.jsx checks the action button.
+  it('shows the joystick, the arrows and the words it is given', () => {
     const html = render(moonAt(null), { overlay: <p>Turn 2 of 6</p> });
     for (const name of ['Walk up', 'Walk down', 'Walk left', 'Walk right']) expect(html).toContain(`aria-label="${name}"`);
-    expect(html).toContain('world__use');
+    expect(html).toContain('world__joystick');
     expect(html).toContain('Turn 2 of 6');
     expect(html).toContain('Walk Nova to a place, then press USE.');
   });

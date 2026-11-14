@@ -70,7 +70,7 @@ const PLANT = ['..N..N..', '.NLN.N..', '..NLNLN.', '.NLNNLN.', '..NNLN..', '...N
 
 const place = (id) => placeCorner(ROOM_MAP.places.find((p) => p.id === id));
 
-export default function ControlRoomMap({ view, onWarn }) {
+export default function ControlRoomMap({ view, onWarn, active = true }) {
   const gameNumber = useGameNumber(view.turn);
   const playing = view.status === 'playing';
   const blackout = Boolean(view.stage.blackout);
@@ -113,7 +113,10 @@ export default function ControlRoomMap({ view, onWarn }) {
       describeUse={describeUse}
       onUse={(spot) => setOpen({ id: spot.id, turn: view.turn })}
       canUse={playing}
+      active={active}
+      ground={PALETTE.k}
       onStep={() => setOpen(null)}
+      onDialogClose={() => setOpen(null)}
       dialog={openId && <RoomDialog id={openId} view={view} onWarn={onWarn} onClose={() => setOpen(null)} />}
     >
       {/* Floor tiles */}

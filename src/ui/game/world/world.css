@@ -1,14 +1,31 @@
 /* Walkable pixel maps (Dev 3): the Moon or Mars base, and the control room on Earth.
-   Mobile first: the arrows and the USE button are big enough for small thumbs. */
+   The map fills its box. Everything else sits on top of it, like a mobile game:
+   joystick (or arrows) bottom left, the action button bottom right, a speech bubble top left,
+   and the text box over the bottom. Thumb-sized: taps >= 48px, words >= 18px. */
 
 .world {
-  display: grid;
-  gap: 8px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
   min-width: 0;
 }
 
+/* The whole map stays in view: the picture keeps its shape, with bars of ground colour around it.
+   No fixed height here: it fills the box (flex), and a full-screen parent may also place it with
+   top / bottom (hud.css), which a height would override. */
 .world__view {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
   outline: none;
+}
+
+.world__view .scene__art {
+  width: 100%;
+  height: 100%;
 }
 
 .world__view:focus-visible {
@@ -31,26 +48,120 @@
   animation: px-hidden 0.16s steps(1) 1;
 }
 
-.world__prompt {
+/* ---------- "What is here": a speech bubble near the top ---------- */
+.world__bubble {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  left: max(8px, env(safe-area-inset-left));
+  max-width: min(360px, calc(50% - 72px));
   margin: 0;
-  min-height: 2.6em;
+  padding: 8px 12px;
   font-size: 18px;
-  line-height: 1.3;
+  line-height: 1.25;
   color: var(--text);
+  background: rgba(16, 17, 31, 0.9);
+  border: var(--px) solid var(--panel-border);
+  pointer-events: none;
 }
 
-.world__prompt strong {
+/* The bubble's tail: two pixel steps down to the left */
+.world__bubble::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  bottom: -12px;
+  width: 12px;
+  height: 8px;
+  background: var(--panel-border);
+  clip-path: polygon(0 0, 100% 0, 100% 50%, 50% 50%, 50% 100%, 0 100%);
+}
+
+/* The character is on the left half: the bubble goes top right */
+.world__bubble--right {
+  right: max(8px, env(safe-area-inset-right));
+  left: auto;
+}
+
+.world__bubble--right::after {
+  right: 16px;
+  left: auto;
+  transform: scaleX(-1);
+}
+
+.world__bubble strong {
   color: var(--accent);
 }
 
-/* Arrows on the left, USE on the right */
-.world__controls {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
+/* ---------- "Arrow keys to walk, Space to use": computers only ---------- */
+.world__keys-hint {
+  display: none;
+  position: absolute;
+  z-index: 1;
+  bottom: 8px;
+  left: 50%;
+  margin: 0;
+  padding: 4px 10px;
+  font-size: 18px;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--text);
+  background: rgba(16, 17, 31, 0.8);
+  border: var(--px) solid var(--panel-border);
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
+@media (pointer: fine) and (hover: hover) {
+  .world__keys-hint {
+    display: block;
+  }
+}
+
+/* ---------- Controls over the map: stick bottom left, action button bottom right ---------- */
+.world__controls {
+  position: absolute;
+  z-index: 2;
+  right: max(8px, env(safe-area-inset-right));
+  bottom: 8px;
+  left: max(8px, env(safe-area-inset-left));
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.world__controls > * {
+  pointer-events: auto;
+}
+
+/* The joystick: touch screens only. Never scrolls or zooms the page. */
+.world__joystick {
+  display: none;
+  position: relative;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.world__joystick-base {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0.9;
+}
+
+.world__joystick-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -26px 0 0 -26px; /* half of KNOB_SIZE in Joystick.jsx */
+  pointer-events: none;
+}
+
+/* The four arrows: computers, keyboards and screen readers */
 .world__pad {
   display: grid;
   grid-template-columns: repeat(3, var(--tap));
@@ -62,6 +173,22 @@
   -webkit-touch-callout: none;
 }
 
+/* Touch screens: the joystick shows, the arrows stay in the page for screen readers only */
+@media (pointer: coarse) {
+  .world__joystick {
+    display: block;
+  }
+
+  .world__pad {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 .world__arrow {
   --edge: var(--panel-border);
   display: grid;
@@ -69,7 +196,7 @@
   width: var(--tap);
   height: var(--tap);
   padding: 10px;
-  background: var(--panel);
+  background: rgba(38, 43, 68, 0.85);
   border: var(--px) solid var(--edge);
   clip-path: var(--notch);
   cursor: pointer;
@@ -98,61 +225,71 @@
 .world__arrow--right svg { transform: rotate(90deg); }
 .world__arrow--down svg { transform: rotate(180deg); }
 
-/* The USE button: big, with the key name on top and what it will do underneath */
-.world__use {
+/* The action button: big and round, pops in next to a place */
+.world__action {
   --edge: var(--accent);
   display: grid;
-  gap: 6px;
   justify-items: center;
   align-content: center;
-  min-height: calc(var(--tap) * 2);
-  padding: 10px 8px;
+  gap: 4px;
+  width: 132px;
+  height: 132px;
+  padding: 14px;
   font-family: var(--font);
   font-size: 18px;
-  line-height: 1.2;
+  line-height: 1.15;
   text-align: center;
   color: var(--text);
-  background: var(--panel);
+  background: rgba(38, 43, 68, 0.92);
   border: var(--px) solid var(--edge);
-  clip-path: var(--notch);
+  border-radius: 50%;
+  box-shadow: 0 0 0 var(--px) var(--ink);
   cursor: pointer;
+  animation: world-pop 0.28s steps(4) 1;
 }
 
-.world__use:focus-visible {
+.world__action:active {
+  transform: scale(0.94);
+}
+
+.world__action:focus-visible {
   --edge: var(--focus);
   outline: none;
+  box-shadow: 0 0 0 var(--px) var(--focus);
 }
 
-.world__use:disabled {
-  --edge: var(--panel-border);
-  color: var(--text-dim);
-  cursor: default;
+.world__action-icon {
+  display: inline-flex;
 }
 
-.world__use-key {
-  padding: 4px 8px;
+.world__action-key {
+  padding: 2px 6px;
   font-family: var(--font-pixel);
   font-size: 12px;
   color: var(--accent-contrast);
   background: var(--accent);
 }
 
-.world__use:disabled .world__use-key {
-  background: var(--panel-border);
+@keyframes world-pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  60% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); }
 }
 
-.world__use-text {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* The text box under the map, like in a role-playing game (the radio menu, what Sola sees) */
-.world__dialog {
+/* ---------- The text box over the bottom of the map, like a role-playing game ---------- */
+.world__textbox {
   --edge: var(--accent);
+  position: absolute;
+  z-index: 3;
+  right: max(8px, env(safe-area-inset-right));
+  bottom: 8px;
+  left: max(8px, env(safe-area-inset-left));
   display: grid;
   gap: 10px;
-  padding: 12px;
+  max-height: 62%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 14px;
   font-size: 18px;
   line-height: 1.3;
   background: var(--panel);
@@ -168,7 +305,7 @@
   color: var(--accent);
 }
 
-.world__dialog p {
+.world__textbox p {
   margin: 0;
 }
 
@@ -195,4 +332,26 @@
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 12px;
+}
+
+/* Narrow windows: the bubble may use the whole width */
+@media (max-width: 640px) {
+  .world__bubble {
+    max-width: calc(100% - 16px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world__hero {
+    transition: none;
+  }
+
+  .world__action,
+  .world__textbox {
+    animation: none;
+  }
+
+  .world__action:active {
+    transform: none;
+  }
 }

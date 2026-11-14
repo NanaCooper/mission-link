@@ -29,6 +29,69 @@ export const KEY_TO_DIRECTION = {
 };
 export const USE_KEYS = [' ', 'Enter', 'e', 'E'];
 
+// Holding a key, an arrow button or the joystick takes one step this often (milliseconds).
+export const WALK_REPEAT_MS = 170;
+
+// The joystick: how far (in screen pixels) the thumb must move before Nova walks.
+export const JOYSTICK_DEAD_ZONE = 12;
+
+// Which way the joystick points. The map is a grid, so only up, down, left or right:
+// the longer of the two pulls wins. Inside the dead zone it points nowhere (null).
+// dx grows to the right, dy grows downwards (screen directions).
+export function joystickDirection(dx, dy, deadZone = JOYSTICK_DEAD_ZONE) {
+  if (!Number.isFinite(dx) || !Number.isFinite(dy)) return null;
+  if (Math.hypot(dx, dy) < deadZone) return null;
+  if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 'right' : 'left';
+  return dy > 0 ? 'down' : 'up';
+}
+
+const TYPING_TAGS = ['INPUT', 'TEXTAREA', 'SELECT'];
+
+// What a key press on the page should do to the map. Pure, so it is easy to test.
+//   key, repeat    from the keyboard event (repeat = the OS repeating a held key)
+//   modifier       true if Ctrl, Alt or Meta is held (leave shortcuts to the browser)
+//   target         where the key press happened:
+//                    tag         its tag name ('BUTTON', 'INPUT', ...)
+//                    editable    true for contenteditable
+//                    control     true for a button, link or tab (it has its own Enter / Space)
+//                    inDialog    true if it is inside this map's text box
+//                    inModal     true if it is inside some other full-screen dialog
+//   dialogOpen     true while this map's text box (e.g. the radio menu) is open
+// Returns null (leave the key alone) or one of:
+//   { type: 'walk', direction }   start walking (held keys keep walking at WALK_REPEAT_MS)
+//   { type: 'held' }              the OS repeating a key we already handle: swallow it
+//   { type: 'use' }               use the place in front
+//   { type: 'menu', step }        text box open: move to the previous (-1) or next (+1) choice
+//   { type: 'pick' }              text box open: choose (highlights the first choice if none is)
+//   { type: 'close' }             text box open: close it
+export function mapKeyCommand({ key, repeat = false, modifier = false, target = {}, dialogOpen = false }) {
+  if (modifier) return null;
+  if (TYPING_TAGS.includes(target.tag) || target.editable) return null;
+  if (target.inModal) return null;
+
+  const direction = KEY_TO_DIRECTION[key];
+  const isUse = USE_KEYS.includes(key);
+
+  if (dialogOpen) {
+    if (key === 'Escape') return { type: 'close' };
+    if (direction) return { type: 'menu', step: direction === 'up' || direction === 'left' ? -1 : 1 };
+    if (key === 'Enter' || key === ' ') {
+      // A focused choice in the text box presses itself (the browser does it).
+      if (target.inDialog && target.control) return null;
+      return repeat ? { type: 'held' } : { type: 'pick' };
+    }
+    return null;
+  }
+
+  if (direction) return repeat ? { type: 'held' } : { type: 'walk', direction };
+  if (isUse) {
+    // Space or Enter on a focused button belongs to that button, not to the map.
+    if (target.control) return null;
+    return repeat ? { type: 'held' } : { type: 'use' };
+  }
+  return null;
+}
+
 // Builds a map from rows of letters.
 //   rows      one string per row, all the same length
 //   blocked   letters you cannot walk on (sky, rocks, walls)
