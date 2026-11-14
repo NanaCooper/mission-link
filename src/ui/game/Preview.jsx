@@ -7,6 +7,7 @@ import {
   fakeMissionControlView,
   fakeMarsAstronautView,
   fakeMarsMissionControlView,
+  fakeMarsBlackoutMissionControlView,
   fakeWonAstronautView,
   fakeLostAstronautView
 } from '../fakeState.js';
@@ -40,6 +41,10 @@ export default function Preview() {
       </Section>
       <Section title="Mars: Mission Control (late messages + dust)">
         <MissionControlScreen view={fakeMarsMissionControlView} onWarn={onWarn} />
+      </Section>
+
+      <Section title="Mars: Mission Control during a signal blackout">
+        <MissionControlScreen view={fakeMarsBlackoutMissionControlView} onWarn={onWarn} />
       </Section>
 
       <Section title="Split-screen (Moon)">

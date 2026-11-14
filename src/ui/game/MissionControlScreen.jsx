@@ -1,5 +1,5 @@
 import { Meter, BigButton, Panel, WhyCard } from '../components/index.js';
-import { WARNING_INFO, MOVE_INFO, MARS_DELAY_NOTE, turnText } from './labels.js';
+import { WARNING_INFO, MOVE_INFO, MARS_DELAY_NOTE, BLACKOUT_BADGE, BLACKOUT_NOTE, turnText } from './labels.js';
 import './MissionControlScreen.css';
 
 // Mission Control on Earth: sees the storm, cannot act, can only send a warning.
@@ -10,6 +10,9 @@ import './MissionControlScreen.css';
 export default function MissionControlScreen({ view, onWarn }) {
   const { stage } = view;
   const playing = view.status === 'playing';
+  // On a Mars blackout turn the Sun blocks the signal: no warning can be sent.
+  const blackout = Boolean(stage.blackout);
+  const canWarn = playing && !blackout;
   const lastMove = view.lastMove ? MOVE_INFO[view.lastMove] : null;
 
   return (
@@ -32,6 +35,11 @@ export default function MissionControlScreen({ view, onWarn }) {
               <span aria-hidden="true">🌪️</span> Dust storm
             </span>
           )}
+          {blackout && (
+            <span className="mc-badge mc-badge--blackout">
+              <span aria-hidden="true">📡</span> {BLACKOUT_BADGE}
+            </span>
+          )}
         </div>
         <p className="mc-storm__sees">{stage.missionControlSees}</p>
         <p className="mc-storm__next">
@@ -51,7 +59,14 @@ export default function MissionControlScreen({ view, onWarn }) {
       <section className="mc-warn" aria-label="Send a warning">
         <h3 className="mc-warn__title">Send a warning</h3>
 
-        {view.delayTurns === 1 && (
+        {blackout && (
+          <p className="mc-blackout" role="status">
+            <span className="mc-delay__icon" aria-hidden="true">🚫</span>
+            <span>{BLACKOUT_NOTE}</span>
+          </p>
+        )}
+
+        {view.delayTurns === 1 && !blackout && (
           <p className="mc-delay" role="note">
             <span className="mc-delay__icon" aria-hidden="true">📡</span>
             <span>{MARS_DELAY_NOTE}</span>
@@ -65,7 +80,7 @@ export default function MissionControlScreen({ view, onWarn }) {
               icon={info.icon}
               label={info.label}
               onClick={() => onWarn(warningKey)}
-              disabled={!playing}
+              disabled={!canWarn}
               selected={warningKey === view.warningThisTurn}
             />
           ))}

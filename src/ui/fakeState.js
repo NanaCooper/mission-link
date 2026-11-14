@@ -39,7 +39,8 @@ export const fakeMissionControlView = {
   stage: {
     label: 'Particles arrive',
     missionControlSees: 'Fast particles from the Sun are hitting the base right now!',
-    dust: false
+    dust: false,
+    blackout: false
   },
   forecast: 'Storm fading',
   lastMove: 'raiseShield',
@@ -66,6 +67,20 @@ export const fakeMarsMissionControlView = {
     missionControlSees: 'Dust is covering the solar panels. Saving power gives less today.',
     dust: true
   }
+};
+
+// Mars signal blackout: the Sun blocks the signal, so no warning can be sent this turn
+export const fakeMarsBlackoutMissionControlView = {
+  ...fakeMarsMissionControlView,
+  turn: 4,
+  stage: {
+    label: 'Storm fading',
+    missionControlSees: 'The storm is getting weaker, but the Sun is now between Earth and Mars.',
+    dust: false,
+    blackout: true
+  },
+  forecast: 'All clear',
+  warningThisTurn: null
 };
 
 // End of game, for testing disabled buttons and the end states
