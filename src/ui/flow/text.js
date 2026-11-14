@@ -9,7 +9,8 @@ export const WORLD_NAMES = {
 export const LOST_REASON_TEXT = {
   oxygen: 'The crew ran out of oxygen.',
   health: 'The crew got too sick.',
-  radiation: 'Too much radiation.'
+  radiation: 'Too much radiation.',
+  time: 'No message came in time.' // the signal clock ran out before Mission Control sent a warning
 };
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

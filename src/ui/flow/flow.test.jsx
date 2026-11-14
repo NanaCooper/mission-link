@@ -77,6 +77,11 @@ describe('EndScreen', () => {
     expect(out).toContain('3 supply crates');
   });
 
+  it('says when the crew was lost because no message came in time', () => {
+    const out = html(<EndScreen view={{ ...fakeMoonLost, lostReason: 'time' }} storm={storm} />);
+    expect(out).toContain('No message came in time.');
+  });
+
   it('gives the lose reason in kid words and no Fly to Mars', () => {
     const out = html(<EndScreen view={fakeMoonLost} storm={storm} />);
     expect(out).toContain('Too much radiation.');
