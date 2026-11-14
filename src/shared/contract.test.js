@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ROLES, initialState, MOVES, WARNINGS } from './contract.js';
+import { ROLES, initialState, MOVES, WARNINGS, WORLDS } from './contract.js';
 
 describe('shared contract', () => {
   it('has the two roles', () => {
@@ -30,8 +30,14 @@ describe('shared contract', () => {
       [
         'status', 'mode', 'world', 'turn', 'maxTurns', 'meters', 'science',
         'stormId', 'stormStage', 'inbox', 'outbox', 'lastMove', 'log',
-        'lostReason', 'stars'
+        'lostReason', 'stars', 'moonStars'
       ].sort()
     );
+  });
+
+  it('has the two worlds, Moon first', () => {
+    expect(WORLDS).toEqual(['moon', 'mars']);
+    expect(initialState.world).toBe('moon');
+    expect(initialState.moonStars).toBe(0);
   });
 });
