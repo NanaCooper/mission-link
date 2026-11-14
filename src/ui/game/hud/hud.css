@@ -29,8 +29,106 @@
   z-index: 0;
   min-width: 0;
   min-height: 0;
-  overflow: auto; /* only matters if the map is ever taller than the screen */
+  overflow: hidden; /* nothing scrolls: the map fits the screen */
+}
+
+/* ---------- The map, fitted to the screen, with its controls on top (like the menu) ---------- */
+.game-hud__map .world {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+/* The picture fills the space under the bar and keeps its shape (dark bars at the sides if needed) */
+.game-hud__map .world__view {
+  position: absolute;
+  top: var(--hud-top);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border: 0;
+  clip-path: none;
+  touch-action: none;
+}
+
+.game-hud__map .world__view .scene__art {
+  width: 100%;
+  height: 100%;
+}
+
+/* The "Shield up!" tag: top middle, away from the arrows */
+.game-hud__map .scene__corner {
+  top: 8px;
+  bottom: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Arrows bottom left, USE bottom right, over the map. Taps between them reach the map. */
+.game-hud__map .world__controls {
+  position: absolute;
+  z-index: 2;
+  right: max(8px, env(safe-area-inset-right));
+  bottom: 8px;
+  left: max(8px, env(safe-area-inset-left));
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.game-hud__map .world__controls > * {
+  pointer-events: auto;
+}
+
+.game-hud__map .world__arrow {
+  background: rgba(38, 43, 68, 0.85);
+}
+
+.game-hud__map .world__use {
+  width: 150px;
+  background: rgba(38, 43, 68, 0.9);
+}
+
+/* "Walk Nova to a place, then press USE": bottom middle, between the arrows and USE */
+.game-hud__map .world__prompt {
+  position: absolute;
+  z-index: 2;
+  bottom: 8px;
+  left: 50%;
+  width: min(340px, calc(100% - 340px));
+  min-height: 0;
+  padding: 6px 10px;
+  transform: translateX(-50%);
+  text-align: center;
+  background: rgba(16, 17, 31, 0.85);
+  border: var(--px) solid var(--panel-border);
+  clip-path: var(--notch);
+  pointer-events: none;
+}
+
+/* The radio desk / telescope / crew monitor box: top left of the map (pop-ups are top right), scrolls inside */
+.game-hud__map .world__dialog {
+  position: absolute;
+  z-index: 3;
+  top: calc(var(--hud-top) + 8px);
+  left: max(8px, env(safe-area-inset-left));
+  width: min(440px, calc(60vw - 24px));
+  max-height: calc(100% - var(--hud-top) - 16px);
+  overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+/* Narrow windows held upright: the words go above the controls */
+@media (max-width: 640px) {
+  .game-hud__map .world__prompt {
+    bottom: 168px;
+    width: calc(100% - 16px);
+  }
+
+  .game-hud__map .world__dialog {
+    width: calc(100% - 16px);
+  }
 }
 
 /* ---------- Top bar ---------- */
@@ -239,17 +337,18 @@
   }
 }
 
-/* ---------- Pop-ups over the map (top left, under the bar) ---------- */
+/* ---------- Pop-ups over the map (top right, under the bar, above the USE button).
+   The arrows are bottom left, so the pop-ups never cover them. An open menu covers the pop-ups. ---------- */
 .hud-popups {
   grid-area: 2 / 1;
-  z-index: 4;
+  z-index: 2;
   align-self: start;
-  justify-self: start;
+  justify-self: end;
   display: grid;
   gap: 8px;
-  width: min(340px, calc(36vw - 16px));
-  max-height: calc(100% - 16px);
-  margin: 8px 0 0 max(8px, env(safe-area-inset-left));
+  width: min(340px, calc(40vw - 16px));
+  max-height: calc(100% - 128px);
+  margin: 8px max(8px, env(safe-area-inset-right)) 0 0;
   overflow: hidden;
   pointer-events: none; /* taps go through to the map */
 }
@@ -259,7 +358,7 @@
 }
 
 .hud-popup {
-  transform-origin: top left;
+  transform-origin: top right;
   animation: px-pop 0.35s steps(4) 1;
 }
 
@@ -568,7 +667,7 @@
   .hud-popups {
     width: auto;
     justify-self: stretch;
-    margin-right: 8px;
+    margin-left: 8px;
   }
 
   .game-menu {
