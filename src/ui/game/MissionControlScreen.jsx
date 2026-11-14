@@ -3,12 +3,13 @@ import SpaceScene from './scenes/SpaceScene.jsx';
 import ControlRoomMap from './world/ControlRoomMap.jsx';
 import MissionClock from './MissionClock.jsx';
 import GameHud from './hud/GameHud.jsx';
+import Vitals from './hud/Vitals.jsx';
+import OptionsPanel from './hud/OptionsPanel.jsx';
 import { useGameMenu } from './hud/useGameMenu.js';
 import { usePopup } from './hud/usePopup.js';
 import { stormLook, solaMoodForLook } from './scenes/stormLook.js';
 import { useMeterDeltas } from './useMeterDeltas.js';
 import { useGameSounds } from './sound.js';
-import { ScreenTools } from './AstronautScreen.jsx';
 import {
   CHARACTERS,
   MISSION_CONTROL_TABS,
@@ -33,14 +34,24 @@ import './MissionControlScreen.css';
 //   The control room map fills the screen (Commander Sola walks to the radio desk, the telescope
 //   or the crew monitor). A slim bar on top. Pop-ups for what is new (the storm stage, a blackout,
 //   the warning just sent). The Menu has three tabs: Big screen (the space picture and Sola's
-//   briefing), Crew, and Warnings (the quick warning buttons).
+//   briefing), Crew, and Warnings (the quick warning buttons), plus Options (sound, read-aloud).
+//   Nova's face and crew health stay in the top bar, always in view.
 // Props only (no session hook, no engine):
 //   view          the Mission Control view (see src/ui/DEV3_PLAN.md)
 //   onWarn        called with a warning key, e.g. onWarn('shelterNow')
 //   active        false while this screen is hidden on one device (no keyboard, pop-ups wait)
 //   switchButton  one device only: the top-bar button that hands the device to the Astronaut
+//   pauses        true on one device (the menu pauses the game), false online. See hud/GameHud.jsx.
+//   onMenuChange  (open) => ..., told when the menu opens or closes (to pause the signal clock)
 // Mission Control must NOT see power, oxygen or radiation. Only crew health.
-export default function MissionControlScreen({ view, onWarn, active = true, switchButton = null }) {
+export default function MissionControlScreen({
+  view,
+  onWarn,
+  active = true,
+  switchButton = null,
+  pauses = null,
+  onMenuChange,
+}) {
   const { stage } = view;
   const playing = view.status === 'playing';
   const ended = view.status === 'won' || view.status === 'lost';
@@ -50,6 +61,7 @@ export default function MissionControlScreen({ view, onWarn, active = true, swit
   const sent = view.warningThisTurn ? WARNING_INFO[view.warningThisTurn] : null;
   const director = CHARACTERS.director;
   const menu = useGameMenu('bigScreen');
+  const healthDelta = useMeterDeltas(view.turn, { crewHealth: view.crewHealth });
 
   useGameSounds(view);
 
@@ -91,6 +103,11 @@ export default function MissionControlScreen({ view, onWarn, active = true, swit
   );
 
   const tabs = [
+    {
+      id: 'options',
+      ...MISSION_CONTROL_TABS.options,
+      content: <OptionsPanel readText={missionControlReadText(view)} meters={['crewHealth']} />,
+    },
     {
       id: 'bigScreen',
       ...MISSION_CONTROL_TABS.bigScreen,
@@ -194,7 +211,9 @@ export default function MissionControlScreen({ view, onWarn, active = true, swit
         title={MISSION_CONTROL_TITLE}
         turn={turnText(view)}
         clock={<MissionClock view={view} who="missionControl" />}
-        tools={<ScreenTools readText={missionControlReadText(view)} />}
+        vitals={<Vitals meters={{ crewHealth: view.crewHealth }} deltas={healthDelta} />}
+        pauses={pauses}
+        onMenuChange={onMenuChange}
         switchButton={switchButton}
         popups={popups}
         menu={menu}

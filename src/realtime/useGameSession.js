@@ -1,6 +1,9 @@
 // The ONE hook the screens use (docs/CONTRACT.md):
 //   const { state, sendMove, sendWarning, restart, connected, partnerConnected, error } =
-//     useGameSession({ mode, role, code, world, moonStars })
+//     useGameSession({ mode, role, code, world, moonStars, paused })
+//
+// `paused` (optional, default false): while true the signal clock does not move on. The app sets it
+// while a player has the Menu open on one device. Online it is not used (one player cannot pause the other).
 //
 // mode 'split':  both players on one device. No network. Always works.
 // mode 'online': role 'astronaut' is the host (runs the engine), role 'missionControl' is the guest.
@@ -60,7 +63,16 @@ const blankOnline = (key, world) => ({
   error: null,
 });
 
-export function useGameSession({ mode, role, code, world = 'moon', moonStars = 0, storm = null, stormId = null }) {
+export function useGameSession({
+  mode,
+  role,
+  code,
+  world = 'moon',
+  moonStars = 0,
+  storm = null,
+  stormId = null,
+  paused = false,
+}) {
   const online = mode === 'online';
   const isHost = role === ROLES.ASTRONAUT;
   // The level is not part of the key: a level change must not reconnect the room.
@@ -153,9 +165,12 @@ export function useGameSession({ mode, role, code, world = 'moon', moonStars = 0
   // Split mode always; online only the host (Astronaut), and only while Mission Control is in the room,
   // so a dropped connection does not eat Mission Control's time. Mission Control never runs it.
   const onlineView = net?.key === key ? net : null;
-  const clockOn = online
-    ? isHost && onlineView?.state?.status === 'playing' && Boolean(onlineView?.partnerConnected)
-    : splitState.status === 'playing';
+  // A paused game (the Menu is open on one device) does not move the clock.
+  const clockOn =
+    !paused &&
+    (online
+      ? isHost && onlineView?.state?.status === 'playing' && Boolean(onlineView?.partnerConnected)
+      : splitState.status === 'playing');
   useEffect(() => {
     if (!clockOn) return undefined;
     const timer = setInterval(() => {

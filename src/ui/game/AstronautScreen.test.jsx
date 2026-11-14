@@ -87,9 +87,8 @@ describe('AstronautScreen', () => {
 
   it('uses radiationLimit as the radiation max, not a fixed number', () => {
     const html = render({ ...fakeAstronautView, radiationLimit: 50 });
-    expect(html).toContain('Storm radiation budget');
-    expect(html).toContain('/ 50');
-    expect(html).toContain('aria-valuemax="50"');
+    // The radiation bar in the top bar is named in full for screen readers, out of radiationLimit.
+    expect(html).toContain('aria-label="Storm radiation budget" aria-valuemin="0" aria-valuemax="50"');
   });
 
   it('shows the newest warning from the inbox', () => {

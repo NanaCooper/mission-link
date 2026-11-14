@@ -3,16 +3,17 @@ import GameMenu from './GameMenu.jsx';
 import RotateCard from './RotateCard.jsx';
 import HudIcon from './HudIcon.jsx';
 import { tryLandscape, useLandscape } from './landscape.js';
-import { useMediaQuery } from './useMediaQuery.js';
-import { MENU_LABEL } from '../labels.js';
+import { MENU_LABEL, PAUSED_TITLE, PAUSED_TEXT, ONLINE_NO_PAUSE_TEXT } from '../labels.js';
 import './hud.css';
 
 // One player's full-screen game, held sideways, like a game console:
 //   - the walkable map fills the whole screen
-//   - a slim bar on top: where you are, the turn, (the mission clock), sound, read-aloud,
-//     the switch button (one device only) and the Menu button
+//   - a slim bar on top: where you are, the turn, (the mission clock), the crew's meters
+//     (always in view, never hidden in the menu), the switch button (one device only) and Menu
 //   - pop-ups appear over the map on their own and fold away (new message, radiation hit, level end)
-//   - everything else lives in the Menu: a side panel with tabs
+//   - everything else lives in the Menu: a side panel with tabs (Options = sound, read-aloud, ...)
+//   - one device: opening the Menu pauses the game (the signal clock stops, animations freeze).
+//     Online it cannot pause the other player, so the menu says the game keeps going.
 // It only lays things out. The screens decide what goes in, and the engine decides the game.
 //
 // Props:
@@ -20,8 +21,11 @@ import './hud.css';
 //   active        false while hidden on one device: Escape and full screen leave it alone
 //   title, turn   the words in the top bar, e.g. "Moon base", "Turn 4 of 6"
 //   clock         the signal clock (MissionClock), shown small in the top bar
-//   tools         the Sound and Read to me buttons. On a phone held sideways the bar has no room
-//                 for them next to the clock, so they sit at the top of the open menu instead.
+//   vitals        the crew's meters (Vitals.jsx), always in the top bar
+//   pauses        true: opening the menu pauses the game (one device).
+//                 false: it cannot pause (online), the menu says so. null: say nothing.
+//   onMenuChange  optional: (open) => ..., told when this screen's menu opens or closes while it
+//                 shows. A hidden screen always reports closed. Used to pause the signal clock.
 //   switchButton  one device only: the button that hands the device to the other player
 //   map           the walkable map (it fills the screen; the bar sits on top of it)
 //   popups        what pops up over the map
@@ -37,7 +41,9 @@ export default function GameHud({
   title,
   turn,
   clock = null,
-  tools = null,
+  vitals = null,
+  pauses = null,
+  onMenuChange,
   switchButton = null,
   map,
   popups = null,
@@ -49,7 +55,26 @@ export default function GameHud({
   const menuButton = useRef(null);
   const { isOpen, close } = menu;
   const somethingNew = tabs.some((t) => t.badge);
-  const toolsInMenu = useMediaQuery('(max-width: 900px)');
+  const paused = Boolean(pauses) && isOpen && active;
+
+  // Tell the game whether this screen's menu is open (only while this screen shows).
+  const menuShowing = isOpen && active;
+  const report = useRef(onMenuChange);
+  useEffect(() => {
+    report.current = onMenuChange; // always call the newest one
+  });
+  useEffect(() => {
+    report.current?.(menuShowing);
+  }, [menuShowing]);
+  // Leaving the game (or this screen going away) never leaves the game paused.
+  useEffect(() => () => report.current?.(false), []);
+
+  const note =
+    pauses === true
+      ? { title: PAUSED_TITLE, text: PAUSED_TEXT, tone: 'paused' }
+      : pauses === false
+        ? { title: null, text: ONLINE_NO_PAUSE_TEXT, tone: 'online' }
+        : null;
 
   // On a touch device: full screen and sideways when the game starts (and on a tap, if the
   // browser said "not yet").
@@ -76,7 +101,12 @@ export default function GameHud({
   }, [isOpen, active]);
 
   return (
-    <div className="game-hud" role="region" aria-label={label} onPointerDown={() => tryLandscape()}>
+    <div
+      className={`game-hud${paused ? ' is-paused' : ''}`}
+      role="region"
+      aria-label={label}
+      onPointerDown={() => tryLandscape()}
+    >
       <header className="hud-top">
         <div className="hud-top__where">
           <h1 className="hud-top__title">{title}</h1>
@@ -88,8 +118,10 @@ export default function GameHud({
           {clock}
         </div>
 
+        {/* The crew's meters: always in view */}
+        {vitals && <div className="hud-top__vitals">{vitals}</div>}
+
         <div className="hud-top__buttons">
-          {!toolsInMenu && tools}
           {switchButton}
           <button
             ref={menuButton}
@@ -125,7 +157,7 @@ export default function GameHud({
         open={isOpen}
         onTab={menu.setTab}
         onClose={close}
-        tools={toolsInMenu ? tools : null}
+        note={note}
       />
 
       <RotateCard />

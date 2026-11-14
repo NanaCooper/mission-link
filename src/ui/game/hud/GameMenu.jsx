@@ -14,8 +14,9 @@ import { CLOSE_LABEL, MENU_LABEL, NEW_TAG } from '../labels.js';
 //   open     true when the panel shows
 //   onTab    (id) => show that tab
 //   onClose  () => close the panel. (Escape is handled by GameHud, which knows if this screen shows.)
-//   tools    optional: Sound and Read to me, shown above every tab (phones, where the top bar is full)
-export default function GameMenu({ id, label, tabs, tab, open, onTab, onClose, tools = null }) {
+//   note     optional: { title, text, tone } shown above every tab, e.g. "Game paused"
+//            (tone 'paused' or 'online')
+export default function GameMenu({ id, label, tabs, tab, open, onTab, onClose, note = null }) {
   const baseId = useId();
   const tabButtons = useRef({});
   const selected = tabs.some((t) => t.id === tab) ? tab : tabs[0]?.id;
@@ -80,7 +81,12 @@ export default function GameMenu({ id, label, tabs, tab, open, onTab, onClose, t
       </div>
 
       <div className="game-menu__main">
-        {tools && <div className="game-menu__tools">{tools}</div>}
+        {note && (
+          <div className={`game-menu__note game-menu__note--${note.tone}`} role="status">
+            {note.title && <p className="game-menu__note-title">{note.title}</p>}
+            <p className="game-menu__note-text">{note.text}</p>
+          </div>
+        )}
         {tabs.map((t) => (
           <section
             key={t.id}

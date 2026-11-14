@@ -710,3 +710,258 @@
     justify-self: center;
   }
 }
+
+/* ---------- The crew's meters in the top bar (Vitals.jsx): always in view ---------- */
+.hud-top__vitals {
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: center;
+  min-width: 0;
+}
+
+.vitals {
+  display: flex;
+  align-items: center;
+  gap: 6px 10px;
+  min-width: 0;
+  padding: 2px 8px;
+  background: var(--bg-2);
+  border: var(--px) solid var(--panel-border);
+  clip-path: var(--notch);
+}
+
+.vitals .portrait {
+  border-width: 2px;
+}
+
+.vitals__meter {
+  --meter-color: var(--accent);
+  display: grid;
+  grid-template-columns: auto minmax(24px, 1fr) auto auto;
+  grid-template-areas:
+    'icon name name name'
+    'icon track value alert';
+  align-items: center;
+  gap: 0 4px;
+  min-width: 0;
+  flex: 1 1 40px;
+  max-width: 130px;
+}
+
+.vitals__meter--health { --meter-color: var(--health); }
+.vitals__meter--power { --meter-color: var(--power); }
+.vitals__meter--oxygen { --meter-color: var(--oxygen); }
+.vitals__meter--radiation { --meter-color: var(--radiation); }
+
+.vitals__icon {
+  grid-area: icon;
+  display: inline-flex;
+}
+
+.vitals__name {
+  grid-area: name;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.vitals__track {
+  grid-area: track;
+  display: block;
+  height: 10px;
+  background: var(--ink);
+  outline: 2px solid var(--panel-border);
+  outline-offset: -2px;
+  overflow: hidden;
+}
+
+.vitals__fill {
+  display: block;
+  height: 100%;
+  background: var(--meter-color);
+  transition: width 0.5s steps(6);
+}
+
+.vitals__value {
+  grid-area: value;
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Low (or high, for radiation): red frame, blinking, and a "!" so it is not colour alone */
+.vitals__meter.is-alert .vitals__track {
+  outline-color: var(--danger);
+  animation: px-blink 1s steps(1) infinite;
+}
+
+.vitals__alert {
+  grid-area: alert;
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  line-height: 1;
+  color: var(--danger);
+}
+
+/* A small arrow after a change: green up for good, red down for bad. It pops in once. */
+.vitals__delta {
+  position: absolute;
+  margin-left: -2px;
+  font-size: 10px;
+  color: var(--health);
+  animation: px-pop 0.5s steps(4) 1;
+}
+
+.vitals__delta.is-bad {
+  color: var(--danger);
+}
+
+.vitals__meter {
+  position: relative;
+}
+
+/* Mission Control has one meter: keep it compact */
+.vitals--1 .vitals__meter {
+  flex-basis: 90px;
+}
+
+/* The place name and turn never squash: the meters give way instead */
+.hud-top__where {
+  flex: none;
+}
+
+/* Less room: hide the names (icon, bar and number stay) */
+@media (max-width: 1100px) {
+  .vitals__name {
+    display: none;
+  }
+
+  .vitals__meter {
+    grid-template-areas: 'icon track value alert';
+  }
+}
+
+/* A phone held sideways: icon and bar only (the exact numbers are in the bar for screen readers,
+   and a red "!" still shows when a meter is low) */
+@media (max-width: 900px) {
+  .vitals__value {
+    display: none;
+  }
+
+  .vitals {
+    gap: 10px;
+    padding: 2px 8px;
+  }
+
+  .vitals .portrait {
+    display: none;
+  }
+}
+
+/* Narrow windows held upright: the meters take their own row in the bar */
+@media (max-width: 640px) {
+  .hud-top__vitals {
+    order: 5;
+    flex-basis: 100%;
+  }
+
+  .vitals {
+    width: 100%;
+  }
+
+  .game-hud {
+    --hud-top: 150px;
+  }
+}
+
+/* ---------- Pause ---------- */
+/* One device, menu open: the map, the pop-ups and the top bar stop moving until the menu closes.
+   (Not the menu itself: it slides in with an animation, and a frozen animation would hide it.) */
+.game-hud.is-paused .game-hud__map *,
+.game-hud.is-paused .hud-popups *,
+.game-hud.is-paused .hud-top * {
+  animation-play-state: paused !important;
+}
+
+.game-menu__note {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  background: var(--bg-2);
+  border-left: var(--px) solid var(--accent);
+}
+
+.game-menu__note--paused {
+  border-left-color: var(--focus);
+}
+
+.game-menu__note--online {
+  border-left-color: var(--danger);
+}
+
+.game-menu__note-title {
+  margin: 0 0 4px;
+  font-family: var(--font-pixel);
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--focus);
+}
+
+.game-menu__note-text {
+  margin: 0;
+}
+
+/* ---------- The Options tab ---------- */
+.options-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.options-panel__title {
+  margin: 0;
+  font-size: 14px;
+}
+
+.options-panel__subtitle {
+  margin: 8px 0 0;
+  font-size: 18px;
+}
+
+.options-panel__bars {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.options-panel__bars li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.options-panel .screen-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Mission Control has one meter, so it always has room for Nova's face, the name and the number */
+.vitals--1 .portrait {
+  display: inline-block;
+}
+
+.vitals--1 .vitals__name,
+.vitals--1 .vitals__value {
+  display: inline;
+}
+
+.vitals--1 .vitals__meter {
+  grid-template-areas:
+    'icon name name name'
+    'icon track value alert';
+  flex-basis: 110px;
+}
