@@ -1,0 +1,56 @@
+{
+  "id": "placeholder",
+  "title": "Practice Storm",
+  "realDates": "Not a real storm",
+  "savedOn": null,
+  "source": { "name": "TODO", "url": "" },
+  "scalingNote": "Placeholder storm for building the game. The radiation numbers are game points, not real doses.",
+  "stages": [
+    {
+      "label": "Quiet Sun",
+      "incoming": 0,
+      "missionControlSees": "The Sun is calm today. No storm yet.",
+      "realData": {},
+      "fact": { "text": "Placeholder fact", "source": { "name": "TODO", "url": "" } }
+    },
+    {
+      "label": "Flare spotted",
+      "incoming": 5,
+      "missionControlSees": "A bright flash on the Sun! That is a flare, a burst of light and energy.",
+      "realData": {},
+      "fact": { "text": "Placeholder fact", "source": { "name": "TODO", "url": "" } }
+    },
+    {
+      "label": "Cloud launched",
+      "incoming": 10,
+      "missionControlSees": "The Sun threw a giant cloud of hot gas into space. It is coming toward the base.",
+      "realData": {},
+      "fact": { "text": "Placeholder fact", "source": { "name": "TODO", "url": "" } }
+    },
+    {
+      "label": "Particles arrive",
+      "incoming": 40,
+      "missionControlSees": "Fast particles from the Sun are hitting the base right now!",
+      "realData": {},
+      "fact": { "text": "Placeholder fact", "source": { "name": "TODO", "url": "" } }
+    },
+    {
+      "label": "Storm fading",
+      "incoming": 20,
+      "missionControlSees": "The storm is getting weaker, but it is not over yet.",
+      "realData": {},
+      "fact": { "text": "Placeholder fact", "source": { "name": "TODO", "url": "" } }
+    },
+    {
+      "label": "All clear",
+      "incoming": 0,
+      "missionControlSees": "The storm has passed. The base is safe again.",
+      "realData": {},
+      "fact": { "text": "Placeholder fact", "source": { "name": "TODO", "url": "" } }
+    }
+  ],
+  "whatReallyHappened": [
+    "This is a practice storm.",
+    "The real NASA storm will go here soon."
+  ]
+}
