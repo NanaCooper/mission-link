@@ -29,7 +29,7 @@
     {
       "label": "Cloud launched",
       "incoming": 10,
-      "missionControlSees": "The Sun threw a giant cloud of hot gas into space. It is moving at more than 1,200 km every second!",
+      "missionControlSees": "The Sun threw a giant cloud of gas into space. It is moving at more than 1,200 km every second!",
       "realData": { "cmeStart": "2024-05-11T01:36Z", "cmeSpeedKmPerSec": 1263 },
       "fact": {
         "text": "A message from Earth reaches the Moon in just 3 to 14 seconds.",
