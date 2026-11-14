@@ -650,8 +650,10 @@
   justify-self: start;
 }
 
-/* ---------- Narrow windows held upright (no touch, or a tablet): the bar wraps ---------- */
-@media (max-width: 640px) {
+/* ---------- Narrow windows held upright (no touch, or a tablet): the bar wraps ----------
+   Upright only: a small phone held sideways (640 x 300) keeps a one-row bar (see "Phones held
+   sideways" at the end of this file). */
+@media (max-width: 640px) and (orientation: portrait) {
   .game-hud {
     --hud-top: 112px;
   }
@@ -862,7 +864,7 @@
 }
 
 /* Narrow windows held upright: the meters take their own row in the bar */
-@media (max-width: 640px) {
+@media (max-width: 640px) and (orientation: portrait) {
   .hud-top__vitals {
     order: 5;
     flex-basis: 100%;
@@ -964,4 +966,99 @@
     'icon name name name'
     'icon track value alert';
   flex-basis: 110px;
+}
+
+/* ---------- Phones held sideways (short screens, about 300-420 px tall once the browser's bars
+   take their space). Everything that sits over the map gets smaller, so the map keeps as much
+   room as it can:
+   - the top bar stays one slim row ("Switch to" is read out, not shown: face + name stay)
+   - Mission Control has room for Nova's face only on wide screens
+   - the pop-ups fit the empty strip beside the map (the map keeps its shape, so there is a
+     strip on each side), with a minimum so the words still fit ---------- */
+@media (orientation: landscape) and (max-height: 420px) {
+  .game-hud {
+    --hud-top: 54px;
+    /* how wide the strip beside the map is: the map is 10 x 7 squares */
+    --hud-side: calc((100vw - (100dvh - var(--hud-top)) * 10 / 7) / 2 - 12px);
+  }
+
+  .hud-top {
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+
+  .hud-top__title,
+  .hud-top__turn {
+    white-space: nowrap;
+    line-height: 1.05;
+  }
+
+  .hud-switch__prefix {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .vitals--1 .vitals__name {
+    display: none;
+  }
+
+  .vitals--1 .vitals__meter {
+    grid-template-areas: 'icon track value alert';
+    flex-basis: 96px;
+  }
+
+  /* Taps go through the pop-ups and they fold away after a moment, so on a short screen they may
+     use the full height: a long message is never cut off */
+  .hud-popups {
+    width: clamp(210px, var(--hud-side), 300px);
+    max-height: calc(100% - 12px);
+    margin-top: 6px;
+  }
+
+  /* In the narrow strip: no face in the pop-up (the name tag says who it is), so the name stays
+     on one line and the words fit without being cut off */
+  .hud-popup .speech {
+    padding: 6px 10px;
+  }
+
+  .hud-popup .portrait {
+    display: none;
+  }
+}
+
+/* Very narrow phones held sideways (700 px or less): the Menu button shows its icon only (the word
+   is still read out), so the place name keeps its full words */
+@media (orientation: landscape) and (max-height: 420px) and (max-width: 700px) {
+  .vitals--1 .portrait,
+  .vitals--1 .vitals__value {
+    display: none; /* the number is still read out, and a red "!" shows when it is low */
+  }
+
+  /* The Astronaut's four meters need the room more than Mission Control's clock does (the
+     Astronaut cannot act on it). Mission Control keeps its clock. */
+  .astronaut-screen .hud-top__clock {
+    display: none;
+  }
+
+  /* "Mission Control" on two short lines */
+  .hud-switch__name {
+    max-width: 9ch;
+    white-space: normal;
+    line-height: 1.05;
+  }
+
+  .hud-menu-button > span:not(.hud-badge) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }

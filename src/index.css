@@ -72,6 +72,9 @@
 
   color-scheme: dark;
   font-family: var(--font);
+  /* No joined letters: Pixelify Sans draws "fi" as one odd glyph ("first" read as "Arst") */
+  font-variant-ligatures: none;
+  font-feature-settings: 'liga' 0, 'clig' 0;
   font-size: 18px;
   line-height: 1.4;
   color: var(--text);

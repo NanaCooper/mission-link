@@ -583,3 +583,48 @@
     display: none;
   }
 }
+
+/* ---------- Phones held sideways (short screens, about 300-420 px tall) ----------
+   The map needs every pixel, so fewer boxes cover it:
+   - the bubble only shows "Walk ... then press USE" until the first step, "Nova is inside" and
+     "the game is over". Next to a place it stays away: the action button already names the
+     place, and the Yes / No box shows the cost.
+   - the bubble sits top left, in the strip beside the map (the screen's pop-ups are top right)
+   - the action button is a little smaller, and the radio menu uses three columns so its five
+     choices fit without scrolling */
+@media (orientation: landscape) and (max-height: 420px) {
+  .world__bubble--place,
+  .world__bubble--walk.is-started {
+    display: none;
+  }
+
+  .world__bubble,
+  .world__bubble--right {
+    right: auto;
+    left: max(8px, env(safe-area-inset-left));
+    max-width: clamp(190px, var(--hud-side, 30vw), 300px);
+    padding: 6px 10px;
+  }
+
+  .world__bubble--right::after {
+    right: auto;
+    left: 16px;
+    transform: none;
+  }
+
+  .world__action {
+    width: 112px;
+    height: 112px;
+    padding: 10px;
+  }
+
+  .world__textbox {
+    max-height: 72%;
+    padding: 8px 12px;
+    gap: 6px;
+  }
+
+  .world__choices--grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
