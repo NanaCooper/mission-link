@@ -25,6 +25,7 @@ The Four-Person Build Guide wins where it differs from older notes.
 | delayTurns      | 0           | 1 (warnings arrive next turn)           |
 | Starting power  | 100         | 100 - 15, then +5 per Moon star (0-3)   |
 | Save power      | +15         | +15, but +5 on dust stages ([1])        |
+| Signal blackout | none        | blackoutStages [4]: no warning gets through |
 
 ## createGame({ mode, world = 'moon', stormId = DEFAULT_STORM_ID, moonStars = 0 })
 initialState with status 'playing', mode, world, stormId, moonStars, lastFact null,
@@ -32,6 +33,8 @@ and a first log line. On Mars it says how many supply crates were waiting.
 
 ## sendWarning(state, warning)
 Ignored if not 'playing' or not in WARNINGS. One per turn: a new one replaces the old.
+On a blackout stage the warning is not stored; one log line says the Sun is blocking
+the signal (only once per turn).
 Moon: `{ turn, warning }` into inbox. Mars: `{ turnSent: turn, warning }` into outbox.
 
 ## applyMove(state, move), in this order
@@ -58,7 +61,7 @@ Ignored if not 'playing' or not in MOVES.
 - `getAstronautView`: `{ status, turn, maxTurns, world, meters, radiationLimit, science,
   inbox, log, lastMove, lastFact, lostReason, stars }`. No storm data, no dust.
 - `getMissionControlView`: `{ status, turn, maxTurns, world, delayTurns,
-  stage: { label, missionControlSees, dust }, forecast, lastMove, lastFact, crewHealth,
+  stage: { label, missionControlSees, dust, blackout }, forecast, lastMove, lastFact, crewHealth,
   warningThisTurn, lostReason, stars }`. forecast is the next stage label or null.
 
 ## Storm file: storms/<id>.json

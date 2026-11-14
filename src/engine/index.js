@@ -29,6 +29,12 @@ function isDustStage(state) {
   return levelOf(state).dustStages.includes(state.stormStage);
 }
 
+function isBlackoutStage(state) {
+  return levelOf(state).blackoutStages.includes(state.stormStage);
+}
+
+const BLACKOUT_TEXT = 'The Sun is blocking the signal. Your message could not get through!';
+
 export function createGame({ mode = 'split', world = 'moon', stormId = DEFAULT_STORM_ID, moonStars = 0 } = {}) {
   const level = LEVELS[world] ?? LEVELS.moon;
   const stars = world === 'mars' ? moonStars : 0;
@@ -57,6 +63,12 @@ export function createGame({ mode = 'split', world = 'moon', stormId = DEFAULT_S
 export function sendWarning(state, warning) {
   if (state.status !== 'playing' || !WARNINGS.includes(warning)) return state;
   const { turn } = state;
+
+  if (isBlackoutStage(state)) {
+    const last = state.log.at(-1);
+    if (last && last.turn === turn && last.text === BLACKOUT_TEXT) return state;
+    return { ...state, log: [...state.log, { turn, text: BLACKOUT_TEXT }] };
+  }
 
   if (levelOf(state).delayTurns === 0) {
     return {
@@ -215,7 +227,8 @@ export function getMissionControlView(state) {
     stage: {
       label: stage.label,
       missionControlSees: stage.missionControlSees,
-      dust: isDustStage(state)
+      dust: isDustStage(state),
+      blackout: isBlackoutStage(state)
     },
     forecast: next ? next.label : null,
     lastMove: state.lastMove,

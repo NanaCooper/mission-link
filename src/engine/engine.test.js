@@ -181,6 +181,44 @@ describe('warnings', () => {
   });
 });
 
+describe('Mars signal blackout', () => {
+  const blackoutStage = LEVELS.mars.blackoutStages[0];
+
+  it('on the Mars blackout stage no warning is stored and the log says why', () => {
+    const s = atStage(mars(), blackoutStage);
+    const s2 = sendWarning(s, 'shelterNow');
+    expect(s2.outbox).toEqual([]);
+    expect(s2.inbox).toEqual([]);
+    expect(s2.log.at(-1).text).toMatch(/blocking the signal/);
+    expect(getMissionControlView(s2).warningThisTurn).toBeNull();
+  });
+
+  it('sending twice during a blackout adds only one log line', () => {
+    const s = atStage(mars(), blackoutStage);
+    const once = sendWarning(s, 'shelterNow');
+    expect(sendWarning(once, 'allClear').log).toHaveLength(once.log.length);
+  });
+
+  it('the same stage on the Moon has no blackout', () => {
+    const s = sendWarning(atStage(moon(), blackoutStage), 'shelterNow');
+    expect(s.inbox).toEqual([{ turn: blackoutStage, warning: 'shelterNow' }]);
+  });
+
+  it('Mission Control sees blackout only on the Mars blackout stage', () => {
+    for (let stage = 0; stage < 6; stage++) {
+      expect(getMissionControlView(atStage(mars(), stage)).stage.blackout).toBe(stage === blackoutStage);
+      expect(getMissionControlView(atStage(moon(), stage)).stage.blackout).toBe(false);
+      expect(getAstronautView(atStage(mars(), stage))).not.toHaveProperty('blackout');
+    }
+  });
+
+  it('a warning sent the turn before the blackout still arrives', () => {
+    const s = sendWarning(atStage(mars(), blackoutStage - 1), 'shelterNow');
+    const s2 = applyMove(s, 'raiseShield');
+    expect(s2.inbox.at(-1).warning).toBe('shelterNow');
+  });
+});
+
 describe('views', () => {
   it('after a move, both views carry lastFact from the stage just played', () => {
     const s = applyMove(moon(), 'doScience');

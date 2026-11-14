@@ -26,8 +26,9 @@ export const MOVE_EFFECTS = {
 // Stars when the crew survives: 1, 2 if healthy, 3 if also did enough science.
 export const STARS = { healthForTwo: 60, scienceForThree: 2 };
 
-// What changes between the two levels. dustStages holds stage indexes.
+// What changes between the two levels. dustStages and blackoutStages hold stage indexes.
+// On a blackout stage the Sun blocks the signal and no warning gets through.
 export const LEVELS = {
-  moon: { delayTurns: 0, dustStages: [], powerPenalty: 0, powerPerStar: 0 },
-  mars: { delayTurns: 1, dustStages: [1], powerPenalty: 15, powerPerStar: 5 }
+  moon: { delayTurns: 0, dustStages: [], blackoutStages: [], powerPenalty: 0, powerPerStar: 0 },
+  mars: { delayTurns: 1, dustStages: [1], blackoutStages: [4], powerPenalty: 15, powerPerStar: 5 }
 };
