@@ -1,18 +1,23 @@
 // The ONE hook the screens use (docs/CONTRACT.md):
-//   const { state, sendMove, sendWarning, connected, partnerConnected, error } =
-//     useGameSession({ mode, role, code, world, stormId })
+//   const { state, sendMove, sendWarning, restart, connected, partnerConnected, error } =
+//     useGameSession({ mode, role, code, world, moonStars })
 //
 // mode 'split':  both players on one device. No network. Always works.
 // mode 'online': role 'astronaut' is the host (runs the engine), role 'missionControl' is the guest.
-// `world` ('moon' | 'mars') and `stormId` are optional extras (proposed to the team) used when
-// the game is created. `state` is never null: before the game starts it has status 'lobby'.
+// `world` ('moon' | 'mars') and `moonStars` (0-3) pick the FIRST level only. After that:
+//   restart()                          replays the same level
+//   restart({ world: 'mars', moonStars }) starts the next level in the same room ("Fly to Mars")
+// Changing the `world` / `moonStars` props later does nothing; use restart(). In online mode only
+// the host (Astronaut) can restart; Mission Control follows the host's state.
+// `stormId` is an optional extra (not in the contract). `state` is never null: before the game
+// starts it has status 'lobby'.
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { ROLES } from '../shared/contract.js';
 import * as engine from './engineAdapter.js';
 import { hasSupabase } from './supabaseClient.js';
 import { openRoom } from './room.js';
-import { createGuestSession, createHostSession, lobbyState, splitReducer } from './session.js';
+import { createGuestSession, createHostSession, lobbyState, nextLevel, splitReducer } from './session.js';
 
 // Kid-facing messages the screens can show as they are.
 export const SESSION_TEXT = {
@@ -49,30 +54,37 @@ const blankOnline = (key, world) => ({
   error: null,
 });
 
-export function useGameSession({ mode, role, code, world = 'moon', stormId = null }) {
+export function useGameSession({ mode, role, code, world = 'moon', moonStars = 0, stormId = null }) {
   const online = mode === 'online';
   const isHost = role === ROLES.ASTRONAUT;
-  const key = online ? `${role}|${code}|${world}|${stormId}` : null;
+  // The level is not part of the key: a level change must not reconnect the room.
+  const key = online ? `${role}|${code}` : null;
 
   const [splitState, dispatch] = useReducer(reduceSplit, null, () =>
-    engine.createGame({ mode: 'split', world, stormId }),
+    engine.createGame({ mode: 'split', ...nextLevel({ world: 'moon', stormId, moonStars: 0 }, { world, moonStars }) }),
   );
   const [net, setNet] = useState(null);
   const sessionRef = useRef(null);
 
+  // Latest first-level props, read when a room opens (without making the room reconnect on change).
+  const firstLevel = useRef({ world, moonStars, stormId });
+  useEffect(() => {
+    firstLevel.current = { world, moonStars, stormId };
+  }, [world, moonStars, stormId]);
+
   useEffect(() => {
     if (!online || !code || !hasSupabase) return undefined;
+    const first = firstLevel.current;
 
     // Only keep values that belong to this room + role (ignore leftovers from an older one).
-    const patch = (p) => setNet((n) => ({ ...(n?.key === key ? n : blankOnline(key, world)), ...p }));
+    const patch = (p) => setNet((n) => ({ ...(n?.key === key ? n : blankOnline(key, first.world)), ...p }));
 
     const room = openRoom({ code, role });
     const session = isHost
       ? createHostSession({
           room,
           engine,
-          world,
-          stormId,
+          ...first,
           restored: loadSaved(code),
           onChange: (s) => {
             save(code, s);
@@ -111,7 +123,7 @@ export function useGameSession({ mode, role, code, world = 'moon', stormId = nul
       }),
     ];
     return stop;
-  }, [online, isHost, role, code, world, stormId, key]);
+  }, [online, isHost, role, code, key]);
 
   // Astronaut only: one move per turn.
   const sendMove = useCallback(
@@ -131,14 +143,25 @@ export function useGameSession({ mode, role, code, world = 'moon', stormId = nul
     [online, role],
   );
 
+  // restart() replays the level; restart({ world: 'mars', moonStars }) starts the next one.
+  // Online: Astronaut (host) only. Mission Control's call does nothing.
+  const restart = useCallback(
+    (options) => {
+      if (!online) dispatch({ type: 'restart', options });
+      else if (isHost) sessionRef.current?.restart(options);
+    },
+    [online, isHost],
+  );
+
   if (!online) {
-    return { state: splitState, sendMove, sendWarning, connected: true, partnerConnected: true, error: null };
+    return { state: splitState, sendMove, sendWarning, restart, connected: true, partnerConnected: true, error: null };
   }
   const view = net?.key === key ? net : blankOnline(key, world);
   return {
     state: view.state,
     sendMove,
     sendWarning,
+    restart,
     connected: view.connected,
     partnerConnected: view.partnerConnected,
     error: hasSupabase ? view.error : SESSION_TEXT.noSetup,

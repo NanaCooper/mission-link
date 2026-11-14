@@ -94,6 +94,14 @@ describe.skipIf(!live)('live Supabase room', () => {
       }
       expect(['won', 'lost']).toContain(guest.getState().status);
       expect(same()).toBe(true);
+
+      // "Fly to Mars" in the same room: Mission Control follows the host.
+      host.restart({ world: 'mars', moonStars: host.getState().stars });
+      await waitFor(
+        () => guest.getState().world === 'mars' && guest.getState().turn === 0 && same(),
+        'guest follows the restart to Mars',
+      );
+      expect(guest.getState().status).toBe('playing');
     } finally {
       host.close();
       guest.close();
