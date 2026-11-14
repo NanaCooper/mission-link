@@ -1,6 +1,7 @@
 import { Meter, BigButton, Panel, WhyCard, SpeechBox, Portrait, PixelIcon } from '../components/index.js';
 import SpaceScene from './scenes/SpaceScene.jsx';
 import ControlRoomMap from './world/ControlRoomMap.jsx';
+import MissionClock from './MissionClock.jsx';
 import { stormLook, solaMoodForLook } from './scenes/stormLook.js';
 import { useMeterDeltas } from './useMeterDeltas.js';
 import { useGameSounds } from './sound.js';
@@ -41,6 +42,9 @@ export default function MissionControlScreen({ view, onWarn }) {
         <h2 className="mc-header__title pixel-title">Mission Control, Earth</h2>
         <p className="mc-header__turn">{turnText(view)}</p>
       </header>
+
+      {/* The signal clock. When the full-screen layout lands, it moves into the top bar's clock slot. */}
+      <MissionClock view={view} who="missionControl" />
 
       <SpaceScene
         world={view.world}

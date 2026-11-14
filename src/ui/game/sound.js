@@ -2,6 +2,7 @@
 // soundFor() decides WHICH sounds to play (pure, tested). The rest just plays them.
 // Sounds only react to what the view shows. They never change the game.
 import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { CLOCK_URGENT } from './clock.js';
 
 // Radiation going up by at least this much in one turn plays the "hit" sound.
 export const HIT_SOUND_MIN = 10;
@@ -27,6 +28,13 @@ export const SOUNDS = {
     { f: 392, d: 0.22, at: 0, type: 'triangle' },
     { f: 330, d: 0.22, at: 0.26, type: 'triangle' },
     { f: 247, d: 0.45, at: 0.52, type: 'triangle' }
+  ],
+  // The signal clock: a short tick each second near the end, and a buzz when time runs out
+  tick: [{ f: 1200, d: 0.04, at: 0, type: 'square' }],
+  timeUp: [
+    { f: 220, d: 0.25, at: 0, type: 'sawtooth' },
+    { f: 220, d: 0.25, at: 0.32, type: 'sawtooth' },
+    { f: 165, d: 0.5, at: 0.64, type: 'sawtooth' }
   ]
 };
 
@@ -57,6 +65,26 @@ export function soundFor(previous, view) {
     if (isNew && now.turn === view.turn) sounds.push('warning');
   }
 
+  // The signal clock, near the end: one tick each second it goes down.
+  const was = previous.signalSecondsLeft;
+  const left = view.signalSecondsLeft;
+  if (
+    view.status === 'playing' &&
+    view.clockRunning &&
+    view.turn === previous.turn &&
+    typeof was === 'number' &&
+    typeof left === 'number' &&
+    left < was &&
+    left > 0 &&
+    left <= CLOCK_URGENT
+  ) {
+    sounds.push('tick');
+  }
+
+  if (previous.status === 'playing' && view.status === 'lost' && view.lostReason === 'time') {
+    sounds.push('timeUp');
+    return sounds;
+  }
   if (previous.status === 'playing' && view.status === 'won') sounds.push('win');
   if (previous.status === 'playing' && view.status === 'lost') sounds.push('lose');
 

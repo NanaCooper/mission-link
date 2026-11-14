@@ -4,6 +4,7 @@
 // The hint numbers ("Costs 20 power", "Gets back 15 power", ...) mirror
 // src/engine/balance.js (MOVE_EFFECTS). If Dev 1 changes balance.js,
 // update the hints here too. The UI never uses these numbers for game rules.
+import { clockSentence } from './clock.js';
 
 // The three characters. Change a name here and it changes on every screen.
 //   who = which pixel face to draw (see ui/components/pixel/sprites.js)
@@ -90,7 +91,7 @@ export function astronautReadText(view) {
   else if (warning) sola = `${director.name} says: ${NO_NEW_MESSAGE_TEXT} Last message: ${warning.label}.`;
   else sola = `${director.name} says: ${NO_MESSAGE_TEXT}. ${NO_MESSAGE_HINT}`;
 
-  const parts = [sola];
+  const parts = [sola, clockSentence(view, 'astronaut')];
   if (lastLog) parts.push(`${robot.name} says: ${lastLog.text}`);
   return joinSentences(parts);
 }
@@ -101,6 +102,7 @@ export function missionControlReadText(view) {
   const parts = [`${director.name} says: ${view.stage.missionControlSees}`];
   parts.push(view.forecast ? `Coming next: ${view.forecast}` : 'This is the last turn');
   if (view.stage.blackout) parts.push(BLACKOUT_NOTE);
+  else parts.push(clockSentence(view, 'missionControl'));
   if (view.lastFact?.text) parts.push(`${robot.name} says: ${view.lastFact.text}`);
   return joinSentences(parts);
 }

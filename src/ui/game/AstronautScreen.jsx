@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Meter, BigButton, Panel, WhyCard, InfoTip, SpeechBox, Portrait, PixelIcon } from '../components/index.js';
 import BaseMap from './world/BaseMap.jsx';
+import MissionClock from './MissionClock.jsx';
 import { useMeterDeltas } from './useMeterDeltas.js';
 import { useGameSounds, useSoundOn, setSoundOn, unlockAudio } from './sound.js';
 import { useReadAloud } from './useReadAloud.js';
@@ -46,6 +47,9 @@ export default function AstronautScreen({ view, onMove }) {
 
   return (
     <div className={`astronaut-screen world-${view.world}`}>
+      {/* The signal clock. When the full-screen layout lands, it moves into the top bar's clock slot. */}
+      <MissionClock view={view} who="astronaut" />
+
       <ScreenTools readText={astronautReadText(view)} />
 
       <MissionControlMessage view={view} />

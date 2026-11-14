@@ -26,7 +26,11 @@ export const fakeAstronautView = {
   lastMove: 'raiseShield',
   lastFact: placeholderFact,
   lostReason: null,
-  stars: 0
+  stars: 0,
+  // The signal clock: Mission Control already sent "Shelter now" this turn, so it has stopped
+  signalSecondsLeft: 34,
+  signalLimit: 60,
+  clockRunning: false
 };
 
 // What Mission Control sees on the Moon at the same moment
@@ -48,7 +52,10 @@ export const fakeMissionControlView = {
   crewHealth: 81,
   warningThisTurn: 'shelterNow',
   lostReason: null,
-  stars: 0
+  stars: 0,
+  signalSecondsLeft: 34,
+  signalLimit: 60,
+  clockRunning: false
 };
 
 // Mars: warnings arrive one turn late, so the inbox item also says when it was sent

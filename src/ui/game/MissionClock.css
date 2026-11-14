@@ -1,0 +1,77 @@
+/* The signal clock (Dev 3). Pixel look, readable at 360px.
+   Yellow under 20 seconds, red and blinking under 10, always with the word "Hurry!". */
+
+.mission-clock {
+  --clock: var(--accent);
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: var(--tap);
+  padding: 6px 12px;
+  color: var(--text);
+  background: var(--panel);
+  border: var(--px) solid var(--clock);
+  clip-path: var(--notch);
+}
+
+.mission-clock__icon {
+  width: 28px;
+  height: 28px;
+}
+
+.mission-clock__time {
+  font-family: var(--font-pixel);
+  font-size: 20px;
+  line-height: 1;
+  color: var(--clock);
+}
+
+.mission-clock__words {
+  display: grid;
+  min-width: 0;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.mission-clock__title {
+  color: var(--text-dim);
+}
+
+.mission-clock__note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: var(--clock);
+}
+
+.mission-clock__note svg {
+  width: 20px;
+  height: 15px;
+}
+
+.mission-clock--hurry {
+  --clock: var(--power);
+}
+
+.mission-clock--urgent {
+  --clock: var(--danger);
+}
+
+.mission-clock--urgent .mission-clock__time,
+.mission-clock--urgent .mission-clock__note {
+  animation: px-blink 0.5s steps(1) infinite;
+}
+
+.mission-clock--sent {
+  --clock: var(--health);
+}
+
+.mission-clock--blocked {
+  --clock: var(--danger);
+}
+
+.mission-clock--stopped {
+  --clock: var(--panel-border);
+}

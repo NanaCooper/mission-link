@@ -12,11 +12,13 @@ import {
 // The agreed view shapes from src/ui/DEV3_PLAN.md
 const ASTRONAUT_KEYS = [
   'status', 'turn', 'maxTurns', 'world', 'meters', 'radiationLimit', 'science',
-  'inbox', 'log', 'lastMove', 'lastFact', 'lostReason', 'stars'
+  'inbox', 'log', 'lastMove', 'lastFact', 'lostReason', 'stars',
+  'signalSecondsLeft', 'signalLimit', 'clockRunning'
 ];
 const MISSION_CONTROL_KEYS = [
   'status', 'turn', 'maxTurns', 'world', 'delayTurns', 'stage', 'forecast',
-  'lastMove', 'lastFact', 'crewHealth', 'warningThisTurn', 'lostReason', 'stars'
+  'lastMove', 'lastFact', 'crewHealth', 'warningThisTurn', 'lostReason', 'stars',
+  'signalSecondsLeft', 'signalLimit', 'clockRunning'
 ];
 const METER_KEYS = ['power', 'oxygen', 'radiationDose', 'crewHealth'];
 const STAGE_KEYS = ['label', 'missionControlSees', 'dust', 'blackout'];
