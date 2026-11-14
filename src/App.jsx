@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ROLES } from './shared/contract.js';
 import { useGameSession } from './realtime/useGameSession.js';
-import { getAstronautView, getMissionControlView, getStorm } from './realtime/engineAdapter.js';
+import { getAstronautView, getMissionControlView, getGameStorm, getStorm } from './realtime/engineAdapter.js';
 import { makeRoomCode } from './realtime/room.js';
 import SplitScreen from './ui/game/SplitScreen.jsx';
 import AstronautScreen from './ui/game/AstronautScreen.jsx';
@@ -110,7 +110,7 @@ function Game({ session, onLevelEnd, onHome }) {
   useEffect(scrollToTop, [screen, state.world, showSources]);
 
   if (showSources) {
-    return <DataSourcesScreen storm={getStorm(state.stormId)} onBack={() => setShowSources(false)} />;
+    return <DataSourcesScreen storm={getGameStorm(state)} onBack={() => setShowSources(false)} />;
   }
 
   if (screen === 'lobby') {
@@ -123,7 +123,7 @@ function Game({ session, onLevelEnd, onHome }) {
     body = (
       <EndScreen
         view={view}
-        storm={getStorm(state.stormId)}
+        storm={getGameStorm(state)}
         canContinue={!isMissionControl}
         onNextLevel={(stars) => restart({ world: 'mars', moonStars: stars })}
         onPlayAgain={() => restart()}
