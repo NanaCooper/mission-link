@@ -117,10 +117,23 @@ export function openRoom({ code, role, tabId = getTabId(), client = null }) {
       channel.on('presence', { event: 'sync' }, () => {
         if (!closed) emit(presenceListeners, readPresence(channel.presenceState(), key, role));
       });
+      // Tell the room we are here. track() reports 'timed out' or 'error' instead of throwing,
+      // and if it fails the partner never sees us, so keep trying while connected.
+      let tracking = false;
+      const trackSelf = async () => {
+        if (tracking) return;
+        tracking = true;
+        while (!closed && subscribed) {
+          const result = await channel.track({ role, joinedAt }).catch(() => 'error');
+          if (result === 'ok') break;
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+        tracking = false;
+      };
       channel.subscribe((status) => {
         if (closed) return;
         subscribed = status === 'SUBSCRIBED';
-        if (subscribed) channel.track({ role, joinedAt }).catch(() => {});
+        if (subscribed) trackSelf();
         emit(statusListeners, status);
       });
     })
