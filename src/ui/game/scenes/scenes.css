@@ -141,49 +141,11 @@
   animation: px-shield-in 0.5s steps(4) 1, px-glow 1.6s steps(1) 0.5s infinite;
 }
 
-/* ---------- Nova walks to her spot (BaseScene, see novaWalk.js) ----------
-   --walk = how long the walk takes, --walk-from = where she starts (in squares),
-   --walk-cycles = how many leg swaps. With "reduce motion" on she is simply at her spot. */
-.scene__walker.is-walking {
-  animation: px-walk var(--walk) 1 backwards; /* the steps() timing is set on the element */
-}
-
-/* Legs: standing by default. While walking, the two step frames take turns. */
-.scene__legs--left,
-.scene__legs--right {
-  opacity: 0;
-  animation: px-step-left 0.25s steps(1) var(--walk-cycles, 1);
-}
-
-.scene__legs--right {
-  animation-name: px-step-right;
-}
-
-.is-walking .scene__legs--stand {
-  animation: px-hidden var(--walk) steps(1) 1;
-}
-
-/* Shown once Nova has arrived: the shield, the open door, the sparkles */
-.scene__after-walk {
-  animation: px-hidden var(--walk, 0s) steps(1) 1;
-}
-
-.scene__after-walk .scene__shield {
-  animation-delay: var(--walk, 0s), calc(var(--walk, 0s) + 0.5s);
-}
-
-/* Shown only until Nova has arrived: the lights before she saves power, Nova before she goes inside */
-.scene__until-walk {
-  opacity: 0;
-  animation: px-shown var(--walk, 0s) steps(1) 1;
-}
-
-/* A radiation hit on the base: a purple flash after Nova arrives. Invisible before and after. */
+/* A radiation hit on the base (world/BaseMap): a purple flash. Invisible before and after. */
 .scene__hit {
   opacity: 0;
   pointer-events: none;
   animation: px-hit-small 0.4s steps(1) 1;
-  animation-delay: var(--walk, 0s);
 }
 
 .scene__hit--big {
@@ -205,21 +167,7 @@
   91%, 100% { opacity: 0; }
 }
 
-@keyframes px-walk {
-  from { transform: translateX(var(--walk-from, 0px)); }
-  to { transform: translateX(0); }
-}
-
-@keyframes px-step-left {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
-}
-
-@keyframes px-step-right {
-  0%, 49% { opacity: 0; }
-  50%, 100% { opacity: 1; }
-}
-
+/* Used by the walkable maps (world/world.css): show or hide something for one animation */
 @keyframes px-hidden {
   0%, 100% { opacity: 0; }
 }

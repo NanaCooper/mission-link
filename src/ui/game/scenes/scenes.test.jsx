@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import BaseScene, { BIG_HIT } from './BaseScene.jsx';
 import SpaceScene from './SpaceScene.jsx';
 import { stormLook, solaMoodForLook } from './stormLook.js';
 
@@ -22,80 +21,6 @@ describe('stormLook', () => {
     expect(solaMoodForLook('quiet')).toBe('calm');
     expect(solaMoodForLook('clear')).toBe('calm');
     expect(solaMoodForLook('peak')).toBe('alert');
-  });
-});
-
-describe('BaseScene (what the Astronaut sees)', () => {
-  it('says in words what the picture shows, for each move', () => {
-    const label = (lastMove) => renderToStaticMarkup(<BaseScene world="moon" lastMove={lastMove} />);
-    expect(label(null)).toContain('aria-label="Picture: the Moon base. Nova stands by the base."');
-    expect(label('raiseShield')).toContain('The shield is up over the base.');
-    expect(label('shelter')).toContain('The crew is safe inside the shelter.');
-    expect(label('savePower')).toContain('The lights are off to save power.');
-    expect(label('doScience')).toContain('Nova is doing science outside.');
-  });
-
-  it('names Mars on the Mars level', () => {
-    expect(renderToStaticMarkup(<BaseScene world="mars" />)).toContain('Picture: the Mars base.');
-  });
-
-  it('draws the shield only after "Raise shield"', () => {
-    expect(renderToStaticMarkup(<BaseScene lastMove="raiseShield" />)).toContain('scene__shield');
-    expect(renderToStaticMarkup(<BaseScene lastMove="savePower" />)).not.toContain('scene__shield');
-    expect(renderToStaticMarkup(<BaseScene />)).not.toContain('scene__shield');
-  });
-
-  it('hides Nova inside the shelter', () => {
-    expect(renderToStaticMarkup(<BaseScene />)).toContain('px-bob');
-    expect(renderToStaticMarkup(<BaseScene lastMove="shelter" />)).not.toContain('px-bob');
-  });
-
-  it('does not make Nova walk on the first picture (she is already at her spot)', () => {
-    for (const lastMove of [null, 'raiseShield', 'shelter', 'savePower', 'doScience']) {
-      const html = renderToStaticMarkup(<BaseScene lastMove={lastMove} turn={3} />);
-      expect(html).toContain('scene__walker');
-      expect(html).not.toContain('is-walking');
-      expect(html).toContain('--walk:0s');
-    }
-  });
-
-  it('waits for Nova before showing the shield, the open door and the dark windows', () => {
-    expect(renderToStaticMarkup(<BaseScene lastMove="raiseShield" />)).toMatch(/scene__after-walk[^>]*><g class="scene__shield"/);
-    expect(renderToStaticMarkup(<BaseScene lastMove="shelter" />)).toContain('scene__after-walk');
-    expect(renderToStaticMarkup(<BaseScene lastMove="savePower" />)).toContain('scene__until-walk');
-    expect(renderToStaticMarkup(<BaseScene />)).not.toContain('scene__until-walk');
-  });
-
-  it('flashes when radiation hits the base: faintly for a small hit, strongly for a big one', () => {
-    const none = renderToStaticMarkup(<BaseScene hit={0} />);
-    expect(none).not.toContain('scene__hit');
-    expect(none).not.toContain('Radiation hit the base.');
-
-    const small = renderToStaticMarkup(<BaseScene hit={BIG_HIT - 1} />);
-    expect(small).toContain('class="scene__hit"');
-    expect(small).toContain('Radiation hit the base.');
-
-    expect(renderToStaticMarkup(<BaseScene hit={BIG_HIT} />)).toContain('scene__hit--big');
-  });
-
-  it('makes the base lights flicker when power is low', () => {
-    expect(renderToStaticMarkup(<BaseScene lowPower />)).toContain('px-flicker');
-    expect(renderToStaticMarkup(<BaseScene />)).not.toContain('px-flicker');
-  });
-
-  it('never shows the storm: no flying particles, no flare, no gas cloud', () => {
-    for (const lastMove of [null, 'raiseShield', 'shelter', 'savePower', 'doScience']) {
-      const html = renderToStaticMarkup(<BaseScene world="mars" lastMove={lastMove} lowPower hit={40} />);
-      expect(particles(html)).toBe(0);
-      expect(html).not.toContain('scene__flare');
-      expect(html).not.toContain('scene__cloud');
-      expect(html.toLowerCase()).not.toContain('dust');
-    }
-  });
-
-  it('shows the words it is given on top of the picture', () => {
-    const html = renderToStaticMarkup(<BaseScene overlay={<p>Turn 2 of 6</p>} />);
-    expect(html).toContain('Turn 2 of 6');
   });
 });
 

@@ -1,0 +1,148 @@
+/* Walkable pixel maps (Dev 3): the Moon or Mars base, and the control room on Earth.
+   Mobile first: the arrows and the USE button are big enough for small thumbs. */
+
+.world {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.world__view {
+  outline: none;
+}
+
+.world__view:focus-visible {
+  --edge: var(--focus);
+  box-shadow: 0 0 0 var(--px) var(--focus);
+}
+
+/* The character slides one square per step, in small jumps like old games */
+.world__hero {
+  transition: transform 0.16s steps(3);
+}
+
+/* Stepping legs for a moment after each step, then standing legs */
+.world__legs-moving {
+  opacity: 0;
+  animation: px-shown 0.16s steps(1) 1;
+}
+
+.world__legs-still {
+  animation: px-hidden 0.16s steps(1) 1;
+}
+
+.world__prompt {
+  margin: 0;
+  min-height: 2.6em;
+  font-size: 18px;
+  line-height: 1.3;
+  color: var(--text);
+}
+
+.world__prompt strong {
+  color: var(--accent);
+}
+
+/* Arrows on the left, USE on the right */
+.world__controls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.world__pad {
+  display: grid;
+  grid-template-columns: repeat(3, var(--tap));
+  grid-template-rows: repeat(3, var(--tap));
+  gap: 2px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.world__arrow {
+  --edge: var(--panel-border);
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 10px;
+  background: var(--panel);
+  border: var(--px) solid var(--edge);
+  clip-path: var(--notch);
+  cursor: pointer;
+}
+
+.world__arrow svg {
+  width: 100%;
+  height: 100%;
+}
+
+.world__arrow:active {
+  --edge: var(--accent);
+  background: var(--bg-2);
+}
+
+.world__arrow:focus-visible {
+  --edge: var(--focus);
+  outline: none;
+}
+
+.world__arrow--up { grid-area: 1 / 2; }
+.world__arrow--left { grid-area: 2 / 1; }
+.world__arrow--right { grid-area: 2 / 3; }
+.world__arrow--down { grid-area: 3 / 2; }
+.world__arrow--left svg { transform: rotate(-90deg); }
+.world__arrow--right svg { transform: rotate(90deg); }
+.world__arrow--down svg { transform: rotate(180deg); }
+
+/* The USE button: big, with the key name on top and what it will do underneath */
+.world__use {
+  --edge: var(--accent);
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  align-content: center;
+  min-height: calc(var(--tap) * 2);
+  padding: 10px 8px;
+  font-family: var(--font);
+  font-size: 18px;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--text);
+  background: var(--panel);
+  border: var(--px) solid var(--edge);
+  clip-path: var(--notch);
+  cursor: pointer;
+}
+
+.world__use:focus-visible {
+  --edge: var(--focus);
+  outline: none;
+}
+
+.world__use:disabled {
+  --edge: var(--panel-border);
+  color: var(--text-dim);
+  cursor: default;
+}
+
+.world__use-key {
+  padding: 4px 8px;
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  color: var(--accent-contrast);
+  background: var(--accent);
+}
+
+.world__use:disabled .world__use-key {
+  background: var(--panel-border);
+}
+
+.world__use-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

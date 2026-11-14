@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Meter, BigButton, Panel, WhyCard, InfoTip, SpeechBox, Portrait, PixelIcon } from '../components/index.js';
-import BaseScene from './scenes/BaseScene.jsx';
+import BaseMap from './world/BaseMap.jsx';
 import { useMeterDeltas } from './useMeterDeltas.js';
 import { useGameSounds, useSoundOn, setSoundOn, unlockAudio } from './sound.js';
 import { useReadAloud } from './useReadAloud.js';
@@ -27,8 +27,9 @@ import {
 } from './labels.js';
 import './AstronautScreen.css';
 
-// The Astronaut's screen: a picture of the base, the newest message from
-// Mission Control, the base meters, the four move buttons, and what happened last turn.
+// The Astronaut's screen: the newest message from Mission Control, a map of the base where
+// Nova walks to a place and uses it to make her move, the base meters, what happened last turn,
+// and the four move buttons as a quick backup.
 // It only shows the view it is given. The engine decides everything.
 //
 // Props: { view, onMove }  view = getAstronautView(state), onMove(moveKey)
@@ -45,11 +46,15 @@ export default function AstronautScreen({ view, onMove }) {
 
   return (
     <div className={`astronaut-screen world-${view.world}`}>
-      <BaseScene
-        world={view.world}
-        lastMove={view.lastMove}
-        lowPower={view.meters.power < 25}
-        turn={view.turn}
+      <ScreenTools readText={astronautReadText(view)} />
+
+      <MissionControlMessage view={view} />
+
+      {guess.asking && <PredictionQuestion onAnswer={guess.answer} />}
+
+      <BaseMap
+        view={view}
+        onMove={onMove}
         hit={Math.max(0, deltas?.radiationDose ?? 0)}
         overlay={
           <>
@@ -65,16 +70,6 @@ export default function AstronautScreen({ view, onMove }) {
           </>
         }
       />
-
-      <ScreenTools readText={astronautReadText(view)} />
-
-      <MissionControlMessage view={view} />
-
-      <StatusPanel view={view} deltas={deltas} />
-
-      {guess.asking && <PredictionQuestion onAnswer={guess.answer} />}
-
-      <MoveButtons disabled={!isPlaying} onMove={onMove} />
 
       <div className="astronaut-screen__result">
         {guess.result && (
@@ -93,15 +88,20 @@ export default function AstronautScreen({ view, onMove }) {
         )}
         <WhyCard fact={view.lastFact} name={robot.name} />
       </div>
+
+      <StatusPanel view={view} deltas={deltas} />
+
+      <MoveButtons disabled={!isPlaying} onMove={onMove} />
     </div>
   );
 }
 
-// The four move buttons.
+// The four move buttons: a quick backup for walking on the map.
 export function MoveButtons({ disabled, onMove }) {
   return (
-    <section className="astronaut-screen__moves" aria-label="Pick your move">
-      <h2 className="astronaut-screen__moves-title pixel-title">Pick your move</h2>
+    <section className="astronaut-screen__moves" aria-label="Quick moves">
+      <h2 className="astronaut-screen__moves-title pixel-title">Quick moves</h2>
+      <p className="astronaut-screen__moves-hint">No time to walk? Tap a move here.</p>
       <div className="astronaut-screen__buttons">
         {Object.entries(MOVE_INFO).map(([moveKey, info]) => (
           <BigButton

@@ -153,3 +153,10 @@
   background: var(--accent);
   clip-path: var(--notch);
 }
+
+/* The four move buttons, now a backup under the map */
+.astronaut-screen__moves-hint {
+  margin: 0 0 4px;
+  font-size: 18px;
+  color: var(--text-dim);
+}

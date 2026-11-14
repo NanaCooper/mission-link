@@ -124,7 +124,8 @@ describe('AstronautScreen', () => {
       expect(html).toContain(info.hint);
     }
     expect(html.match(/class="big-button"/g)).toHaveLength(4);
-    expect(html).not.toContain('disabled');
+    // Only the move buttons: the map's USE button is off until Nova stands next to a place.
+    expect(html).not.toMatch(/class="big-button"[^>]*disabled/);
   });
 
   it('disables every move button when the game is won or lost', () => {
@@ -140,10 +141,10 @@ describe('AstronautScreen', () => {
     expect(html).not.toContain(fakeAstronautView.log[0].text);
   });
 
-  it('shows the Why? card below the buttons when there is a fact', () => {
+  it('shows the Why? card below the map controls when there is a fact', () => {
     const html = render(fakeAstronautView);
     expect(html).toContain(fakeAstronautView.lastFact.text);
-    expect(html.indexOf('why-card')).toBeGreaterThan(html.lastIndexOf('big-button'));
+    expect(html.indexOf('why-card')).toBeGreaterThan(html.indexOf('world__use'));
   });
 
   it('hides the Why? card when there is no fact', () => {
@@ -197,7 +198,7 @@ describe('AstronautScreen: sound, read-aloud and the prediction prompt', () => {
     expect(html).toContain('Turn 4 of 6');
     expect(html).toContain('The storm may be about to peak.');
     for (const answer of PREDICTION.answers) expect(html).toContain(answer);
-    expect(html).not.toContain('disabled');
+    expect(html).not.toMatch(/class="big-button"[^>]*disabled/);
   });
 
   it('does not ask on other turns or after the game ends', () => {
