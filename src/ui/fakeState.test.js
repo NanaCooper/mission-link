@@ -4,6 +4,7 @@ import {
   fakeMissionControlView,
   fakeMarsAstronautView,
   fakeMarsMissionControlView,
+  fakeMarsBlackoutMissionControlView,
   fakeWonAstronautView,
   fakeLostAstronautView
 } from './fakeState.js';
@@ -18,7 +19,7 @@ const MISSION_CONTROL_KEYS = [
   'lastMove', 'lastFact', 'crewHealth', 'warningThisTurn', 'lostReason', 'stars'
 ];
 const METER_KEYS = ['power', 'oxygen', 'radiationDose', 'crewHealth'];
-const STAGE_KEYS = ['label', 'missionControlSees', 'dust'];
+const STAGE_KEYS = ['label', 'missionControlSees', 'dust', 'blackout'];
 
 const astronautViews = {
   fakeAstronautView,
@@ -26,7 +27,7 @@ const astronautViews = {
   fakeWonAstronautView,
   fakeLostAstronautView
 };
-const missionControlViews = { fakeMissionControlView, fakeMarsMissionControlView };
+const missionControlViews = { fakeMissionControlView, fakeMarsMissionControlView, fakeMarsBlackoutMissionControlView };
 
 const sorted = (obj) => Object.keys(obj).sort();
 
@@ -93,8 +94,15 @@ describe('fake Mission Control views', () => {
     expect(fakeMarsMissionControlView.stage).toEqual({
       label: 'Particles arrive',
       missionControlSees: 'Dust is covering the solar panels. Saving power gives less today.',
-      dust: true
+      dust: true,
+      blackout: false
     });
+  });
+
+  it('the Mars blackout view has the signal blocked and no warning sent', () => {
+    expect(fakeMarsBlackoutMissionControlView).toMatchObject({ world: 'mars', delayTurns: 1, warningThisTurn: null });
+    expect(fakeMarsBlackoutMissionControlView.stage.blackout).toBe(true);
+    expect(fakeMissionControlView.stage.blackout).toBe(false);
   });
 });
 

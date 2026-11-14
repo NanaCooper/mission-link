@@ -1,10 +1,46 @@
 import { describe, it, expect } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import MissionControlScreen from './MissionControlScreen.jsx';
-import { fakeMissionControlView, fakeMarsMissionControlView } from '../fakeState.js';
+import {
+  fakeMissionControlView,
+  fakeMarsMissionControlView,
+  fakeMarsBlackoutMissionControlView
+} from '../fakeState.js';
 
 const noop = () => {};
 const render = (view) => renderToStaticMarkup(<MissionControlScreen view={view} onWarn={noop} />);
+
+describe('MissionControlScreen: Mars signal blackout', () => {
+  it('shows the "Signal blocked" badge and the blackout note', () => {
+    const html = render(fakeMarsBlackoutMissionControlView);
+    expect(html).toContain('Signal blocked');
+    expect(html).toContain("The Sun is blocking the signal. Your warning can&#x27;t get through this turn.");
+  });
+
+  it('disables all four warning buttons during a blackout', () => {
+    const html = render(fakeMarsBlackoutMissionControlView);
+    expect(html.match(/<button[^>]*disabled/g)).toHaveLength(4);
+  });
+
+  it('hides the delay note during a blackout, since no message is sent at all', () => {
+    expect(render(fakeMarsBlackoutMissionControlView)).not.toContain('Mars is far away');
+  });
+
+  it('shows no blackout badge or note when blackout is false', () => {
+    for (const view of [fakeMissionControlView, fakeMarsMissionControlView]) {
+      const html = render(view);
+      expect(html).not.toContain('Signal blocked');
+      expect(html).not.toContain('blocking the signal');
+    }
+  });
+
+  it('still works if an older view has no blackout field', () => {
+    const { blackout, ...stageWithoutBlackout } = fakeMissionControlView.stage;
+    const html = render({ ...fakeMissionControlView, stage: stageWithoutBlackout });
+    expect(html).not.toContain('Signal blocked');
+    expect(html).not.toContain('disabled');
+  });
+});
 
 describe('MissionControlScreen', () => {
   it('shows the header, turn, storm stage and forecast', () => {

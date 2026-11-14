@@ -29,6 +29,11 @@ export const RADIATION_EXPLAINER =
 export const MARS_DELAY_NOTE =
   'Mars is far away. Your message arrives next turn, so warn about what is coming next.';
 
+// Mars signal blackout (stage.blackout): the Sun is between Earth and Mars
+export const BLACKOUT_BADGE = 'Signal blocked';
+export const BLACKOUT_NOTE =
+  "The Sun is blocking the signal. Your warning can't get through this turn.";
+
 // The engine counts turns from 0, and turn reaches maxTurns when the game ends.
 export function turnText(view) {
   return `Turn ${Math.min(view.turn + 1, view.maxTurns)} of ${view.maxTurns}`;

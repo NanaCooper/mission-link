@@ -121,6 +121,23 @@
   border-radius: var(--radius-sm);
 }
 
+/* Mars signal blackout: warning red, so it stands out from the delay note */
+.mc-badge--blackout {
+  border-color: var(--danger);
+}
+
+.mc-blackout {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0;
+  padding: 12px 16px;
+  font-weight: 700;
+  background: var(--bg-2);
+  border: 3px solid var(--danger);
+  border-radius: var(--radius-sm);
+}
+
 .mc-delay__icon {
   font-size: 1.5rem;
   line-height: 1;
