@@ -1,0 +1,133 @@
+/* AstronautScreen layout (owned by Dev 3).
+   Mobile first: one column at 360px, nothing wider than the screen.
+   The global look (colours, Meter, BigButton, Panel) lives in src/index.css. */
+
+.astronaut-screen {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Header ---------- */
+.astronaut-screen__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.astronaut-screen__title {
+  font-size: 1.6rem;
+  margin: 0;
+  color: var(--accent);
+}
+
+.astronaut-screen__turn {
+  margin: 0;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+/* ---------- Meters ---------- */
+.astronaut-screen__meters {
+  display: grid;
+  gap: 14px;
+}
+
+.astronaut-screen__radiation {
+  display: grid;
+  gap: 6px;
+}
+
+/* "Storm radiation budget" is a long label. A small grid keeps it tidy at 360px:
+   icon on the left, label in the middle (wraps between words), number on the right,
+   and the "High!" badge on its own row under the label so nothing overlaps. */
+.astronaut-screen__radiation .meter__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'icon label value'
+    'icon alert alert';
+  gap: 4px 8px;
+}
+
+.astronaut-screen__radiation .meter__icon { grid-area: icon; }
+.astronaut-screen__radiation .meter__value { grid-area: value; }
+
+.astronaut-screen__radiation .meter__label {
+  grid-area: label;
+  overflow-wrap: normal; /* break between words only, never inside "radiation" */
+}
+
+.astronaut-screen__radiation .meter__alert {
+  grid-area: alert;
+  justify-self: start;
+}
+
+/* ---------- Message from Mission Control ---------- */
+.astronaut-screen__message {
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 2px dashed var(--panel-border);
+  background: var(--bg-2);
+}
+
+/* A real warning: bigger, solid accent border, so it stands out (with words, not just colour). */
+.astronaut-screen__message.has-warning {
+  border: 4px solid var(--accent);
+  background: var(--panel);
+}
+
+.astronaut-screen__message p {
+  margin: 0;
+}
+
+.astronaut-screen__message-from {
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.astronaut-screen__message-text {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.astronaut-screen__message-icon {
+  font-size: 2rem;
+}
+
+.astronaut-screen__message-empty {
+  color: var(--text-dim);
+}
+
+/* ---------- Move buttons ---------- */
+.astronaut-screen__moves-title {
+  font-size: 1.25rem;
+}
+
+.astronaut-screen__buttons {
+  display: grid;
+  gap: var(--gap);
+}
+
+/* Two columns once there is room (tablets, laptops). */
+@media (min-width: 600px) {
+  .astronaut-screen__buttons {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---------- Last turn ---------- */
+.astronaut-screen__result {
+  display: grid;
+  gap: var(--gap);
+}
+
+.astronaut-screen__log {
+  margin: 0;
+  font-weight: 700;
+}
