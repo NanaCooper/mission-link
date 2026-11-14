@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { initialState, MOVES, WARNINGS } from '../shared/contract.js';
-import { LEVELS } from '../engine/balance.js'; // read-only: Dev 1's numbers, so this test never hard-codes them
+import { LEVELS, STORM_LIMITS } from '../engine/balance.js'; // read-only: Dev 1's numbers, so this test never hard-codes them
 import * as engine from './fakeEngine.js';
 import * as realEngine from './engineAdapter.js';
-import { createHostSession, createGuestSession, splitReducer } from './session.js';
+import { createHostSession, createGuestSession, splitReducer, nextLevel, MAX_STORM_BYTES } from './session.js';
 
 // Two linked fake rooms. Messages only arrive while both sides are connected, like the real thing.
 // drop(side, event) makes the next `event` that side sends get lost on the way (Supabase can do that).
@@ -423,6 +423,147 @@ describe('restart (replay, and "Fly to Mars")', () => {
 
     const mars = reduce(s, { type: 'restart', options: { world: 'mars', moonStars: 3 } });
     expect(mars).toEqual(realEngine.createGame({ mode: 'split', world: 'mars', stormId: s.stormId, moonStars: 3 }));
+  });
+});
+
+describe('ready-made storm (Level 3: Live Sun)', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  // A storm the real engine accepts: 6 stages, incoming at the top of Dev 1's limits.
+  const makeStorm = (id = 'live-test-x1', incoming = STORM_LIMITS.maxIncoming) => ({
+    id,
+    title: 'Live Sun test storm',
+    stages: incoming.map((n, i) => ({ label: `Live stage ${i + 1}`, missionControlSees: `Live reading ${i + 1}`, incoming: n })),
+    whatReallyHappened: ['A test flare.'],
+  });
+  const savedId = realEngine.getStorm(null).id;
+  const marsWithStorm = (storm) => realEngine.createGame({ mode: 'split', world: 'mars', moonStars: 2, storm });
+
+  describe('nextLevel', () => {
+    const live = makeStorm();
+    const current = { world: 'mars', stormId: live.id, moonStars: 2, storm: live };
+
+    it('uses a storm that is passed in', () => {
+      const level = nextLevel({ world: 'mars', stormId: savedId, moonStars: 2 }, { storm: live });
+      expect(level).toEqual({ world: 'mars', stormId: savedId, moonStars: 2, storm: live });
+    });
+
+    it('Play again keeps the live storm, even when restart gets a click event', () => {
+      expect(nextLevel(current).storm).toBe(live);
+      expect(nextLevel(current, { type: 'click', target: {} }).storm).toBe(live);
+    });
+
+    it('a different world, or storm: null, goes back to the saved storm', () => {
+      for (const options of [{ world: 'moon' }, { storm: null }, { world: 'mars', storm: null }]) {
+        const level = nextLevel(current, options);
+        expect(level).not.toHaveProperty('storm');
+        expect(level.stormId).toBeNull();
+      }
+    });
+
+    it('ignores a storm with no stages or one too big to send, so the saved storm plays', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const huge = { ...makeStorm(), note: 'x'.repeat(MAX_STORM_BYTES) };
+      for (const storm of [{}, { stages: [] }, 'storm', huge]) {
+        expect(nextLevel({ world: 'mars', stormId: savedId }, { storm })).not.toHaveProperty('storm');
+      }
+      expect(warn).toHaveBeenCalled();
+    });
+
+    it('levels 1 and 2 give createGame exactly the old arguments (no storm key)', () => {
+      expect(nextLevel({ world: 'moon', stormId: null, moonStars: 0 }, { world: 'mars', moonStars: 3 })).toEqual({
+        world: 'mars',
+        stormId: null,
+        moonStars: 3,
+      });
+    });
+  });
+
+  it('split: restart({ storm }) plays it, Play again keeps it, storm: null goes back to the saved one', () => {
+    const reduce = splitReducer(realEngine);
+    const live = makeStorm();
+    let s = realEngine.createGame({ mode: 'split', world: 'mars', moonStars: 2 });
+    expect(s.storm).toBeNull();
+
+    s = reduce(s, { type: 'restart', options: { storm: live } });
+    expect(s.storm).toEqual(live);
+    expect(s.stormId).toBe(live.id);
+    expect(s.moonStars).toBe(2);
+    expect(realEngine.getGameStorm(s)).toEqual(live);
+
+    s = reduce(s, { type: 'move', move: 'shelter' });
+    s = reduce(s, { type: 'restart' });
+    expect(s.turn).toBe(0);
+    expect(s.storm).toEqual(live);
+
+    s = reduce(s, { type: 'restart', options: { storm: null } });
+    expect(s.storm).toBeNull();
+    expect(s.stormId).toBe(savedId);
+  });
+
+  it('online: the host starts Level 3 and Mission Control gets the same storm and sees its stages', () => {
+    const net = memoryRooms();
+    const host = createHostSession({ room: net.hostRoom, engine: realEngine, world: 'mars', moonStars: 2 });
+    const guest = createGuestSession({ room: net.guestRoom, resyncEveryMs: 0 });
+    net.join(net.host);
+    net.join(net.guest);
+    const live = makeStorm();
+
+    host.restart({ world: 'mars', moonStars: 2, storm: live });
+    expect(guest.getState()).toEqual(host.getState());
+    expect(guest.getState().storm).toEqual(live);
+    expect(realEngine.getMissionControlView(guest.getState()).stage.label).toBe('Live stage 1');
+
+    host.sendMove('shelter');
+    expect(realEngine.getMissionControlView(guest.getState()).stage.label).toBe('Live stage 2');
+    expect(guest.getState()).toEqual(host.getState());
+  });
+
+  it('online: a lost update with a new storm is healed by the 3-second resync', () => {
+    vi.useFakeTimers();
+    try {
+      const net = memoryRooms();
+      const host = createHostSession({ room: net.hostRoom, engine: realEngine, world: 'mars' });
+      const guest = createGuestSession({ room: net.guestRoom, resyncEveryMs: 3000 });
+      net.join(net.host);
+      net.join(net.guest);
+      net.drop(net.host, 'stateUpdate');
+      host.restart({ storm: makeStorm() });
+      expect(guest.getState().storm).toBeNull();
+      vi.advanceTimersByTime(3000);
+      expect(guest.getState()).toEqual(host.getState());
+      guest.close();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a host started with a storm (Level 3 picked on Home) plays it; a reloaded host keeps it', () => {
+    const live = makeStorm();
+    const first = memoryRooms();
+    const host = createHostSession({ room: first.hostRoom, engine: realEngine, world: 'mars', moonStars: 1, storm: live });
+    first.join(first.host);
+    first.join(first.guest);
+    expect(host.getState().storm).toEqual(live);
+    host.sendMove('shelter');
+
+    const again = memoryRooms();
+    const reloaded = createHostSession({ room: again.hostRoom, engine: realEngine, restored: host.getState() });
+    const guest = createGuestSession({ room: again.guestRoom, resyncEveryMs: 0 });
+    again.join(again.host);
+    again.join(again.guest);
+    expect(guest.getState().storm).toEqual(live);
+    expect(guest.getState().turn).toBe(1);
+    reloaded.restart();
+    expect(guest.getState().storm).toEqual(live); // Play again after the reload still plays the live storm
+  });
+
+  it('a storm the engine rejects (outside STORM_LIMITS) falls back to the saved storm: the game never breaks', () => {
+    const tooStrong = makeStorm('live-too-strong', STORM_LIMITS.maxIncoming.map((n) => n + 20));
+    const s = marsWithStorm(tooStrong);
+    expect(s.storm).toBeNull();
+    expect(s.stormId).toBe(savedId);
+    expect(s.status).toBe('playing');
   });
 });
 

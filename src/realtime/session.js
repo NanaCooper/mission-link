@@ -10,20 +10,53 @@
 import { initialState, MOVES, WARNINGS, WORLDS } from '../shared/contract.js';
 
 /** What players see before a game starts. */
-export function lobbyState({ mode = 'online', world = 'moon', moonStars = 0 } = {}) {
-  return { ...initialState, mode, world, moonStars };
+export function lobbyState({ mode = 'online', world = 'moon', moonStars = 0, storm = null } = {}) {
+  return { ...initialState, mode, world, moonStars, storm };
+}
+
+// A ready-made storm travels inside every stateUpdate, so keep it well under Supabase's message size limit.
+export const MAX_STORM_BYTES = 64 * 1024;
+
+/** True if a ready-made storm can be sent over the network. The engine does the full game check (isValidStorm). */
+export function canSendStorm(storm) {
+  if (!storm || typeof storm !== 'object' || !Array.isArray(storm.stages) || storm.stages.length === 0) return false;
+  try {
+    return JSON.stringify(storm).length <= MAX_STORM_BYTES;
+  } catch {
+    return false;
+  }
 }
 
 /**
- * The level that restart() starts: the current one, changed by `{ world, moonStars }` if given.
+ * The level that restart() starts: the current one, changed by `{ world, moonStars, storm }` if given.
  * Bad values are ignored (so `onClick={restart}`, which passes a click event, just replays).
- * moonStars is kept to 0-3. The storm stays the same.
+ * moonStars is kept to 0-3.
+ * Storm (Level 3: Live Sun):
+ *   { storm: liveStorm }  play this ready-made storm (if it is unusable, the saved storm plays)
+ *   { storm: null }       play the saved storm again (for example "back to level 2")
+ *   no `storm` key        keep the current storm when the world stays the same (Play again),
+ *                         drop it when the world changes (a live storm never follows you to another world)
  */
-export function nextLevel(current, { world, moonStars } = {}) {
+export function nextLevel(current, options = {}) {
+  const { world, moonStars } = options ?? {};
+  const nextWorld = WORLDS.includes(world) ? world : current.world;
+  const askedStorm = options != null && Object.prototype.hasOwnProperty.call(options, 'storm');
+
+  let storm = null;
+  if (askedStorm && options.storm != null) {
+    if (canSendStorm(options.storm)) storm = options.storm;
+    else console.warn('Mission Link: this storm is too big or has no stages, so the saved storm plays instead.');
+  } else if (!askedStorm && nextWorld === current.world) {
+    storm = current.storm ?? null;
+  }
+
   return {
-    world: WORLDS.includes(world) ? world : current.world,
-    stormId: current.stormId ?? null,
+    world: nextWorld,
+    // A live storm's id means nothing without the storm, so drop it with the storm.
+    stormId: !storm && current.storm ? null : (current.stormId ?? null),
     moonStars: Number.isInteger(moonStars) ? Math.min(3, Math.max(0, moonStars)) : (current.moonStars ?? 0),
+    // Only passed when there is one, so createGame sees exactly the old arguments for levels 1 and 2.
+    ...(storm ? { storm } : {}),
   };
 }
 
@@ -33,8 +66,10 @@ export function nextLevel(current, { world, moonStars } = {}) {
  * - Sends `stateUpdate { state }` after every change, when the partner (re)joins,
  *   and whenever Mission Control asks with `requestState`.
  * - Applies `sendWarning { turn, warning }` only if it is for the current turn.
- * - restart() replays the level, restart({ world: 'mars', moonStars }) starts the next one.
- *   Same room, and Mission Control follows through the usual `stateUpdate`.
+ * - restart() replays the level, restart({ world: 'mars', moonStars }) starts the next one,
+ *   restart({ world, moonStars, storm }) starts a level with a ready-made storm (Level 3).
+ *   Same room, and Mission Control follows through the usual `stateUpdate` (the storm is in the state).
+ * `storm` starts the first level with a ready-made storm (Level 3 picked on Home).
  * `restored` is a saved state (for example after a page reload) to continue instead of starting over.
  */
 export function createHostSession({
@@ -43,10 +78,13 @@ export function createHostSession({
   world = 'moon',
   stormId = null,
   moonStars = 0,
+  storm = null,
   restored = null,
   onChange = () => {},
 }) {
-  let level = restored ? nextLevel(restored) : nextLevel({ world: 'moon', stormId, moonStars: 0 }, { world, moonStars });
+  let level = restored
+    ? nextLevel(restored)
+    : nextLevel({ world: 'moon', stormId, moonStars: 0 }, { world, moonStars, ...(storm ? { storm } : {}) });
   let state = restored ?? lobbyState({ mode: 'online', ...level });
   let partnerHere = false;
   const start = () => engine.createGame({ mode: 'online', ...level });
