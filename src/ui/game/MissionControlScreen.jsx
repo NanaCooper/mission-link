@@ -2,133 +2,213 @@ import { Meter, BigButton, Panel, WhyCard, SpeechBox, Portrait, PixelIcon } from
 import SpaceScene from './scenes/SpaceScene.jsx';
 import ControlRoomMap from './world/ControlRoomMap.jsx';
 import MissionClock from './MissionClock.jsx';
+import GameHud from './hud/GameHud.jsx';
+import { useGameMenu } from './hud/useGameMenu.js';
+import { usePopup } from './hud/usePopup.js';
 import { stormLook, solaMoodForLook } from './scenes/stormLook.js';
 import { useMeterDeltas } from './useMeterDeltas.js';
 import { useGameSounds } from './sound.js';
 import { ScreenTools } from './AstronautScreen.jsx';
 import {
   CHARACTERS,
+  MISSION_CONTROL_TABS,
+  MISSION_CONTROL_TITLE,
   missionControlReadText,
   WARNING_INFO,
   MOVE_INFO,
   MARS_DELAY_NOTE,
   BLACKOUT_BADGE,
   BLACKOUT_NOTE,
+  OPEN_MENU_HINT,
+  LEVEL_END_TEXT,
+  newStageText,
+  sentText,
   novaMood,
   turnText,
 } from './labels.js';
 import './MissionControlScreen.css';
 
-// Mission Control on Earth: sees the storm, cannot act, can only send a warning.
-// The big screen shows space. Below it, Commander Sola walks around the control room
-// (radio desk, telescope, crew monitor). The warning buttons stay as a quick backup.
-// Props only (no session hook, no engine): { view, onWarn }
-//   view    the Mission Control view (see src/ui/DEV3_PLAN.md)
-//   onWarn  called with a warning key, e.g. onWarn('shelterNow')
+// Mission Control on Earth, full screen and held sideways (see hud/GameHud.jsx):
+// sees the storm, cannot act, can only send a warning.
+//   The control room map fills the screen (Commander Sola walks to the radio desk, the telescope
+//   or the crew monitor). A slim bar on top. Pop-ups for what is new (the storm stage, a blackout,
+//   the warning just sent). The Menu has three tabs: Big screen (the space picture and Sola's
+//   briefing), Crew, and Warnings (the quick warning buttons).
+// Props only (no session hook, no engine):
+//   view          the Mission Control view (see src/ui/DEV3_PLAN.md)
+//   onWarn        called with a warning key, e.g. onWarn('shelterNow')
+//   active        false while this screen is hidden on one device (no keyboard, pop-ups wait)
+//   switchButton  one device only: the top-bar button that hands the device to the Astronaut
 // Mission Control must NOT see power, oxygen or radiation. Only crew health.
-export default function MissionControlScreen({ view, onWarn }) {
+export default function MissionControlScreen({ view, onWarn, active = true, switchButton = null }) {
   const { stage } = view;
   const playing = view.status === 'playing';
+  const ended = view.status === 'won' || view.status === 'lost';
   // On a Mars blackout turn the Sun blocks the signal: no warning can be sent.
   const blackout = Boolean(stage.blackout);
   const canWarn = playing && !blackout;
+  const sent = view.warningThisTurn ? WARNING_INFO[view.warningThisTurn] : null;
   const director = CHARACTERS.director;
+  const menu = useGameMenu('bigScreen');
 
   useGameSounds(view);
 
+  // Pop-ups show on their own for a few seconds, then fold away (only while this screen shows).
+  const showStage = usePopup(playing ? `stage:${view.turn}:${stage.label}` : null, active);
+  const showSent = usePopup(sent ? `sent:${view.turn}:${view.warningThisTurn}` : null, active);
+  const showEnd = usePopup(ended ? `end:${view.status}` : null, active);
+
+  const popups = (
+    <>
+      {showStage && (
+        <div className="hud-popup">
+          <SpeechBox
+            who={director.who}
+            mood={blackout ? 'alert' : solaMoodForLook(stormLook(view.turn))}
+            name={director.name}
+            tone={blackout ? 'alert' : undefined}
+            size={32}
+            icon={<PixelIcon name={blackout ? 'noSignal' : 'storm'} size={20} />}
+            text={blackout ? BLACKOUT_NOTE : newStageText(stage.label)}
+          >
+            <p>{OPEN_MENU_HINT}</p>
+          </SpeechBox>
+        </div>
+      )}
+      {showSent && (
+        <p className="hud-popup hud-popup--line">
+          <PixelIcon name={sent.sprite} size={24} />
+          <span>{sentText(sent.label, view.delayTurns)}</span>
+        </p>
+      )}
+      {showEnd && (
+        <p className={`hud-popup hud-popup--line hud-popup--${view.status}`}>
+          <PixelIcon name="star" size={24} />
+          <span>{LEVEL_END_TEXT[view.status]}</span>
+        </p>
+      )}
+    </>
+  );
+
+  const tabs = [
+    {
+      id: 'bigScreen',
+      ...MISSION_CONTROL_TABS.bigScreen,
+      content: (
+        <>
+          <SpaceScene
+            world={view.world}
+            turn={view.turn}
+            stageName={stage.label}
+            dust={Boolean(stage.dust)}
+            blackout={blackout}
+            messageSent={Boolean(view.warningThisTurn)}
+            overlay={
+              <>
+                <div className="scene__top">
+                  <p className="scene__title">{stage.label}</p>
+                </div>
+                {/* Tags sit in the bottom corner: at the top they would wrap over the picture. */}
+                {(stage.dust || blackout) && (
+                  <div className="scene__corner scene__corner--stack">
+                    {stage.dust && (
+                      <p className="scene__tag">
+                        <PixelIcon name="wind" size={14} /> Dust storm
+                      </p>
+                    )}
+                    {blackout && (
+                      <p className="scene__tag scene__tag--danger">
+                        <PixelIcon name="noSignal" size={14} /> {BLACKOUT_BADGE}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
+            }
+          />
+          <SpeechBox
+            className="mc-brief"
+            who={director.who}
+            mood={solaMoodForLook(stormLook(view.turn))}
+            name={director.name}
+            text={stage.missionControlSees}
+          >
+            <p className="mc-brief__next">
+              <PixelIcon name="next" size={16} />{' '}
+              {view.forecast ? `Coming next: ${view.forecast}` : 'This is the last turn'}
+            </p>
+          </SpeechBox>
+          <WhyCard fact={view.lastFact} name={CHARACTERS.robot.name} />
+        </>
+      ),
+    },
+    {
+      id: 'crew',
+      ...MISSION_CONTROL_TABS.crew,
+      content: <CrewStatus view={view} />,
+    },
+    {
+      id: 'warnings',
+      ...MISSION_CONTROL_TABS.warnings,
+      content: (
+        <section className="mc-warn" aria-label="Quick warnings">
+          <h2 className="mc-warn__title pixel-title">Quick warnings</h2>
+          <p className="mc-warn__hint">No time to walk to the radio? Tap a warning here.</p>
+
+          {blackout && (
+            <p className="mc-note mc-note--blackout" role="status">
+              <PixelIcon name="noSignal" size={28} />
+              <span>{BLACKOUT_NOTE}</span>
+            </p>
+          )}
+
+          {view.delayTurns === 1 && !blackout && (
+            <p className="mc-note" role="note">
+              <PixelIcon name="signal" size={28} />
+              <span>{MARS_DELAY_NOTE}</span>
+            </p>
+          )}
+
+          <div className="mc-warn__buttons">
+            {Object.entries(WARNING_INFO).map(([warningKey, info]) => (
+              <BigButton
+                key={warningKey}
+                icon={<PixelIcon name={info.sprite} size={30} />}
+                label={info.label}
+                onClick={() => onWarn(warningKey)}
+                disabled={!canWarn}
+                selected={warningKey === view.warningThisTurn}
+              />
+            ))}
+          </div>
+        </section>
+      ),
+    },
+  ];
+
   return (
     <div className={`mission-control-screen world-${view.world}`}>
-      <header className="mc-header">
-        <h2 className="mc-header__title pixel-title">Mission Control, Earth</h2>
-        <p className="mc-header__turn">{turnText(view)}</p>
-      </header>
-
-      {/* The signal clock. When the full-screen layout lands, it moves into the top bar's clock slot. */}
-      <MissionClock view={view} who="missionControl" />
-
-      <SpaceScene
-        world={view.world}
-        turn={view.turn}
-        stageName={stage.label}
-        dust={Boolean(stage.dust)}
-        blackout={blackout}
-        messageSent={Boolean(view.warningThisTurn)}
-        overlay={
-          <>
-            <div className="scene__top">
-              <p className="scene__title">{stage.label}</p>
-            </div>
-            {/* Tags sit in the bottom corner: on a phone they would wrap over the picture up top. */}
-            {(stage.dust || blackout) && (
-              <div className="scene__corner scene__corner--stack">
-                {stage.dust && (
-                  <p className="scene__tag">
-                    <PixelIcon name="wind" size={14} /> Dust storm
-                  </p>
-                )}
-                {blackout && (
-                  <p className="scene__tag scene__tag--danger">
-                    <PixelIcon name="noSignal" size={14} /> {BLACKOUT_BADGE}
-                  </p>
-                )}
-              </div>
-            )}
-          </>
+      <GameHud
+        label={`${director.name}'s screen: Mission Control`}
+        active={active}
+        title={MISSION_CONTROL_TITLE}
+        turn={turnText(view)}
+        clock={<MissionClock view={view} who="missionControl" />}
+        tools={<ScreenTools readText={missionControlReadText(view)} />}
+        switchButton={switchButton}
+        popups={popups}
+        menu={menu}
+        tabs={tabs}
+        menuLabel="Mission Control menu"
+        map={
+          <ControlRoomMap
+            view={view}
+            onWarn={onWarn}
+            // Only the screen that shows, with its menu closed, takes the arrow keys.
+            active={active && !menu.isOpen}
+          />
         }
       />
-
-      <ScreenTools readText={missionControlReadText(view)} />
-
-      <SpeechBox
-        className="mc-brief"
-        who={director.who}
-        mood={solaMoodForLook(stormLook(view.turn))}
-        name={director.name}
-        text={stage.missionControlSees}
-      >
-        <p className="mc-brief__next">
-          <PixelIcon name="next" size={16} />{' '}
-          {view.forecast ? `Coming next: ${view.forecast}` : 'This is the last turn'}
-        </p>
-      </SpeechBox>
-
-      <ControlRoomMap view={view} onWarn={onWarn} />
-
-      <CrewStatus view={view} />
-
-      <section className="mc-warn" aria-label="Quick warnings">
-        <h3 className="mc-warn__title pixel-title">Quick warnings</h3>
-        <p className="mc-warn__hint">No time to walk to the radio? Tap a warning here.</p>
-
-        {blackout && (
-          <p className="mc-note mc-note--blackout" role="status">
-            <PixelIcon name="noSignal" size={28} />
-            <span>{BLACKOUT_NOTE}</span>
-          </p>
-        )}
-
-        {view.delayTurns === 1 && !blackout && (
-          <p className="mc-note" role="note">
-            <PixelIcon name="signal" size={28} />
-            <span>{MARS_DELAY_NOTE}</span>
-          </p>
-        )}
-
-        <div className="mc-warn__buttons">
-          {Object.entries(WARNING_INFO).map(([warningKey, info]) => (
-            <BigButton
-              key={warningKey}
-              icon={<PixelIcon name={info.sprite} size={30} />}
-              label={info.label}
-              onClick={() => onWarn(warningKey)}
-              disabled={!canWarn}
-              selected={warningKey === view.warningThisTurn}
-            />
-          ))}
-        </div>
-      </section>
-
-      <WhyCard fact={view.lastFact} name={CHARACTERS.robot.name} />
     </div>
   );
 }

@@ -1,25 +1,14 @@
-/* AstronautScreen layout (owned by Dev 3).
-   Mobile first: one column at 360px, nothing wider than the screen.
+/* AstronautScreen (owned by Dev 3).
+   The full-screen frame (map, top bar, pop-ups, menu) is in hud/hud.css.
+   This file styles what sits inside the menu tabs, which are about 300px wide on a phone held sideways.
    The global pixel look (colours, Meter, BigButton, Panel, SpeechBox) lives in src/index.css. */
 
+/* Only carries the Moon or Mars theme. The game itself is the fixed full-screen .game-hud inside. */
 .astronaut-screen {
-  display: grid;
-  gap: 12px;
   min-width: 0;
-  max-width: 100%;
 }
 
-/* ---------- Name and turn, on top of the picture ---------- */
-.astronaut-screen__title {
-  color: var(--accent);
-}
-
-.astronaut-screen__turn {
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-/* ---------- Nova's face and the meters ---------- */
+/* ---------- Status tab: Nova's face and the meters ---------- */
 .astronaut-screen__status {
   display: grid;
   gap: 10px;
@@ -71,10 +60,16 @@
 .astronaut-screen__radiation .meter__delta + .meter__value { margin-left: 0; }
 .astronaut-screen__radiation .info-tip__text { order: 8; flex: 0 0 100%; margin-top: 0; }
 
-/* ---------- Move buttons ---------- */
+/* ---------- Moves tab ---------- */
 .astronaut-screen__moves-title {
-  margin: 4px 0 8px;
+  margin: 0 0 8px;
   font-size: 14px;
+}
+
+.astronaut-screen__moves-hint {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: var(--text-dim);
 }
 
 .astronaut-screen__buttons {
@@ -82,14 +77,15 @@
   gap: var(--gap);
 }
 
-/* Two columns once there is room (tablets, laptops). */
-@media (min-width: 600px) {
+/* Two columns once the menu is wide enough (laptops) */
+@container (min-width: 460px) {
   .astronaut-screen__buttons {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-/* ---------- What happened, and why ---------- */
+/* ---------- Messages tab: Sola's message, BLIP's question, what happened, and why ---------- */
+.astronaut-screen__messages,
 .astronaut-screen__result {
   display: grid;
   gap: var(--gap);
@@ -152,11 +148,4 @@
   color: var(--accent-contrast);
   background: var(--accent);
   clip-path: var(--notch);
-}
-
-/* The four move buttons, now a backup under the map */
-.astronaut-screen__moves-hint {
-  margin: 0 0 4px;
-  font-size: 18px;
-  color: var(--text-dim);
 }

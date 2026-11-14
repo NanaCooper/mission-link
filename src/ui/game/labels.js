@@ -115,6 +115,81 @@ function joinSentences(parts) {
     .join(' ');
 }
 
+// ---------- Full-screen game: top bar, menu, pop-ups (src/ui/game/hud/) ----------
+export const MISSION_CONTROL_TITLE = 'Mission Control, Earth';
+export const MENU_LABEL = 'Menu';
+export const CLOSE_LABEL = 'Close';
+export const NEW_TAG = 'New';
+
+// The tabs of each player's menu, like the pause menu of a game.
+//   sprite = pixel icon name (see ui/components/pixel/sprites.js)
+export const ASTRONAUT_TABS = {
+  status: { label: 'Status', sprite: 'health' },
+  messages: { label: 'Messages', sprite: 'signal' },
+  moves: { label: 'Moves', sprite: 'shield' }
+};
+export const MISSION_CONTROL_TABS = {
+  bigScreen: { label: 'Big screen', sprite: 'storm' },
+  crew: { label: 'Crew', sprite: 'health' },
+  warnings: { label: 'Warnings', sprite: 'signal' }
+};
+
+// One device (split mode): one player's screen at a time, and handing the device over.
+export const ROLE_NAMES = { astronaut: 'Astronaut', missionControl: 'Mission Control' };
+export const SWITCH_PREFIX = 'Switch to';
+export const YOUR_TURN_TEXT = '(your turn)';
+export const PASS_READY_LABEL = "I'm ready";
+export const PASS_BACK_LABEL = 'Go back';
+
+// The full-screen card that tells the next kid it is their turn.
+//   role = who gets the device: 'astronaut' | 'missionControl'
+export function passCardText(role) {
+  const { astronaut, director } = CHARACTERS;
+  if (role === 'astronaut') {
+    return {
+      who: astronaut.who,
+      title: `Pass the device to ${astronaut.name}`,
+      text: `${astronaut.name} is the Astronaut on the base. Read the message, then pick a move.`,
+      hint: "Show the Astronaut's screen."
+    };
+  }
+  return {
+    who: director.who,
+    title: `Pass the device to ${director.name}`,
+    text: `${director.name} is Mission Control on Earth. Look at the Sun, then send a warning.`,
+    hint: "Show Mission Control's screen."
+  };
+}
+
+// A phone held upright gets this card. The game waits underneath.
+export const ROTATE_TITLE = 'Turn your phone sideways';
+export const ROTATE_TEXT = 'This game needs a wide screen. Your game is safe. It waits for you.';
+
+// Pop-ups: they show up on their own for a few seconds, then fold away.
+export const MESSAGE_TITLE = 'Mission Control says:';
+export const OPEN_MENU_HINT = 'Tap Menu to see more.';
+export const BLIP_QUESTION_TEXT = 'I have a question for you! Tap Menu, then Messages.';
+export const LEVEL_END_TEXT = {
+  won: 'Level complete! The crew is safe.',
+  lost: 'Oh no! The mission is over.'
+};
+
+export function radiationHitText(amount) {
+  return `Radiation hit the base! +${amount}`;
+}
+
+export function newStageText(stageLabel) {
+  return `New on the big screen: ${stageLabel}.`;
+}
+
+// After Mission Control sends a warning. On Mars it arrives one turn late.
+export function sentText(warningLabel, delayTurns) {
+  const name = CHARACTERS.astronaut.name;
+  return delayTurns > 0
+    ? `Sent: ${warningLabel}! It reaches ${name} next turn.`
+    : `Sent: ${warningLabel}! ${name} gets it now.`;
+}
+
 // The engine counts turns from 0, and turn reaches maxTurns when the game ends.
 export function turnText(view) {
   return `Turn ${Math.min(view.turn + 1, view.maxTurns)} of ${view.maxTurns}`;

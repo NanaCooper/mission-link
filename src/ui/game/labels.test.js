@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MOVES, WARNINGS } from '../../shared/contract.js';
+import { MOVES, WARNINGS, ROLES } from '../../shared/contract.js';
 import { ICONS, PORTRAITS } from '../components/pixel/sprites.js';
 import {
   CHARACTERS,
@@ -15,7 +15,15 @@ import {
   PREDICTION,
   predictionResultText,
   solaMoodForWarning,
-  turnText
+  turnText,
+  ASTRONAUT_TABS,
+  MISSION_CONTROL_TABS,
+  ROLE_NAMES,
+  passCardText,
+  sentText,
+  radiationHitText,
+  newStageText,
+  LEVEL_END_TEXT
 } from './labels.js';
 import { fakeAstronautView, fakeMissionControlView } from '../fakeState.js';
 
@@ -109,6 +117,36 @@ describe('screen labels', () => {
     expect(turnText({ turn: 0, maxTurns: 6 })).toBe('Turn 1 of 6');
     expect(turnText({ turn: 3, maxTurns: 6 })).toBe('Turn 4 of 6');
     expect(turnText({ turn: 6, maxTurns: 6 })).toBe('Turn 6 of 6');
+  });
+});
+
+describe('full-screen game words', () => {
+  it('every menu tab has a word and a pixel icon that exists', () => {
+    for (const tab of [...Object.values(ASTRONAUT_TABS), ...Object.values(MISSION_CONTROL_TABS)]) {
+      expect(tab.label).toBeTruthy();
+      expect(ICONS).toHaveProperty(tab.sprite);
+    }
+    expect(Object.keys(ASTRONAUT_TABS)).toEqual(['status', 'messages', 'moves']);
+    expect(Object.keys(MISSION_CONTROL_TABS)).toEqual(['bigScreen', 'crew', 'warnings']);
+  });
+
+  it('names both roles, with the same keys as ROLES in the contract', () => {
+    expect(Object.keys(ROLE_NAMES).sort()).toEqual(Object.values(ROLES).sort());
+  });
+
+  it('the pass card names the next player and says what to do', () => {
+    expect(passCardText('astronaut').title).toBe('Pass the device to Nova');
+    expect(passCardText('missionControl').title).toBe('Pass the device to Commander Sola');
+    expect(passCardText('astronaut').who).toBe('nova');
+    expect(passCardText('missionControl').who).toBe('sola');
+  });
+
+  it('pop-up words', () => {
+    expect(radiationHitText(12)).toBe('Radiation hit the base! +12');
+    expect(newStageText('Particles arrive')).toBe('New on the big screen: Particles arrive.');
+    expect(sentText('Shelter now', 0)).toBe('Sent: Shelter now! Nova gets it now.');
+    expect(sentText('Shelter now', 1)).toBe('Sent: Shelter now! It reaches Nova next turn.');
+    expect(Object.keys(LEVEL_END_TEXT).sort()).toEqual(['lost', 'won']);
   });
 });
 

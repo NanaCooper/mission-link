@@ -1,0 +1,613 @@
+/* Full-screen game (Dev 3): the map fills the screen, a slim bar sits on top,
+   pop-ups appear over the map, and the menu slides in from the side.
+   Made for phones held sideways first (844 x 390 and 740 x 360), then laptops (1280 x 800).
+   Text stays at least 18px and taps at least 48px. Panels scroll inside, never the page.
+   The pixel look (colours, --px, --notch, Panel, SpeechBox) lives in src/index.css. */
+
+/* ---------- The screen ---------- */
+.game-hud {
+  --hud-top: 66px; /* height of the top bar: the map can keep its walking area out from under it */
+  position: fixed;
+  inset: 0;
+  z-index: 5; /* under the online banner (src/ui/flow/flow.css), so "Waiting for your partner" still shows */
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  overflow: hidden;
+  overscroll-behavior: none;
+  color: var(--text);
+  background: var(--bg);
+}
+
+/* The map covers the whole screen, under the bar */
+.game-hud__map {
+  grid-area: 1 / 1 / 3 / 2;
+  position: relative;
+  z-index: 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto; /* only matters if the map is ever taller than the screen */
+  overscroll-behavior: contain;
+}
+
+/* ---------- Top bar ---------- */
+.hud-top {
+  grid-area: 1 / 1;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: var(--hud-top);
+  padding: 4px max(8px, env(safe-area-inset-right)) 4px max(8px, env(safe-area-inset-left));
+  background: rgba(16, 17, 31, 0.92);
+  border-bottom: var(--px) solid var(--panel-border);
+}
+
+.hud-top__where {
+  display: grid;
+  flex: 0 1 auto;
+  min-width: 0;
+  line-height: 1.1;
+}
+
+.hud-top__title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.1;
+  white-space: nowrap;
+  color: var(--accent);
+}
+
+.hud-top__turn {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* MISSION CLOCK SLOT: the signal clock (MissionClock.jsx), made small for the bar.
+   Empty (no game being played): it takes no room. */
+.hud-top__clock {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
+.hud-top__clock:empty {
+  display: none;
+}
+
+.hud-top__clock .mission-clock {
+  gap: 6px;
+  padding: 2px 8px;
+}
+
+.hud-top__clock .mission-clock__icon {
+  width: 20px;
+  height: 20px;
+}
+
+.hud-top__clock .mission-clock__time {
+  font-size: 16px;
+}
+
+/* The words "Time to send a signal" only fit on a wide screen. The clock's label for
+   screen readers always has them, and the note ("Hurry!", "Signal sent") always shows. */
+.hud-top__clock .mission-clock__title {
+  display: none;
+}
+
+.hud-top__clock .mission-clock__note {
+  max-width: 12ch;
+  line-height: 1.05;
+}
+
+@media (min-width: 1200px) {
+  .hud-top__clock .mission-clock__title {
+    display: inline;
+  }
+
+  .hud-top__clock .mission-clock__note {
+    max-width: none;
+  }
+}
+
+.hud-top__buttons {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.hud-top .screen-tools {
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+.hud-top .screen-tools__button {
+  padding: 4px 8px;
+  text-align: left;
+}
+
+/* The Menu button and the switch button */
+.hud-menu-button,
+.hud-switch {
+  --edge: var(--panel-border);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap);
+  padding: 4px 10px;
+  font-family: var(--font);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--text);
+  background: var(--panel);
+  border: var(--px) solid var(--edge);
+  clip-path: var(--notch);
+  cursor: pointer;
+}
+
+.hud-menu-button {
+  --edge: var(--accent);
+}
+
+.hud-menu-button.is-open {
+  color: var(--accent-contrast);
+  background: var(--accent);
+}
+
+.hud-menu-button:focus-visible,
+.hud-switch:focus-visible,
+.game-menu__tab:focus-visible,
+.game-menu__close:focus-visible {
+  --edge: var(--focus);
+  outline: none;
+}
+
+.hud-switch__words {
+  display: grid;
+  text-align: left;
+}
+
+.hud-switch__prefix {
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+/* "Your turn": the switch button flashes yellow and shows "!" (so it is not colour alone) */
+.hud-switch.is-nudged {
+  --edge: var(--focus);
+  color: var(--ink);
+  background: var(--focus);
+  animation: px-blink 0.9s steps(1) infinite;
+}
+
+.hud-switch.is-nudged .hud-switch__prefix {
+  color: var(--ink);
+}
+
+/* A small "New" or "!" tag */
+.hud-badge {
+  padding: 3px 5px;
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--ink);
+  background: var(--focus);
+}
+
+.hud-badge--dot {
+  font-size: 12px;
+  animation: px-blink 1s steps(1) 3;
+}
+
+/* Phones held sideways and small windows: two-line words, so the bar fits in one row */
+@media (max-width: 900px) {
+  .hud-top .screen-tools__button > span:last-child {
+    max-width: 6.5ch;
+    line-height: 1.05;
+  }
+}
+
+/* Small phones held sideways (740 x 360): tighter buttons; a long title may wrap */
+@media (max-width: 800px) {
+  .hud-top,
+  .hud-top__buttons,
+  .hud-top .screen-tools {
+    gap: 4px;
+  }
+
+  .hud-top .screen-tools__button,
+  .hud-menu-button,
+  .hud-switch {
+    gap: 4px;
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .hud-top__title {
+    white-space: normal;
+  }
+}
+
+/* ---------- Pop-ups over the map (top left, under the bar) ---------- */
+.hud-popups {
+  grid-area: 2 / 1;
+  z-index: 4;
+  align-self: start;
+  justify-self: start;
+  display: grid;
+  gap: 8px;
+  width: min(340px, calc(36vw - 16px));
+  max-height: calc(100% - 16px);
+  margin: 8px 0 0 max(8px, env(safe-area-inset-left));
+  overflow: hidden;
+  pointer-events: none; /* taps go through to the map */
+}
+
+.hud-popups:empty {
+  display: none;
+}
+
+.hud-popup {
+  transform-origin: top left;
+  animation: px-pop 0.35s steps(4) 1;
+}
+
+.hud-popup .speech {
+  background: rgba(26, 28, 44, 0.96);
+}
+
+/* Narrow boxes: the "New" tag sits after the name instead of on top of it */
+.hud-popup .speech__tag,
+.game-menu__panel .speech__tag {
+  position: static;
+}
+
+/* Commander Sola's new message: big at first, then folded small for the rest of the turn */
+.hud-popup--message.is-folded {
+  animation: none;
+}
+
+.hud-popup--message.is-folded .speech {
+  gap: 8px;
+  padding: 6px 10px;
+}
+
+.hud-popup--message.is-folded .speech__head {
+  margin-bottom: 2px;
+}
+
+/* One line in a pixel box: the radiation hit, the level end */
+.hud-popup--line {
+  --edge: var(--focus);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  background: rgba(26, 28, 44, 0.96);
+  border: var(--px) solid var(--edge);
+  clip-path: var(--notch);
+}
+
+.hud-popup--hit {
+  --edge: var(--radiation);
+}
+
+.hud-popup--lost {
+  --edge: var(--danger);
+}
+
+/* ---------- The menu: a side panel with tabs ---------- */
+.game-menu {
+  grid-area: 2 / 1;
+  z-index: 3;
+  justify-self: end;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  width: min(540px, 64vw);
+  min-height: 0;
+  padding-right: env(safe-area-inset-right);
+  background: var(--bg-2);
+  border-left: var(--px) solid var(--accent);
+  animation: hud-slide-in 0.2s steps(3) 1;
+}
+
+.game-menu[hidden] {
+  display: none;
+}
+
+@keyframes hud-slide-in {
+  from { transform: translateX(40px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.game-menu__side {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  padding: 8px;
+  overflow-y: auto;
+  background: var(--ink);
+  border-right: var(--px) solid var(--panel-border);
+}
+
+.game-menu__title {
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--accent);
+}
+
+.game-menu__tabs {
+  display: grid;
+  gap: 6px;
+}
+
+.game-menu__tab,
+.game-menu__close {
+  --edge: var(--panel-border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 4px 10px;
+  font-family: var(--font);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: left;
+  white-space: nowrap;
+  color: var(--text-dim);
+  background: var(--bg-2);
+  border: var(--px) solid var(--edge);
+  clip-path: var(--notch);
+  cursor: pointer;
+}
+
+/* The open tab: accent border, bright words and a pointer, like a game menu cursor */
+.game-menu__tab.is-selected {
+  --edge: var(--accent);
+  color: var(--text);
+  background: var(--panel);
+}
+
+.game-menu__tab.is-selected::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 14px;
+  background: var(--accent);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+.game-menu__tab-name {
+  flex: 1;
+}
+
+.game-menu__close {
+  margin-top: auto;
+  color: var(--text);
+}
+
+/* Right side of the menu: Sound and Read to me (phones only), then the open tab */
+.game-menu__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.game-menu__tools {
+  flex: none;
+  padding: 8px 12px 0;
+}
+
+.game-menu__tools .screen-tools {
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+.game-menu__tools .screen-tools__button {
+  padding: 4px 8px;
+}
+
+/* A column that scrolls. (Not a grid: a grid would squash its rows to fit the height.) */
+.game-menu__panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+  padding: 10px 12px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  container-type: inline-size;
+}
+
+.game-menu__panel > * {
+  flex-shrink: 0;
+}
+
+.game-menu__panel[hidden] {
+  display: none;
+}
+
+/* ---------- "Turn your phone sideways" (touch phones held upright only) ---------- */
+.rotate-card {
+  display: none;
+}
+
+@media (pointer: coarse) and (orientation: portrait) and (max-width: 700px) {
+  .rotate-card {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: var(--bg);
+  }
+}
+
+.rotate-card__box {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  max-width: 340px;
+  padding: 24px 20px;
+  text-align: center;
+  background: var(--panel);
+}
+
+.rotate-card__icon {
+  line-height: 0;
+  animation: hud-tilt 2.4s steps(1) infinite;
+}
+
+@keyframes hud-tilt {
+  0%, 49% { transform: rotate(0deg); }
+  50%, 100% { transform: rotate(-12deg); }
+}
+
+.rotate-card__title {
+  margin: 0;
+  font-size: 24px;
+  color: var(--accent);
+}
+
+.rotate-card__text {
+  margin: 0;
+  font-size: 18px;
+}
+
+/* ---------- "Pass the device to ..." (one device) ---------- */
+.pass-card {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 12px max(12px, env(safe-area-inset-right)) 12px max(12px, env(safe-area-inset-left));
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.pass-card__box {
+  --edge: var(--focus);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px 20px;
+  width: min(640px, 100%);
+  padding: 16px;
+  background: var(--panel);
+  animation: px-pop 0.35s steps(4) 1;
+}
+
+.pass-card__face {
+  line-height: 0;
+}
+
+.pass-card__words {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pass-card__title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+  color: var(--accent);
+}
+
+.pass-card__text {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.pass-card .big-button {
+  --edge: var(--focus);
+}
+
+.pass-card__back {
+  justify-self: start;
+}
+
+/* ---------- Narrow windows held upright (no touch, or a tablet): the bar wraps ---------- */
+@media (max-width: 640px) {
+  .game-hud {
+    --hud-top: 112px;
+  }
+
+  .hud-top {
+    flex-wrap: wrap;
+  }
+
+  .hud-top__buttons {
+    flex-wrap: wrap;
+  }
+
+  .hud-popups {
+    width: auto;
+    justify-self: stretch;
+    margin-right: 8px;
+  }
+
+  .game-menu {
+    justify-self: stretch;
+    width: auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    border-left: 0;
+    border-top: var(--px) solid var(--accent);
+  }
+
+  .game-menu__side {
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: 0;
+    border-bottom: var(--px) solid var(--panel-border);
+  }
+
+  .game-menu__title {
+    display: none;
+  }
+
+  .game-menu__tabs {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .game-menu__close {
+    margin-top: 0;
+    margin-left: auto;
+  }
+
+  .pass-card__box {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    text-align: center;
+  }
+
+  .pass-card__back {
+    justify-self: center;
+  }
+}

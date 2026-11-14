@@ -2,11 +2,15 @@ import { useState } from 'react';
 import { Meter, BigButton, Panel, WhyCard, InfoTip, SpeechBox, Portrait, PixelIcon } from '../components/index.js';
 import BaseMap from './world/BaseMap.jsx';
 import MissionClock from './MissionClock.jsx';
+import GameHud from './hud/GameHud.jsx';
+import { useGameMenu } from './hud/useGameMenu.js';
+import { usePopup } from './hud/usePopup.js';
 import { useMeterDeltas } from './useMeterDeltas.js';
 import { useGameSounds, useSoundOn, setSoundOn, unlockAudio } from './sound.js';
 import { useReadAloud } from './useReadAloud.js';
 import {
   CHARACTERS,
+  ASTRONAUT_TABS,
   PREDICTION,
   predictionResultText,
   astronautReadText,
@@ -22,85 +26,189 @@ import {
   NO_MESSAGE_TEXT,
   NO_MESSAGE_HINT,
   NO_NEW_MESSAGE_TEXT,
+  MESSAGE_TITLE,
+  NEW_TAG,
+  BLIP_QUESTION_TEXT,
+  LEVEL_END_TEXT,
+  radiationHitText,
   novaMood,
   solaMoodForWarning,
   turnText,
 } from './labels.js';
 import './AstronautScreen.css';
 
-// The Astronaut's screen: the newest message from Mission Control, a map of the base where
-// Nova walks to a place and uses it to make her move, the base meters, what happened last turn,
-// and the four move buttons as a quick backup.
+// The Astronaut's screen, full screen and held sideways (see hud/GameHud.jsx):
+//   the map of the base fills the screen (Nova walks to a place and uses it to make her move),
+//   a slim bar on top, pop-ups for what is new (Sola's message, a radiation hit, BLIP's line),
+//   and a Menu with three tabs: Status (meters), Messages, Moves (the quick move buttons).
 // It only shows the view it is given. The engine decides everything.
 //
-// Props: { view, onMove }  view = getAstronautView(state), onMove(moveKey)
-export default function AstronautScreen({ view, onMove }) {
+// Props:
+//   view          getAstronautView(state)
+//   onMove        onMove(moveKey)
+//   active        false while this screen is hidden on one device (no keyboard, pop-ups wait)
+//   switchButton  one device only: the top-bar button that hands the device to Mission Control
+export default function AstronautScreen({ view, onMove, active = true, switchButton = null }) {
   const isPlaying = view.status === 'playing';
+  const ended = view.status === 'won' || view.status === 'lost';
   const lastLog = view.log.length > 0 ? view.log[view.log.length - 1] : null;
-  const robot = CHARACTERS.robot;
   const moveTag = MOVE_SCENE_TAG[view.lastMove];
   const guess = usePrediction(view);
   // How much each meter changed this turn (null before the first move).
   const deltas = useMeterDeltas(view.turn, view.meters);
+  const hit = Math.max(0, deltas?.radiationDose ?? 0);
+  const message = newestMessage(view);
+  const menu = useGameMenu('status');
 
   useGameSounds(view);
 
-  return (
-    <div className={`astronaut-screen world-${view.world}`}>
-      {/* The signal clock. When the full-screen layout lands, it moves into the top bar's clock slot. */}
-      <MissionClock view={view} who="astronaut" />
+  // Pop-ups show on their own for a few seconds, then fold away. Their clock only runs while
+  // this screen can be seen, so on one device nothing is missed while the other player looks.
+  const messageFresh = usePopup(message?.isNew ? `message:${message.turn}:${message.warning}` : null, active);
+  const showHit = usePopup(hit > 0 ? `hit:${view.turn}` : null, active);
+  const showLog = usePopup(lastLog ? `log:${view.log.length}:${lastLog.text}` : null, active);
+  const showQuestion = usePopup(guess.asking ? `question:${view.turn}` : null, active);
+  const showEnd = usePopup(ended ? `end:${view.status}` : null, active);
 
-      <ScreenTools readText={astronautReadText(view)} />
+  // A quick move closes the menu, so the player sees what happens on the map.
+  const moveFromMenu = (move) => {
+    menu.close();
+    onMove(move);
+  };
 
-      <MissionControlMessage view={view} />
+  const { director, robot } = CHARACTERS;
 
-      {guess.asking && <PredictionQuestion onAnswer={guess.answer} />}
+  const popups = (
+    <>
+      {message?.isNew && (
+        <div className={`hud-popup hud-popup--message ${messageFresh ? 'is-fresh' : 'is-folded'}`}>
+          <SpeechBox
+            who={director.who}
+            mood={solaMoodForWarning(message.warning)}
+            name={director.name}
+            title={messageFresh ? MESSAGE_TITLE : undefined}
+            tag={NEW_TAG}
+            tone="alert"
+            size={messageFresh ? 48 : 32}
+            big={messageFresh}
+            icon={<PixelIcon name={message.info.sprite} size={messageFresh ? 28 : 20} />}
+            text={`${message.info.label}!`}
+          />
+        </div>
+      )}
+      {showHit && (
+        <p className="hud-popup hud-popup--line hud-popup--hit">
+          <PixelIcon name="radiation" size={24} />
+          <span>{radiationHitText(hit)}</span>
+        </p>
+      )}
+      {showLog && (
+        <div className="hud-popup">
+          <SpeechBox who={robot.who} name={robot.name} size={32} text={lastLog.text}>
+            {guess.result && <p>{guess.result}</p>}
+          </SpeechBox>
+        </div>
+      )}
+      {showQuestion && (
+        <div className="hud-popup">
+          <SpeechBox who={robot.who} name={robot.name} size={32} text={BLIP_QUESTION_TEXT} />
+        </div>
+      )}
+      {showEnd && (
+        <p className={`hud-popup hud-popup--line hud-popup--${view.status}`}>
+          <PixelIcon name="star" size={24} />
+          <span>{LEVEL_END_TEXT[view.status]}</span>
+        </p>
+      )}
+    </>
+  );
 
-      <BaseMap
-        view={view}
-        onMove={onMove}
-        hit={Math.max(0, deltas?.radiationDose ?? 0)}
-        overlay={
-          <>
-            <header className="scene__top scene__top--spread">
-              <h1 className="scene__title astronaut-screen__title">{WORLD_NAMES[view.world]}</h1>
-              <p className="scene__title astronaut-screen__turn">{turnText(view)}</p>
-            </header>
-            {moveTag && (
-              <p key={view.turn} className="scene__tag scene__tag--move scene__corner">
-                {moveTag}
+  const tabs = [
+    {
+      id: 'status',
+      ...ASTRONAUT_TABS.status,
+      content: <StatusPanel view={view} deltas={deltas} />,
+    },
+    {
+      id: 'messages',
+      ...ASTRONAUT_TABS.messages,
+      badge: Boolean(message?.isNew) || guess.asking,
+      content: (
+        <div className="astronaut-screen__messages">
+          <MissionControlMessage message={message} />
+          {guess.asking && <PredictionQuestion onAnswer={guess.answer} />}
+          <div className="astronaut-screen__result">
+            {guess.result && (
+              <p className="astronaut-screen__guess" role="status">
+                {guess.result}
               </p>
             )}
-          </>
+            {lastLog && (
+              <SpeechBox
+                className="astronaut-screen__log"
+                who={robot.who}
+                name={robot.name}
+                text={lastLog.text}
+                size={48}
+              />
+            )}
+            <WhyCard fact={view.lastFact} name={robot.name} />
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'moves',
+      ...ASTRONAUT_TABS.moves,
+      content: <MoveButtons disabled={!isPlaying} onMove={moveFromMenu} />,
+    },
+  ];
+
+  return (
+    <div className={`astronaut-screen world-${view.world}`}>
+      <GameHud
+        label={`${CHARACTERS.astronaut.name}'s screen: the Astronaut`}
+        active={active}
+        title={WORLD_NAMES[view.world]}
+        turn={turnText(view)}
+        clock={<MissionClock view={view} who="astronaut" />}
+        tools={<ScreenTools readText={astronautReadText(view)} />}
+        switchButton={switchButton}
+        popups={popups}
+        menu={menu}
+        tabs={tabs}
+        menuLabel="Astronaut menu"
+        map={
+          <BaseMap
+            view={view}
+            onMove={onMove}
+            hit={hit}
+            // Only the screen that shows, with its menu closed, takes the arrow keys.
+            active={active && !menu.isOpen}
+            overlay={
+              moveTag && (
+                <p key={view.turn} className="scene__tag scene__tag--move scene__corner">
+                  {moveTag}
+                </p>
+              )
+            }
+          />
         }
       />
-
-      <div className="astronaut-screen__result">
-        {guess.result && (
-          <p className="astronaut-screen__guess" role="status">
-            {guess.result}
-          </p>
-        )}
-        {lastLog && (
-          <SpeechBox
-            className="astronaut-screen__log"
-            who={robot.who}
-            name={robot.name}
-            text={lastLog.text}
-            size={48}
-          />
-        )}
-        <WhyCard fact={view.lastFact} name={robot.name} />
-      </div>
-
-      <StatusPanel view={view} deltas={deltas} />
-
-      <MoveButtons disabled={!isPlaying} onMove={onMove} />
     </div>
   );
 }
 
-// The four move buttons: a quick backup for walking on the map.
+// The newest message from Mission Control, or null.
+// "New" means it arrived this turn, so last turn's warning is never mistaken for a fresh one.
+function newestMessage(view) {
+  const newest = view.inbox.length > 0 ? view.inbox[view.inbox.length - 1] : null;
+  const info = newest ? WARNING_INFO[newest.warning] : null;
+  if (!info) return null;
+  return { turn: newest.turn, warning: newest.warning, info, isNew: newest.turn === view.turn };
+}
+
+// The four move buttons: a quick way to move without walking on the map.
 export function MoveButtons({ disabled, onMove }) {
   return (
     <section className="astronaut-screen__moves" aria-label="Quick moves">
@@ -122,7 +230,7 @@ export function MoveButtons({ disabled, onMove }) {
   );
 }
 
-// "Sound on / off" and "Read to me", shown on both player screens.
+// "Sound on / off" and "Read to me", shown in the top bar of both player screens.
 // Read to me is hidden when the browser cannot speak.
 export function ScreenTools({ readText }) {
   const soundOn = useSoundOn();
@@ -189,35 +297,31 @@ function PredictionQuestion({ onAnswer }) {
   );
 }
 
-// The newest message from Mission Control, spoken by Commander Sola.
-// A message that arrived this turn is "new". An older one is shown quietly,
-// so the Astronaut never mistakes last turn's warning for a fresh one.
-function MissionControlMessage({ view }) {
+// The newest message from Mission Control, spoken by Commander Sola (in the Messages tab).
+// A message that arrived this turn is "new". An older one is shown quietly.
+function MissionControlMessage({ message }) {
   const director = CHARACTERS.director;
-  const newest = view.inbox.length > 0 ? view.inbox[view.inbox.length - 1] : null;
-  const warning = newest ? WARNING_INFO[newest.warning] : null;
-  const isNew = Boolean(warning) && newest.turn === view.turn;
 
   let box;
-  if (isNew) {
+  if (message?.isNew) {
     box = (
       <SpeechBox
         who={director.who}
-        mood={solaMoodForWarning(newest.warning)}
+        mood={solaMoodForWarning(message.warning)}
         name={director.name}
-        title="Mission Control says:"
-        tag="New"
+        title={MESSAGE_TITLE}
+        tag={NEW_TAG}
         tone="alert"
         size={48}
         big
-        icon={<PixelIcon name={warning.sprite} size={28} />}
-        text={`${warning.label}!`}
+        icon={<PixelIcon name={message.info.sprite} size={28} />}
+        text={`${message.info.label}!`}
       />
     );
-  } else if (warning) {
+  } else if (message) {
     box = (
       <SpeechBox who={director.who} mood="calm" name={director.name} tone="quiet" size={48} text={NO_NEW_MESSAGE_TEXT}>
-        <p>Last message: {warning.label}</p>
+        <p>Last message: {message.info.label}</p>
       </SpeechBox>
     );
   } else {
@@ -228,11 +332,7 @@ function MissionControlMessage({ view }) {
     );
   }
 
-  return (
-    <section className="astronaut-screen__message" role="status" aria-live="polite">
-      {box}
-    </section>
-  );
+  return <section className="astronaut-screen__message">{box}</section>;
 }
 
 // Nova's face and the four base meters. After a move, each meter shows how much it changed.

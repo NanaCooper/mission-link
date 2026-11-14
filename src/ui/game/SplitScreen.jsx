@@ -1,112 +1,63 @@
 import { useState } from 'react';
-import { BigButton, Portrait } from '../components/index.js';
 import AstronautScreen from './AstronautScreen.jsx';
 import MissionControlScreen from './MissionControlScreen.jsx';
-import { CHARACTERS } from './labels.js';
+import SwitchButton from './hud/SwitchButton.jsx';
+import PassCard from './hud/PassCard.jsx';
 import './SplitScreen.css';
 
-const scrollToTop = () => {
-  try {
-    window.scrollTo(0, 0);
-  } catch {
-    // Not in a browser (tests): nothing to scroll.
-  }
-};
-
-// Both player screens on one device, for two kids sharing it.
-//   Wider than 900px: both halves side by side, with a labelled divider.
-//   Phones: one half at a time. Two big tabs at the top switch between them,
-//   and a "Pass to ..." button at the bottom hands the phone to the other player.
+// Both players on one device, for two kids sharing it. One full screen at a time, on every size.
+//   The switch button in the top bar ("Switch to Astronaut") flashes when it is the other
+//   player's turn. Tapping it shows a full-screen "Pass the device to Nova" card with one big
+//   button, so the second kid knows it is their turn.
+//   Both screens stay mounted (so things like where Nova stands are kept), but only the one that
+//   shows is `active`: it alone gets the keyboard, and its pop-ups wait until it shows.
 //
 // Props: { astronautView, missionControlView, onMove, onWarn }
 export default function SplitScreen({ astronautView, missionControlView, onMove, onWarn }) {
-  // Which half a phone shows, and the turn number when that half was opened.
+  // Whose screen shows, and the turn number when it was opened. Mission Control plays first each turn.
   const [showing, setShowing] = useState({ tab: 'missionControl', sinceTurn: astronautView.turn });
+  // While the "Pass the device" card shows: who gets the device next.
+  const [passingTo, setPassingTo] = useState(null);
   const { tab } = showing;
 
-  const open = (nextTab) => {
-    setShowing({ tab: nextTab, sinceTurn: astronautView.turn });
-    scrollToTop();
+  const takeOver = () => {
+    setShowing({ tab: passingTo, sinceTurn: astronautView.turn });
+    setPassingTo(null);
   };
 
-  // Whose turn is it to hold the phone? This only makes a tab flash. It changes no rules.
+  // Whose turn is it to hold the device? This only makes a button flash. It changes no rules.
   const playing = astronautView.status === 'playing';
   const warningDone = Boolean(missionControlView.warningThisTurn) || Boolean(missionControlView.stage?.blackout);
   const moveDone = astronautView.turn !== showing.sinceTurn;
   const nudgeAstronaut = playing && tab === 'missionControl' && warningDone;
   const nudgeMissionControl = playing && tab === 'astronaut' && moveDone;
 
-  const { astronaut, director } = CHARACTERS;
+  const shows = (player) => tab === player;
+  const isActive = (player) => shows(player) && !passingTo;
 
   return (
     <div className={`split-screen world-${astronautView.world}`}>
-      <div className="split-screen__tabs" role="group" aria-label="Who is holding the screen?">
-        <TabButton
-          who={director.who}
-          label="Mission Control"
-          active={tab === 'missionControl'}
-          nudged={nudgeMissionControl}
-          onClick={() => open('missionControl')}
-        />
-        <TabButton
-          who={astronaut.who}
-          label="Astronaut"
-          active={tab === 'astronaut'}
-          nudged={nudgeAstronaut}
-          onClick={() => open('astronaut')}
+      <div className="split-screen__player" data-player="missionControl" hidden={!shows('missionControl')} inert={!shows('missionControl')}>
+        <MissionControlScreen
+          view={missionControlView}
+          onWarn={onWarn}
+          active={isActive('missionControl')}
+          switchButton={<SwitchButton to="astronaut" nudged={nudgeAstronaut} onClick={() => setPassingTo('astronaut')} />}
         />
       </div>
 
-      <section
-        className={`split-screen__half split-screen__half--mission-control${tab === 'missionControl' ? ' is-active' : ''}`}
-        aria-label="Mission Control's half"
-      >
-        <MissionControlScreen view={missionControlView} onWarn={onWarn} />
-        <div className="split-screen__pass">
-          <BigButton
-            icon={<Portrait who={astronaut.who} size={32} />}
-            label="Pass to the Astronaut"
-            hint={`Now ${astronaut.name} picks a move.`}
-            onClick={() => open('astronaut')}
-          />
-        </div>
-      </section>
-
-      <div className="split-screen__divider" role="separator" aria-label="Mission Control on the left, Astronaut on the right">
-        <span aria-hidden="true">&lt; Mission Control &nbsp;|&nbsp; Astronaut &gt;</span>
+      <div className="split-screen__player" data-player="astronaut" hidden={!shows('astronaut')} inert={!shows('astronaut')}>
+        <AstronautScreen
+          view={astronautView}
+          onMove={onMove}
+          active={isActive('astronaut')}
+          switchButton={
+            <SwitchButton to="missionControl" nudged={nudgeMissionControl} onClick={() => setPassingTo('missionControl')} />
+          }
+        />
       </div>
 
-      <section
-        className={`split-screen__half split-screen__half--astronaut${tab === 'astronaut' ? ' is-active' : ''}`}
-        aria-label="Astronaut's half"
-      >
-        <AstronautScreen view={astronautView} onMove={onMove} />
-        <div className="split-screen__pass">
-          <BigButton
-            icon={<Portrait who={director.who} size={32} />}
-            label="Pass to Mission Control"
-            hint="The next turn starts with them."
-            onClick={() => open('missionControl')}
-          />
-        </div>
-      </section>
+      {passingTo && <PassCard role={passingTo} onReady={takeOver} onBack={() => setPassingTo(null)} />}
     </div>
-  );
-}
-
-// One of the two big tabs on a phone. A flashing tab means "your turn".
-function TabButton({ who, label, active, nudged, onClick }) {
-  const classes = ['split-screen__tab'];
-  if (active) classes.push('is-active');
-  if (nudged) classes.push('is-nudged');
-
-  return (
-    <button type="button" className={classes.join(' ')} aria-pressed={active} onClick={onClick}>
-      <Portrait who={who} size={28} />
-      <span className="split-screen__tab-name">
-        {label}
-        {nudged && <span className="visually-hidden"> (your turn)</span>}
-      </span>
-    </button>
   );
 }

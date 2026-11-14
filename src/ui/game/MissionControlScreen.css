@@ -1,36 +1,11 @@
-/* Mission Control screen layout (owned by Dev 3).
+/* Mission Control screen (owned by Dev 3).
+   The full-screen frame (map, top bar, pop-ups, menu) is in hud/hud.css.
+   This file styles what sits inside the menu tabs, which are about 300px wide on a phone held sideways.
    The global pixel look and shared components live in src/index.css. */
 
+/* Only carries the Moon or Mars theme. The game itself is the fixed full-screen .game-hud inside. */
 .mission-control-screen {
-  display: grid;
-  gap: 12px;
   min-width: 0;
-}
-
-.mc-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px 12px;
-}
-
-.mc-header__title {
-  margin: 0;
-  font-size: 12px;
-  color: var(--accent);
-}
-
-.mc-header__turn {
-  margin: 0;
-  font-weight: 700;
-  white-space: nowrap;
-  color: var(--text-dim);
-}
-
-@media (min-width: 420px) {
-  .mc-header__title {
-    font-size: 16px;
-  }
 }
 
 /* What comes next, under Commander Sola's words */
@@ -67,7 +42,7 @@
 }
 
 .mc-warn__title {
-  margin: 4px 0 0;
+  margin: 0;
   font-size: 14px;
 }
 
@@ -77,7 +52,7 @@
   color: var(--text-dim);
 }
 
-/* Two by two, even on a phone: the labels are short */
+/* Two by two: the labels are short */
 .mc-warn__buttons {
   display: grid;
   gap: var(--gap);
@@ -85,9 +60,16 @@
 }
 
 .mc-warn__buttons .big-button {
-  padding-left: 10px;
-  padding-right: 10px;
-  gap: 8px;
+  padding-left: 8px;
+  padding-right: 8px;
+  gap: 6px;
+}
+
+/* A narrow menu (small phone held sideways): one column, so no word gets cut off */
+@container (max-width: 330px) {
+  .mc-warn__buttons {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* A note above the buttons: the Mars delay, or the signal blackout */
