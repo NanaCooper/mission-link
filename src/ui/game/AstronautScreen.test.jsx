@@ -1,0 +1,125 @@
+import { describe, it, expect } from 'vitest';
+import { renderToStaticMarkup } from 'react-dom/server';
+import AstronautScreen from './AstronautScreen.jsx';
+import { MOVE_INFO } from './labels.js';
+import {
+  fakeAstronautView,
+  fakeMarsAstronautView,
+  fakeWonAstronautView,
+  fakeLostAstronautView,
+} from '../fakeState.js';
+
+const noop = () => {};
+const render = (view) => renderToStaticMarkup(<AstronautScreen view={view} onMove={noop} />);
+
+describe('AstronautScreen', () => {
+  it('shows the Moon base, the turn and the Moon theme', () => {
+    const html = render(fakeAstronautView);
+    expect(html).toContain('Moon base');
+    expect(html).toContain('Turn 4 of 6');
+    expect(html).toContain('class="astronaut-screen world-moon"');
+  });
+
+  it('shows the Mars base with the Mars theme', () => {
+    const html = render(fakeMarsAstronautView);
+    expect(html).toContain('Mars base');
+    expect(html).toContain('class="astronaut-screen world-mars"');
+  });
+
+  it('uses radiationLimit as the radiation max, not a fixed number', () => {
+    const html = render({ ...fakeAstronautView, radiationLimit: 50 });
+    expect(html).toContain('Storm radiation budget');
+    expect(html).toContain('/ 50');
+    expect(html).toContain('aria-valuemax="50"');
+  });
+
+  it('shows the newest warning from the inbox', () => {
+    const html = render(fakeAstronautView);
+    expect(html).toContain('Mission Control says:');
+    expect(html).toContain('Shelter now');
+  });
+
+  it('shows the newest warning when there are several', () => {
+    const view = {
+      ...fakeAstronautView,
+      inbox: [
+        { turn: 1, warning: 'stormComing' },
+        { turn: 3, warning: 'allClear' },
+      ],
+    };
+    const html = render(view);
+    expect(html).toContain('All clear');
+    expect(html).not.toContain('Storm coming');
+  });
+
+  it('says there is no message when the inbox is empty', () => {
+    const html = render({ ...fakeAstronautView, inbox: [] });
+    expect(html).toContain('No message from Mission Control yet');
+    expect(html).not.toContain('Mission Control says:');
+  });
+
+  it('shows all four move buttons, enabled while playing', () => {
+    const html = render(fakeAstronautView);
+    for (const info of Object.values(MOVE_INFO)) {
+      expect(html).toContain(info.label);
+      expect(html).toContain(info.hint);
+    }
+    expect(html.match(/class="big-button"/g)).toHaveLength(4);
+    expect(html).not.toContain('disabled');
+  });
+
+  it('disables every move button when the game is won or lost', () => {
+    for (const view of [fakeWonAstronautView, fakeLostAstronautView]) {
+      const html = render(view);
+      expect(html.match(/<button type="button" class="big-button" disabled=""/g)).toHaveLength(4);
+    }
+  });
+
+  it('shows the latest log line', () => {
+    const html = render(fakeAstronautView);
+    expect(html).toContain(fakeAstronautView.log[fakeAstronautView.log.length - 1].text);
+    expect(html).not.toContain(fakeAstronautView.log[0].text);
+  });
+
+  it('shows the Why? card below the buttons when there is a fact', () => {
+    const html = render(fakeAstronautView);
+    expect(html).toContain(fakeAstronautView.lastFact.text);
+    expect(html.indexOf('why-card')).toBeGreaterThan(html.lastIndexOf('big-button'));
+  });
+
+  it('hides the Why? card when there is no fact', () => {
+    const html = render({ ...fakeAstronautView, lastFact: null });
+    expect(html).not.toContain('why-card');
+    expect(html).not.toContain(fakeAstronautView.lastFact.text);
+  });
+
+  it('never shows dust (that is Mission Control only)', () => {
+    for (const view of [
+      fakeAstronautView,
+      fakeMarsAstronautView,
+      fakeWonAstronautView,
+      fakeLostAstronautView,
+    ]) {
+      expect(render(view).toLowerCase()).not.toContain('dust');
+    }
+  });
+
+  it('calls onMove with the move key when a button is clicked', () => {
+    const moves = [];
+    const element = AstronautScreen({ view: fakeAstronautView, onMove: (m) => moves.push(m) });
+    const buttons = findAll(element, (el) => el.props && typeof el.props.onClick === 'function' && 'hint' in el.props);
+    buttons.forEach((button) => button.props.onClick());
+    expect(moves).toEqual(Object.keys(MOVE_INFO));
+  });
+});
+
+// Walk a React element tree (without rendering) and collect matching elements.
+function findAll(node, test, found = []) {
+  if (Array.isArray(node)) {
+    node.forEach((child) => findAll(child, test, found));
+  } else if (node && typeof node === 'object' && node.props) {
+    if (test(node)) found.push(node);
+    findAll(node.props.children, test, found);
+  }
+  return found;
+}
