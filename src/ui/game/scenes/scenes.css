@@ -1,0 +1,169 @@
+/* Pixel scenes (Dev 3): the base for the Astronaut, the space view for Mission Control.
+   Things move in small jumps (steps), like old games. With "reduce motion" on,
+   nothing moves and the picture still makes sense. */
+
+.scene {
+  position: relative;
+  background: var(--ink);
+  line-height: 0;
+  overflow: hidden;
+}
+
+.scene__art {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Faint lines across the picture, like an old screen */
+.scene::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(rgba(0, 0, 0, 0.16) 50%, transparent 50%);
+  background-size: 100% 4px;
+}
+
+/* Words on top of the picture */
+.scene__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+.scene__top {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  right: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.scene__top--spread {
+  justify-content: space-between;
+}
+
+/* A tag in the bottom left corner of the picture */
+.scene__corner {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+}
+
+.scene__title {
+  margin: 0;
+  padding: 5px 6px;
+  font-family: var(--font-pixel);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--text);
+  background: rgba(26, 28, 44, 0.88);
+}
+
+.scene__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 4px 6px;
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--ink);
+  background: var(--accent);
+}
+
+.scene__tag--danger {
+  background: var(--danger);
+  animation: px-blink 1s steps(1) infinite;
+}
+
+.scene__tag--move {
+  background: var(--focus);
+  animation: px-pop 0.5s steps(4) 1;
+}
+
+/* Tiny names under the things in the picture: SUN, EARTH, MOON */
+.scene__name {
+  position: absolute;
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  line-height: 1;
+  color: var(--text);
+  text-shadow: 2px 2px 0 var(--ink), -2px 0 0 var(--ink), 0 -2px 0 var(--ink);
+  white-space: nowrap;
+}
+
+/* ---------- Moving parts (used on SVG shapes; 1px here = 1 square of the drawing) ---------- */
+.px-twinkle { animation: px-twinkle 2.4s steps(1) infinite; }
+.px-twinkle--late { animation-delay: 1.1s; }
+.px-blink-fast { animation: px-blink 0.5s steps(1) infinite; }
+.px-blink-slow { animation: px-blink 1.4s steps(1) infinite; }
+.px-bob { animation: px-bob 1.3s steps(1) infinite; }
+.px-flicker { animation: px-flicker 1.7s steps(1) infinite; }
+.px-drift { animation: px-drift 4s steps(8) infinite alternate; }
+.px-rise { animation: px-rise 1.6s steps(8) infinite; }
+.px-rise--late { animation-delay: 0.6s; }
+.px-rise--later { animation-delay: 1.1s; }
+
+/* Particles from the Sun fly right, toward the base */
+.px-fly {
+  animation: px-fly var(--dur, 2s) steps(27) infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+/* A message travels from Earth to the base */
+.px-signal {
+  animation: px-fly var(--dur, 1s) steps(12) infinite;
+}
+
+/* The shield pops up, then glows */
+.scene__shield {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: px-shield-in 0.5s steps(4) 1, px-glow 1.6s steps(1) 0.5s infinite;
+}
+
+@keyframes px-bob {
+  0%, 49% { transform: translateY(0); }
+  50%, 100% { transform: translateY(-1px); }
+}
+
+@keyframes px-flicker {
+  0%, 58%, 72%, 100% { opacity: 1; }
+  60%, 70% { opacity: 0.15; }
+  84% { opacity: 0.5; }
+}
+
+@keyframes px-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(4px); }
+}
+
+@keyframes px-rise {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(-6px); opacity: 0; }
+}
+
+@keyframes px-fly {
+  from { transform: translateX(0); }
+  to { transform: translateX(var(--fly, 54px)); }
+}
+
+@keyframes px-shield-in {
+  from { transform: scale(0.3); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes px-glow {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.6; }
+}

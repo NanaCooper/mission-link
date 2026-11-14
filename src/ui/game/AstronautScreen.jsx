@@ -1,82 +1,66 @@
-import { Meter, BigButton, Panel, WhyCard, InfoTip } from '../components/index.js';
+import { Meter, BigButton, Panel, WhyCard, InfoTip, SpeechBox, Portrait, PixelIcon } from '../components/index.js';
+import BaseScene from './scenes/BaseScene.jsx';
+import { useMeterDeltas } from './useMeterDeltas.js';
 import {
+  CHARACTERS,
   MOVE_INFO,
+  MOVE_SCENE_TAG,
   WARNING_INFO,
   WORLD_NAMES,
   RADIATION_EXPLAINER,
+  NO_MESSAGE_TEXT,
+  NO_MESSAGE_HINT,
+  NO_NEW_MESSAGE_TEXT,
+  novaMood,
+  solaMoodForWarning,
   turnText,
 } from './labels.js';
 import './AstronautScreen.css';
 
-// The Astronaut's screen: base meters, the newest message from Mission Control,
-// the four move buttons, and what happened last turn.
+// The Astronaut's screen: a picture of the base, the newest message from
+// Mission Control, the base meters, the four move buttons, and what happened last turn.
 // It only shows the view it is given. The engine decides everything.
 //
 // Props: { view, onMove }  view = getAstronautView(state), onMove(moveKey)
 export default function AstronautScreen({ view, onMove }) {
-  const { meters } = view;
   const isPlaying = view.status === 'playing';
-
-  const newest = view.inbox.length > 0 ? view.inbox[view.inbox.length - 1] : null;
-  const warning = newest ? WARNING_INFO[newest.warning] : null;
-
   const lastLog = view.log.length > 0 ? view.log[view.log.length - 1] : null;
+  const robot = CHARACTERS.robot;
+  const moveTag = MOVE_SCENE_TAG[view.lastMove];
 
   return (
     <div className={`astronaut-screen world-${view.world}`}>
-      <header className="astronaut-screen__header">
-        <h1 className="astronaut-screen__title">{WORLD_NAMES[view.world]}</h1>
-        <p className="astronaut-screen__turn">{turnText(view)}</p>
-      </header>
-
-      <Panel className="astronaut-screen__meters">
-        <Meter icon="⚡" label="Power" tone="power" value={meters.power} max={100} />
-        <Meter icon="🫁" label="Oxygen" tone="oxygen" value={meters.oxygen} max={100} />
-        <div className="astronaut-screen__radiation">
-          <Meter
-            icon="☢️"
-            label="Storm radiation budget"
-            tone="radiation"
-            value={meters.radiationDose}
-            max={view.radiationLimit}
-            alertWhen="high"
-          />
-          <InfoTip>{RADIATION_EXPLAINER}</InfoTip>
-        </div>
-        <Meter icon="❤️" label="Crew health" tone="health" value={meters.crewHealth} max={100} />
-      </Panel>
-
-      <section
-        className={`astronaut-screen__message${warning ? ' has-warning' : ''}`}
-        role="status"
-        aria-live="polite"
-      >
-        {warning ? (
+      <BaseScene
+        world={view.world}
+        lastMove={view.lastMove}
+        lowPower={view.meters.power < 25}
+        turn={view.turn}
+        overlay={
           <>
-            <p className="astronaut-screen__message-from">
-              <span aria-hidden="true">📡</span> Mission Control says:
-            </p>
-            <p className="astronaut-screen__message-text">
-              <span className="astronaut-screen__message-icon" aria-hidden="true">
-                {warning.icon}
-              </span>{' '}
-              {warning.label}
-            </p>
+            <header className="scene__top scene__top--spread">
+              <h1 className="scene__title astronaut-screen__title">{WORLD_NAMES[view.world]}</h1>
+              <p className="scene__title astronaut-screen__turn">{turnText(view)}</p>
+            </header>
+            {moveTag && (
+              <p key={view.turn} className="scene__tag scene__tag--move scene__corner">
+                {moveTag}
+              </p>
+            )}
           </>
-        ) : (
-          <p className="astronaut-screen__message-empty">
-            <span aria-hidden="true">📡</span> No message from Mission Control yet
-          </p>
-        )}
-      </section>
+        }
+      />
+
+      <MissionControlMessage view={view} />
+
+      <StatusPanel view={view} />
 
       <section className="astronaut-screen__moves" aria-label="Pick your move">
-        <h2 className="astronaut-screen__moves-title">Pick your move</h2>
+        <h2 className="astronaut-screen__moves-title pixel-title">Pick your move</h2>
         <div className="astronaut-screen__buttons">
           {Object.entries(MOVE_INFO).map(([moveKey, info]) => (
             <BigButton
               key={moveKey}
-              icon={info.icon}
+              icon={<PixelIcon name={info.sprite} size={30} />}
               label={info.label}
               hint={info.hint}
               disabled={!isPlaying}
@@ -88,12 +72,119 @@ export default function AstronautScreen({ view, onMove }) {
 
       <div className="astronaut-screen__result">
         {lastLog && (
-          <p className="astronaut-screen__log">
-            <span aria-hidden="true">📝</span> {lastLog.text}
-          </p>
+          <SpeechBox
+            className="astronaut-screen__log"
+            who={robot.who}
+            name={robot.name}
+            text={lastLog.text}
+            size={48}
+          />
         )}
-        <WhyCard fact={view.lastFact} />
+        <WhyCard fact={view.lastFact} name={robot.name} />
       </div>
     </div>
+  );
+}
+
+// The newest message from Mission Control, spoken by Commander Sola.
+// A message that arrived this turn is "new". An older one is shown quietly,
+// so the Astronaut never mistakes last turn's warning for a fresh one.
+function MissionControlMessage({ view }) {
+  const director = CHARACTERS.director;
+  const newest = view.inbox.length > 0 ? view.inbox[view.inbox.length - 1] : null;
+  const warning = newest ? WARNING_INFO[newest.warning] : null;
+  const isNew = Boolean(warning) && newest.turn === view.turn;
+
+  let box;
+  if (isNew) {
+    box = (
+      <SpeechBox
+        who={director.who}
+        mood={solaMoodForWarning(newest.warning)}
+        name={director.name}
+        title="Mission Control says:"
+        tag="New"
+        tone="alert"
+        size={48}
+        big
+        icon={<PixelIcon name={warning.sprite} size={28} />}
+        text={`${warning.label}!`}
+      />
+    );
+  } else if (warning) {
+    box = (
+      <SpeechBox who={director.who} mood="calm" name={director.name} tone="quiet" size={48} text={NO_NEW_MESSAGE_TEXT}>
+        <p>Last message: {warning.label}</p>
+      </SpeechBox>
+    );
+  } else {
+    box = (
+      <SpeechBox who={director.who} mood="calm" name={director.name} tone="quiet" size={48} text={NO_MESSAGE_TEXT}>
+        <p>{NO_MESSAGE_HINT}</p>
+      </SpeechBox>
+    );
+  }
+
+  return (
+    <section className="astronaut-screen__message" role="status" aria-live="polite">
+      {box}
+    </section>
+  );
+}
+
+// Nova's face and the four base meters. After a move, each meter shows how much it changed.
+function StatusPanel({ view }) {
+  const { meters } = view;
+  const deltas = useMeterDeltas(view.turn, meters);
+  const mood = novaMood({ ...meters, radiationLimit: view.radiationLimit });
+  const name = CHARACTERS.astronaut.name;
+
+  return (
+    <Panel className="astronaut-screen__status">
+      <div className="astronaut-screen__crew">
+        <Portrait who={CHARACTERS.astronaut.who} mood={mood} size={48} label={`${name} looks ${mood}`} />
+        <Meter
+          icon={<PixelIcon name="health" size={20} />}
+          label="Crew health"
+          tone="health"
+          value={meters.crewHealth}
+          max={100}
+          showMax={false}
+          delta={deltas?.crewHealth}
+        />
+      </div>
+      <div className="astronaut-screen__pair">
+        <Meter
+          icon={<PixelIcon name="power" size={20} />}
+          label="Power"
+          tone="power"
+          value={meters.power}
+          max={100}
+          showMax={false}
+          delta={deltas?.power}
+        />
+        <Meter
+          icon={<PixelIcon name="oxygen" size={20} />}
+          label="Oxygen"
+          tone="oxygen"
+          value={meters.oxygen}
+          max={100}
+          showMax={false}
+          delta={deltas?.oxygen}
+        />
+      </div>
+      <div className="astronaut-screen__radiation">
+        <Meter
+          icon={<PixelIcon name="radiation" size={20} />}
+          label="Storm radiation budget"
+          tone="radiation"
+          value={meters.radiationDose}
+          max={view.radiationLimit}
+          alertWhen="high"
+          delta={deltas?.radiationDose}
+        />
+        <InfoTip>{RADIATION_EXPLAINER}</InfoTip>
+      </div>
+    </Panel>
   );
 }

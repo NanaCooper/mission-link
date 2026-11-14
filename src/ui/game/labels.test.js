@@ -1,13 +1,74 @@
 import { describe, it, expect } from 'vitest';
 import { MOVES, WARNINGS } from '../../shared/contract.js';
+import { ICONS, PORTRAITS } from '../components/pixel/sprites.js';
 import {
+  CHARACTERS,
   MOVE_INFO,
+  MOVE_SCENE_TAG,
   WARNING_INFO,
   WORLD_NAMES,
   RADIATION_EXPLAINER,
   MARS_DELAY_NOTE,
+  novaMood,
+  solaMoodForWarning,
   turnText
 } from './labels.js';
+
+describe('characters and pixel icons', () => {
+  it('has three characters, each with a name and a face that exists', () => {
+    expect(Object.keys(CHARACTERS).sort()).toEqual(['astronaut', 'director', 'robot']);
+    for (const character of Object.values(CHARACTERS)) {
+      expect(character.name).toBeTruthy();
+      expect(PORTRAITS).toHaveProperty(character.who);
+    }
+  });
+
+  it('gives every move and every warning a pixel icon that exists', () => {
+    for (const info of [...Object.values(MOVE_INFO), ...Object.values(WARNING_INFO)]) {
+      expect(ICONS).toHaveProperty(info.sprite);
+    }
+  });
+
+  it('has short words for the picture after each move', () => {
+    expect(Object.keys(MOVE_SCENE_TAG).sort()).toEqual([...MOVES].sort());
+  });
+});
+
+describe('faces', () => {
+  const healthy = { crewHealth: 100, radiationDose: 0, radiationLimit: 40, power: 100 };
+
+  it('Nova is happy when all is well', () => {
+    expect(novaMood(healthy)).toBe('happy');
+  });
+
+  it('Nova is worried when health, radiation or power is getting bad', () => {
+    expect(novaMood({ ...healthy, crewHealth: 60 })).toBe('worried');
+    expect(novaMood({ ...healthy, radiationDose: 25 })).toBe('worried');
+    expect(novaMood({ ...healthy, power: 20 })).toBe('worried');
+  });
+
+  it('Nova is hurt when health is very low or the radiation budget is nearly used up', () => {
+    expect(novaMood({ ...healthy, crewHealth: 30 })).toBe('hurt');
+    expect(novaMood({ ...healthy, radiationDose: 36 })).toBe('hurt');
+  });
+
+  it('Nova works with crew health alone (all Mission Control can see)', () => {
+    expect(novaMood({ crewHealth: 81 })).toBe('happy');
+    expect(novaMood({ crewHealth: 50 })).toBe('worried');
+    expect(novaMood({ crewHealth: 10 })).toBe('hurt');
+  });
+
+  it('every mood has a face to draw', () => {
+    for (const mood of ['happy', 'worried', 'hurt']) expect(PORTRAITS.nova.frames).toHaveProperty(mood);
+    for (const warning of WARNINGS) expect(PORTRAITS.sola.frames).toHaveProperty(solaMoodForWarning(warning));
+  });
+
+  it('Commander Sola smiles for "All clear" and looks alert for a storm warning', () => {
+    expect(solaMoodForWarning('allClear')).toBe('happy');
+    expect(solaMoodForWarning('shelterNow')).toBe('alert');
+    expect(solaMoodForWarning('stormComing')).toBe('alert');
+  });
+});
 
 describe('screen labels', () => {
   it('MOVE_INFO has exactly one entry per move in the contract', () => {

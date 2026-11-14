@@ -10,6 +10,41 @@ import {
 const noop = () => {};
 const render = (view) => renderToStaticMarkup(<MissionControlScreen view={view} onWarn={noop} />);
 
+describe('MissionControlScreen: characters and the space picture', () => {
+  it('lets Commander Sola say what Mission Control sees', () => {
+    const html = render(fakeMissionControlView);
+    expect(html).toContain('Commander Sola');
+    expect(html).toContain('speech--sola');
+    expect(html).toContain(`<span class="visually-hidden">${fakeMissionControlView.stage.missionControlSees}</span>`);
+  });
+
+  it('shows the space picture for this turn, with the stage in words', () => {
+    const html = render(fakeMissionControlView); // turn 3: the peak
+    expect(html).toContain('scene--space');
+    expect(html).toContain('the Moon base on the right. Particles arrive');
+    expect(html.match(/class="px-fly"/g).length).toBeGreaterThan(10);
+  });
+
+  it('shows the dust haze and the cut message line only when the view says so', () => {
+    expect(render(fakeMarsMissionControlView)).toContain('scene__haze');
+    expect(render(fakeMissionControlView)).not.toContain('scene__haze');
+    expect(render(fakeMarsBlackoutMissionControlView)).toContain('scene__cut');
+    expect(render(fakeMarsMissionControlView)).not.toContain('scene__cut');
+  });
+
+  it("shows Nova's face and her last move by name", () => {
+    const html = render(fakeMissionControlView);
+    expect(html).toContain('aria-label="Nova looks happy"');
+    expect(html).toContain('Nova&#x27;s last move: Raise shield');
+    expect(render({ ...fakeMissionControlView, crewHealth: 20 })).toContain('aria-label="Nova looks hurt"');
+  });
+
+  it('uses pixel icons on the warning buttons, not emoji', () => {
+    const html = render(fakeMissionControlView);
+    for (const emoji of ['🌩️', '🏠', '🔋', '✅']) expect(html).not.toContain(emoji);
+  });
+});
+
 describe('MissionControlScreen: Mars signal blackout', () => {
   it('shows the "Signal blocked" badge and the blackout note', () => {
     const html = render(fakeMarsBlackoutMissionControlView);

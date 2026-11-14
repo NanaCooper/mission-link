@@ -12,6 +12,65 @@ import {
 const noop = () => {};
 const render = (view) => renderToStaticMarkup(<AstronautScreen view={view} onMove={noop} />);
 
+describe('AstronautScreen: characters and the base picture', () => {
+  it('marks a message that arrived this turn as new, spoken by Commander Sola', () => {
+    const html = render(fakeAstronautView); // turn 3, message arrived on turn 3
+    expect(html).toContain('Commander Sola');
+    expect(html).toContain('<span class="speech__tag">New</span>');
+    expect(html).toContain('<span class="visually-hidden">Shelter now!</span>');
+  });
+
+  it('shows an older message quietly, so it is not mistaken for a fresh warning', () => {
+    const html = render({ ...fakeAstronautView, turn: 4 }); // the message is from turn 3
+    expect(html).toContain('No new message this turn.');
+    expect(html).toContain('Last message: Shelter now');
+    expect(html).not.toContain('Mission Control says:');
+    expect(html).not.toContain('speech__tag');
+  });
+
+  it('counts a late Mars message as new on the turn it arrives', () => {
+    const html = render(fakeMarsAstronautView); // sent on turn 2, arrived on turn 3
+    expect(html).toContain('<span class="speech__tag">New</span>');
+  });
+
+  it('tells the Astronaut to ask Mission Control when there is no message', () => {
+    const html = render({ ...fakeAstronautView, inbox: [] });
+    expect(html).toContain('Ask what the Sun is doing!');
+  });
+
+  it('shows the base picture with what Nova did last turn', () => {
+    const html = render(fakeAstronautView); // lastMove: raiseShield
+    expect(html).toContain('Picture: the Moon base. The shield is up over the base.');
+    expect(html).toContain('Shield up!');
+    expect(html).toContain('scene__shield');
+  });
+
+  it('shows no move tag before the first move', () => {
+    const html = render({ ...fakeAstronautView, turn: 0, lastMove: null });
+    expect(html).not.toContain('scene__tag--move');
+    expect(html).toContain('Nova stands by the base.');
+  });
+
+  it("shows Nova's face, and it changes when things get bad", () => {
+    expect(render(fakeAstronautView)).toContain('aria-label="Nova looks happy"');
+    expect(render(fakeLostAstronautView)).toContain('aria-label="Nova looks hurt"'); // radiation budget used up
+    const lowPower = { ...fakeAstronautView, meters: { ...fakeAstronautView.meters, power: 10 } };
+    expect(render(lowPower)).toContain('aria-label="Nova looks worried"');
+  });
+
+  it('lets BLIP the robot say what happened', () => {
+    const html = render(fakeAstronautView);
+    expect(html).toContain('speech--blip');
+    expect(html).toContain('BLIP');
+  });
+
+  it('uses pixel icons on the move buttons, not emoji', () => {
+    const html = render(fakeAstronautView);
+    for (const info of Object.values(MOVE_INFO)) expect(html).not.toContain(info.icon);
+    expect(html.match(/pixel-icon/g).length).toBeGreaterThanOrEqual(8); // 4 meters + 4 moves
+  });
+});
+
 describe('AstronautScreen', () => {
   it('shows the Moon base, the turn and the Moon theme', () => {
     const html = render(fakeAstronautView);
