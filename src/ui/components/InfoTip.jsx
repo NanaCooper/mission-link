@@ -16,7 +16,7 @@ export default function InfoTip({ label = 'What is this?', children }) {
         aria-controls={id}
         onClick={() => setOpen((isOpen) => !isOpen)}
       >
-        <span aria-hidden="true">❓</span> {label}
+        <span className="info-tip__mark" aria-hidden="true">?</span> {label}
       </button>
       <p id={id} className="info-tip__text" hidden={!open}>
         {children}

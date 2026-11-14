@@ -1,5 +1,20 @@
-import { Meter, BigButton, Panel, WhyCard } from '../components/index.js';
-import { WARNING_INFO, MOVE_INFO, MARS_DELAY_NOTE, BLACKOUT_BADGE, BLACKOUT_NOTE, turnText } from './labels.js';
+import { Meter, BigButton, Panel, WhyCard, SpeechBox, Portrait, PixelIcon } from '../components/index.js';
+import SpaceScene from './scenes/SpaceScene.jsx';
+import { stormLook, solaMoodForLook } from './scenes/stormLook.js';
+import { useMeterDeltas } from './useMeterDeltas.js';
+import { useGameSounds } from './sound.js';
+import { ScreenTools } from './AstronautScreen.jsx';
+import {
+  CHARACTERS,
+  missionControlReadText,
+  WARNING_INFO,
+  MOVE_INFO,
+  MARS_DELAY_NOTE,
+  BLACKOUT_BADGE,
+  BLACKOUT_NOTE,
+  novaMood,
+  turnText,
+} from './labels.js';
 import './MissionControlScreen.css';
 
 // Mission Control on Earth: sees the storm, cannot act, can only send a warning.
@@ -13,62 +28,70 @@ export default function MissionControlScreen({ view, onWarn }) {
   // On a Mars blackout turn the Sun blocks the signal: no warning can be sent.
   const blackout = Boolean(stage.blackout);
   const canWarn = playing && !blackout;
-  const lastMove = view.lastMove ? MOVE_INFO[view.lastMove] : null;
+  const director = CHARACTERS.director;
+
+  useGameSounds(view);
 
   return (
     <div className={`mission-control-screen world-${view.world}`}>
       <header className="mc-header">
-        <h2 className="mc-header__title">
-          <span aria-hidden="true">🌍</span> Mission Control, Earth
-        </h2>
+        <h2 className="mc-header__title pixel-title">Mission Control, Earth</h2>
         <p className="mc-header__turn">{turnText(view)}</p>
       </header>
 
-      <Panel className="mc-storm">
-        <p className="mc-storm__kicker">
-          <span aria-hidden="true">☀️</span> Storm right now
-        </p>
-        <div className="mc-storm__row">
-          <p className="mc-storm__stage">{stage.label}</p>
-          {stage.dust && (
-            <span className="mc-badge">
-              <span aria-hidden="true">🌪️</span> Dust storm
-            </span>
-          )}
-          {blackout && (
-            <span className="mc-badge mc-badge--blackout">
-              <span aria-hidden="true">📡</span> {BLACKOUT_BADGE}
-            </span>
-          )}
-        </div>
-        <p className="mc-storm__sees">{stage.missionControlSees}</p>
-        <p className="mc-storm__next">
-          <span aria-hidden="true">🔭</span>{' '}
+      <SpaceScene
+        world={view.world}
+        turn={view.turn}
+        stageName={stage.label}
+        dust={Boolean(stage.dust)}
+        blackout={blackout}
+        overlay={
+          <div className="scene__top">
+            <p className="scene__title">{stage.label}</p>
+            {stage.dust && (
+              <p className="scene__tag">
+                <PixelIcon name="wind" size={14} /> Dust storm
+              </p>
+            )}
+            {blackout && (
+              <p className="scene__tag scene__tag--danger">
+                <PixelIcon name="noSignal" size={14} /> {BLACKOUT_BADGE}
+              </p>
+            )}
+          </div>
+        }
+      />
+
+      <ScreenTools readText={missionControlReadText(view)} />
+
+      <SpeechBox
+        className="mc-brief"
+        who={director.who}
+        mood={solaMoodForLook(stormLook(view.turn))}
+        name={director.name}
+        text={stage.missionControlSees}
+      >
+        <p className="mc-brief__next">
+          <PixelIcon name="next" size={16} />{' '}
           {view.forecast ? `Coming next: ${view.forecast}` : 'This is the last turn'}
         </p>
-      </Panel>
+      </SpeechBox>
 
-      <Panel className="mc-crew">
-        <p className="mc-crew__move">
-          <span aria-hidden="true">{lastMove ? lastMove.icon : '⏳'}</span>{' '}
-          {lastMove ? `Astronaut's last move: ${lastMove.label}` : 'No move yet'}
-        </p>
-        <Meter icon="❤️" label="Crew health" tone="health" value={view.crewHealth} max={100} />
-      </Panel>
+      <CrewStatus view={view} />
 
       <section className="mc-warn" aria-label="Send a warning">
-        <h3 className="mc-warn__title">Send a warning</h3>
+        <h3 className="mc-warn__title pixel-title">Send a warning</h3>
 
         {blackout && (
-          <p className="mc-blackout" role="status">
-            <span className="mc-delay__icon" aria-hidden="true">🚫</span>
+          <p className="mc-note mc-note--blackout" role="status">
+            <PixelIcon name="noSignal" size={28} />
             <span>{BLACKOUT_NOTE}</span>
           </p>
         )}
 
         {view.delayTurns === 1 && !blackout && (
-          <p className="mc-delay" role="note">
-            <span className="mc-delay__icon" aria-hidden="true">📡</span>
+          <p className="mc-note" role="note">
+            <PixelIcon name="signal" size={28} />
             <span>{MARS_DELAY_NOTE}</span>
           </p>
         )}
@@ -77,7 +100,7 @@ export default function MissionControlScreen({ view, onWarn }) {
           {Object.entries(WARNING_INFO).map(([warningKey, info]) => (
             <BigButton
               key={warningKey}
-              icon={info.icon}
+              icon={<PixelIcon name={info.sprite} size={30} />}
               label={info.label}
               onClick={() => onWarn(warningKey)}
               disabled={!canWarn}
@@ -87,7 +110,41 @@ export default function MissionControlScreen({ view, onWarn }) {
         </div>
       </section>
 
-      <WhyCard fact={view.lastFact} />
+      <WhyCard fact={view.lastFact} name={CHARACTERS.robot.name} />
     </div>
+  );
+}
+
+// Nova's face, her last move and the crew's health. Mission Control sees nothing else of the base.
+function CrewStatus({ view }) {
+  const astronaut = CHARACTERS.astronaut;
+  const lastMove = view.lastMove ? MOVE_INFO[view.lastMove] : null;
+  const deltas = useMeterDeltas(view.turn, { crewHealth: view.crewHealth });
+  const mood = novaMood({ crewHealth: view.crewHealth });
+
+  return (
+    <Panel className="mc-crew">
+      <Portrait who={astronaut.who} mood={mood} size={48} label={`${astronaut.name} looks ${mood}`} />
+      <div className="mc-crew__info">
+        <p className="mc-crew__move">
+          {lastMove ? (
+            <>
+              <PixelIcon name={lastMove.sprite} size={20} /> {astronaut.name}&apos;s last move: {lastMove.label}
+            </>
+          ) : (
+            'No move yet'
+          )}
+        </p>
+        <Meter
+          icon={<PixelIcon name="health" size={20} />}
+          label="Crew health"
+          tone="health"
+          value={view.crewHealth}
+          max={100}
+          showMax={false}
+          delta={deltas?.crewHealth}
+        />
+      </div>
+    </Panel>
   );
 }

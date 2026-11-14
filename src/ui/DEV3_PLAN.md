@@ -174,3 +174,47 @@ Give the file to Dev 2.
 - Checklist per screen: text ≥18px, taps ≥48px, every button has icon + word, radiation bar uses
   `radiationLimit`, Why? card never covers buttons, keyboard focus visible, nothing overflows.
 - After merge to `main`, Vercel redeploys; open the live link on a phone.
+
+---
+
+## Pixel redesign: status and hand-off (14 Nov, branch `dev3/pixel-look`)
+
+### Done
+- **Pixel look** in `src/index.css`: Press Start 2P (titles, tags, numbers) + Pixelify Sans (reading text),
+  notched pixel borders (`--px`, `--notch`, class `pixel-box`), block meter bars, step animations,
+  `prefers-reduced-motion` turns all motion off. Fonts are in `src/ui/components/fonts/` (OFL licences
+  included), so the game needs no internet.
+- **Pixel art from text grids**: `src/ui/components/pixel/sprites.js` (`PALETTE`, `PORTRAITS`, `ICONS`, `PIECES`).
+  One letter = one square. `PixelSprite` draws them as SVG. `sprites.test.js` checks every sprite.
+- **New components** (exported from `src/ui/components/index.js`): `Portrait` (who: `nova` | `sola` | `blip`,
+  mood, blinks), `PixelIcon` (name), `SpeechBox` (face + name tag + typed text; tap shows all).
+  `WhyCard` is now BLIP speaking. `Meter` has `delta` (+15 / -20 tag) and `showMax`. `Stars` are pixel stars.
+- **Characters** (`src/ui/game/labels.js` → `CHARACTERS`): Nova (Astronaut), Commander Sola (Mission Control),
+  BLIP (robot). Change names only there. Faces: `novaMood()`, `solaMoodForWarning()`.
+- **Scenes** (`src/ui/game/scenes/`): `BaseScene` (Astronaut: base, Nova, shield / shelter / lights; it must
+  NEVER show the storm), `SpaceScene` (Mission Control: Sun, flare, gas cloud, particles by stage, Earth,
+  message line, dust haze, blackout cut), `stormLook.js` (turn → picture).
+- **Screens**: AstronautScreen (scene with name + turn on top; Sola's message is "New" only if it arrived
+  this turn; Nova's face + meters with change tags; pixel move buttons; BLIP says the log + Why?),
+  MissionControlScreen (scene; Sola's briefing + "Coming next"; Nova's face, last move, health; notes; 2x2
+  warnings), SplitScreen (phones: sticky tabs + "Pass to ..." buttons, a tab flashes when it is that
+  player's turn; wider than 900px: side by side). `useMeterDeltas.js` remembers last turn's numbers.
+- 322 tests pass, lint clean, build OK. Checked at 360px and 1280px.
+
+### Known issues (start here)
+1. Scene tag "Signal blocked" (`.scene__tag--danger` in `scenes/scenes.css`) blinks to 25% opacity: hard to read.
+   Blink the border or background instead, or blink 3 times then stay.
+2. At 360px that tag wraps to a second row and covers the gas cloud in the picture.
+3. Dev 4's flow screens (Home, Lobby, End, How to play, Data sources) still use emoji. They get the pixel
+   panels and buttons automatically, but no characters. Dev 4 owns them: suggest, don't edit.
+
+### Local preview pages (never committed; listed in `.git/info/exclude`, shared by all worktrees)
+`ui-preview.html` (all screens, fake data), `ui-sprites.html` (every sprite), `ui-scenes.html` (every scene).
+If missing, create `ui-preview.html` + `ui-preview.jsx` in the repo root that render `src/ui/game/Preview.jsx`
+with `./src/index.css`. Run `npm run dev` and open `/ui-preview.html`.
+
+### Next work, split so agents never touch the same files
+- **Agent 1, look + components:** `src/index.css`, `src/ui/components/**`
+- **Agent 2, scenes + the "what happened" moment:** `src/ui/game/scenes/**`
+- **Agent 3, sound, read-aloud, prediction prompt:** `src/ui/game/AstronautScreen.*`, `MissionControlScreen.*`,
+  `SplitScreen.*`, `labels.js`, new `src/ui/game/sound.js`, `src/ui/game/useReadAloud.js` (+ their tests)

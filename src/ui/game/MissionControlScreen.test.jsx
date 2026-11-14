@@ -10,6 +10,41 @@ import {
 const noop = () => {};
 const render = (view) => renderToStaticMarkup(<MissionControlScreen view={view} onWarn={noop} />);
 
+describe('MissionControlScreen: characters and the space picture', () => {
+  it('lets Commander Sola say what Mission Control sees', () => {
+    const html = render(fakeMissionControlView);
+    expect(html).toContain('Commander Sola');
+    expect(html).toContain('speech--sola');
+    expect(html).toContain(`<span class="visually-hidden">${fakeMissionControlView.stage.missionControlSees}</span>`);
+  });
+
+  it('shows the space picture for this turn, with the stage in words', () => {
+    const html = render(fakeMissionControlView); // turn 3: the peak
+    expect(html).toContain('scene--space');
+    expect(html).toContain('the Moon base on the right. Particles arrive');
+    expect(html.match(/class="px-fly"/g).length).toBeGreaterThan(10);
+  });
+
+  it('shows the dust haze and the cut message line only when the view says so', () => {
+    expect(render(fakeMarsMissionControlView)).toContain('scene__haze');
+    expect(render(fakeMissionControlView)).not.toContain('scene__haze');
+    expect(render(fakeMarsBlackoutMissionControlView)).toContain('scene__cut');
+    expect(render(fakeMarsMissionControlView)).not.toContain('scene__cut');
+  });
+
+  it("shows Nova's face and her last move by name", () => {
+    const html = render(fakeMissionControlView);
+    expect(html).toContain('aria-label="Nova looks happy"');
+    expect(html).toContain('Nova&#x27;s last move: Raise shield');
+    expect(render({ ...fakeMissionControlView, crewHealth: 20 })).toContain('aria-label="Nova looks hurt"');
+  });
+
+  it('uses pixel icons on the warning buttons, not emoji', () => {
+    const html = render(fakeMissionControlView);
+    for (const emoji of ['🌩️', '🏠', '🔋', '✅']) expect(html).not.toContain(emoji);
+  });
+});
+
 describe('MissionControlScreen: Mars signal blackout', () => {
   it('shows the "Signal blocked" badge and the blackout note', () => {
     const html = render(fakeMarsBlackoutMissionControlView);
@@ -35,7 +70,8 @@ describe('MissionControlScreen: Mars signal blackout', () => {
   });
 
   it('still works if an older view has no blackout field', () => {
-    const { blackout, ...stageWithoutBlackout } = fakeMissionControlView.stage;
+    const stageWithoutBlackout = { ...fakeMissionControlView.stage };
+    delete stageWithoutBlackout.blackout;
     const html = render({ ...fakeMissionControlView, stage: stageWithoutBlackout });
     expect(html).not.toContain('Signal blocked');
     expect(html).not.toContain('disabled');
@@ -81,7 +117,8 @@ describe('MissionControlScreen', () => {
 
   it('shows all four warning buttons, none selected when no warning sent', () => {
     const html = render({ ...fakeMissionControlView, warningThisTurn: null });
-    expect(html.match(/<button/g)).toHaveLength(4);
+    // Count the warning buttons only: the "Sound on/off" button is always there too.
+    expect(html.match(/<button[^>]*class="big-button/g)).toHaveLength(4);
     expect(html).not.toContain('aria-pressed="true"');
   });
 
@@ -106,9 +143,10 @@ describe('MissionControlScreen', () => {
     }
   });
 
-  it('disables every button when the game is won', () => {
+  it('disables every warning button when the game is won', () => {
     const html = render({ ...fakeMissionControlView, status: 'won' });
-    const buttons = html.match(/<button[^>]*>/g) || [];
+    // "Sound on/off" stays usable on purpose, so only the warning buttons are checked.
+    const buttons = html.match(/<button[^>]*class="big-button[^>]*>/g) || [];
     expect(buttons).toHaveLength(4);
     for (const button of buttons) expect(button).toContain('disabled');
   });
@@ -121,5 +159,14 @@ describe('MissionControlScreen', () => {
   it('shows the Why? card from lastFact', () => {
     expect(render(fakeMissionControlView)).toContain('Why?');
     expect(render({ ...fakeMissionControlView, lastFact: null })).not.toContain('Why?');
+  });
+});
+
+describe('MissionControlScreen: sound and read-aloud', () => {
+  it('shows the sound button, which stays usable when the game is over', () => {
+    const html = render({ ...fakeMissionControlView, status: 'won' });
+    expect(html).toMatch(/<button type="button" class="screen-tools__button">/);
+    expect(html).toContain('Sound on');
+    expect(html).not.toContain('Read to me'); // tests run without speechSynthesis
   });
 });

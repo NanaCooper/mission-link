@@ -1,24 +1,41 @@
-// Shared screen text: labels, icons and hints for moves and warnings.
+// Shared screen text: names, labels, icons and hints for moves and warnings.
 // Screens import from here so nobody writes these strings twice.
 //
 // The hint numbers ("Costs 20 power", "Gets back 15 power", ...) mirror
 // src/engine/balance.js (MOVE_EFFECTS). If Dev 1 changes balance.js,
 // update the hints here too. The UI never uses these numbers for game rules.
 
+// The three characters. Change a name here and it changes on every screen.
+//   who = which pixel face to draw (see ui/components/pixel/sprites.js)
+export const CHARACTERS = {
+  astronaut: { who: 'nova', name: 'Nova' },           // the Astronaut on the base
+  director: { who: 'sola', name: 'Commander Sola' },  // Mission Control on Earth
+  robot: { who: 'blip', name: 'BLIP' }                // the base robot: says what happened, shares facts
+};
+
 // One entry per move in MOVES (src/shared/contract.js)
+//   icon = emoji (kept as a fallback), sprite = pixel icon name
 export const MOVE_INFO = {
-  raiseShield: { icon: '🛡️', label: 'Raise shield', hint: 'Costs 20 power. Blocks most radiation.' },
-  shelter: { icon: '🏠', label: 'Shelter', hint: 'Costs 5 power and some health. Blocks almost all radiation.' },
-  savePower: { icon: '🔋', label: 'Save power', hint: 'Gets back 15 power. No protection.' },
-  doScience: { icon: '🔬', label: 'Do science', hint: 'Costs 10 power. Earns science points.' }
+  raiseShield: { icon: '🛡️', sprite: 'shield', label: 'Raise shield', hint: 'Costs 20 power. Blocks most radiation.' },
+  shelter: { icon: '🏠', sprite: 'shelter', label: 'Shelter', hint: 'Costs 5 power and some health. Blocks almost all radiation.' },
+  savePower: { icon: '🔋', sprite: 'battery', label: 'Save power', hint: 'Gets back 15 power. No protection.' },
+  doScience: { icon: '🔬', sprite: 'science', label: 'Do science', hint: 'Costs 10 power. Earns science points.' }
+};
+
+// Short words shown on the Astronaut's picture after a move
+export const MOVE_SCENE_TAG = {
+  raiseShield: 'Shield up!',
+  shelter: 'In the shelter',
+  savePower: 'Saving power',
+  doScience: 'Doing science'
 };
 
 // One entry per warning in WARNINGS (src/shared/contract.js)
 export const WARNING_INFO = {
-  stormComing: { icon: '🌩️', label: 'Storm coming' },
-  shelterNow: { icon: '🏠', label: 'Shelter now' },
-  savePower: { icon: '🔋', label: 'Save power' },
-  allClear: { icon: '✅', label: 'All clear' }
+  stormComing: { icon: '🌩️', sprite: 'storm', label: 'Storm coming' },
+  shelterNow: { icon: '🏠', sprite: 'shelter', label: 'Shelter now' },
+  savePower: { icon: '🔋', sprite: 'battery', label: 'Save power' },
+  allClear: { icon: '✅', sprite: 'clear', label: 'All clear' }
 };
 
 export const WORLD_NAMES = { moon: 'Moon base', mars: 'Mars base' };
@@ -34,7 +51,87 @@ export const BLACKOUT_BADGE = 'Signal blocked';
 export const BLACKOUT_NOTE =
   "The Sun is blocking the signal. Your warning can't get through this turn.";
 
+// The Astronaut cannot see the storm. Only Mission Control can.
+export const NO_MESSAGE_TEXT = 'No message from Mission Control yet';
+export const NO_MESSAGE_HINT = "You can't see the storm from here. Ask what the Sun is doing!";
+export const NO_NEW_MESSAGE_TEXT = 'No new message this turn.';
+
+// ---------- Sound and read-aloud buttons ----------
+export const SOUND_ON_LABEL = 'Sound on';
+export const SOUND_OFF_LABEL = 'Sound off';
+export const READ_ALOUD_LABEL = 'Read to me';
+export const READ_ALOUD_STOP_LABEL = 'Stop reading';
+
+// ---------- Prediction prompt (Astronaut only, never sent anywhere) ----------
+// Asked on the turn the storm may peak. "Turn 4 of 6" on screen is view.turn 3.
+// It only asks. It changes no rules and no score.
+export const PREDICTION = {
+  turn: 3,
+  question: 'The storm may be about to peak. What do you think will happen if you do science now?',
+  answers: ['Nothing much', 'The crew takes a lot of radiation', 'Not sure']
+};
+
+export function predictionResultText(answer) {
+  return `You guessed "${answer}". Here is what happened.`;
+}
+
+// ---------- What "Read to me" says ----------
+// Built only from what the screen already shows.
+
+// Astronaut: Commander Sola's message, then BLIP's line about the last turn.
+export function astronautReadText(view) {
+  const { director, robot } = CHARACTERS;
+  const newest = view.inbox.length > 0 ? view.inbox[view.inbox.length - 1] : null;
+  const warning = newest ? WARNING_INFO[newest.warning] : null;
+  const lastLog = view.log.length > 0 ? view.log[view.log.length - 1] : null;
+
+  let sola;
+  if (warning && newest.turn === view.turn) sola = `${director.name} says: ${warning.label}!`;
+  else if (warning) sola = `${director.name} says: ${NO_NEW_MESSAGE_TEXT} Last message: ${warning.label}.`;
+  else sola = `${director.name} says: ${NO_MESSAGE_TEXT}. ${NO_MESSAGE_HINT}`;
+
+  const parts = [sola];
+  if (lastLog) parts.push(`${robot.name} says: ${lastLog.text}`);
+  return joinSentences(parts);
+}
+
+// Mission Control: Commander Sola's briefing and what comes next, then BLIP's fact.
+export function missionControlReadText(view) {
+  const { director, robot } = CHARACTERS;
+  const parts = [`${director.name} says: ${view.stage.missionControlSees}`];
+  parts.push(view.forecast ? `Coming next: ${view.forecast}` : 'This is the last turn');
+  if (view.stage.blackout) parts.push(BLACKOUT_NOTE);
+  if (view.lastFact?.text) parts.push(`${robot.name} says: ${view.lastFact.text}`);
+  return joinSentences(parts);
+}
+
+function joinSentences(parts) {
+  return parts
+    .filter((part) => typeof part === 'string' && part.trim().length > 0)
+    .map((part) => part.trim())
+    .map((part) => (/[.!?]$/.test(part) ? part : `${part}.`))
+    .join(' ');
+}
+
 // The engine counts turns from 0, and turn reaches maxTurns when the game ends.
 export function turnText(view) {
   return `Turn ${Math.min(view.turn + 1, view.maxTurns)} of ${view.maxTurns}`;
+}
+
+// ---------- Faces ----------
+// These only pick which face to draw. They never change the game.
+
+// Nova looks happy, worried or hurt, from the meters the screen can see.
+export function novaMood({ crewHealth, radiationDose = 0, radiationLimit = 0, power = 100 }) {
+  const radiationShare = radiationLimit > 0 ? radiationDose / radiationLimit : 0;
+  if (crewHealth < 35 || radiationShare >= 0.85) return 'hurt';
+  if (crewHealth < 65 || radiationShare >= 0.6 || power < 25) return 'worried';
+  return 'happy';
+}
+
+// Commander Sola's face when a warning arrives
+export function solaMoodForWarning(warning) {
+  if (warning === 'allClear') return 'happy';
+  if (warning === 'savePower') return 'calm';
+  return 'alert';
 }

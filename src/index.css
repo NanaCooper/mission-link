@@ -1,41 +1,79 @@
 /* Mission Link: the look (owned by Dev 3)
-   Mobile first: everything must work at 360px wide.
-   Body text is at least 18px, tap targets at least 48px tall. */
+   A pixel-art game look. Mobile first: everything must work at 360px wide.
+   Body text is at least 18px, tap targets at least 48px tall.
+
+   How the pixel look is made:
+   - Two pixel fonts, kept in the repo so the game works with no internet.
+   - Boxes have thick square borders with the corner "pixel" cut off (--notch).
+   - Pictures are drawn from coloured squares (see ui/components/pixel/). */
+
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('./ui/components/fonts/PressStart2P-latin.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pixelify Sans';
+  src: url('./ui/components/fonts/PixelifySans-latin.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   /* Space background and panels */
-  --bg: #0b1026;
-  --bg-2: #141a3a;
-  --panel: #1a2148;
-  --panel-border: #2f3a73;
+  --ink: #1a1c2c;
+  --bg: #10111f;
+  --bg-2: #1a1c2c;
+  --panel: #262b44;
+  --panel-border: #566c86;
 
   /* Text */
-  --text: #eef1ff;
-  --text-dim: #b8c0e6;
+  --text: #f4f4f4;
+  --text-dim: #a9bdd0;
 
   /* One accent colour. The world themes below swap it. */
-  --accent: #5cc8ff;
-  --accent-contrast: #06122a; /* text on top of the accent */
+  --accent: #73eff7;
+  --accent-contrast: #1a1c2c; /* text on top of the accent */
+  --focus: #ffcd75;           /* keyboard focus ring */
 
   /* Meter colours */
-  --power: #ffd23f;
-  --oxygen: #4da3ff;
+  --power: #ffcd75;
+  --oxygen: #41a6f6;
   --radiation: #b57bff;
-  --health: #4ade80;
-  --danger: #ff5a5f;
+  --health: #5fd47a;
+  --danger: #f25c6b;
 
-  /* Shapes and spacing */
-  --radius: 16px;
-  --radius-sm: 12px;
+  /* Character colours */
+  --nova: #ef7d57;
+  --sola: #41a6f6;
+  --blip: #a7f070;
+
+  /* Shapes and spacing. --px is one "screen pixel" of the pixel look. */
+  --px: 4px;
+  --radius: 0px;
+  --radius-sm: 0px;
   --gap: 12px;
   --tap: 48px;
 
-  --font: system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* A box shape with the four corner pixels cut off */
+  --notch: polygon(
+    0 var(--px), var(--px) var(--px), var(--px) 0,
+    calc(100% - var(--px)) 0, calc(100% - var(--px)) var(--px), 100% var(--px),
+    100% calc(100% - var(--px)), calc(100% - var(--px)) calc(100% - var(--px)), calc(100% - var(--px)) 100%,
+    var(--px) 100%, var(--px) calc(100% - var(--px)), 0 calc(100% - var(--px))
+  );
+
+  --font-pixel: 'Press Start 2P', ui-monospace, 'Courier New', monospace; /* titles, tags, numbers */
+  --font: 'Pixelify Sans', system-ui, 'Segoe UI', Roboto, sans-serif;      /* everything you read */
 
   color-scheme: dark;
   font-family: var(--font);
   font-size: 18px;
-  line-height: 1.5;
+  line-height: 1.4;
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
@@ -44,13 +82,13 @@
 
 /* World themes: only the accent and panel border change. */
 .world-moon {
-  --accent: #c9d3e6;          /* cool grey */
-  --panel-border: #6b7899;
+  --accent: #b9d7ea;          /* cool grey-blue */
+  --panel-border: #7b93ab;
 }
 
 .world-mars {
-  --accent: #e8875a;          /* rust orange */
-  --panel-border: #a04a28;
+  --accent: #ef7d57;          /* rust orange */
+  --panel-border: #b0553a;
 }
 
 *,
@@ -59,17 +97,31 @@
   box-sizing: border-box;
 }
 
+/* Pixel stars on the page itself. They repeat in two tile sizes, so the page
+   never shows a gap or a seam however long it gets. */
+html {
+  background-color: var(--bg);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' shape-rendering='crispEdges'%3E%3Cg fill='%23f4f4f4'%3E%3Crect x='24' y='36' width='4' height='4'/%3E%3Crect x='172' y='20' width='2' height='2' opacity='.7'/%3E%3Crect x='104' y='148' width='2' height='2' opacity='.6'/%3E%3Crect x='212' y='196' width='4' height='4' opacity='.5'/%3E%3C/g%3E%3Crect x='68' y='212' width='2' height='2' fill='%2373eff7' opacity='.8'/%3E%3Crect x='140' y='84' width='4' height='4' fill='%23ffcd75' opacity='.6'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400' shape-rendering='crispEdges'%3E%3Cg fill='%2394b0c2'%3E%3Crect x='60' y='320' width='2' height='2'/%3E%3Crect x='300' y='90' width='2' height='2'/%3E%3Crect x='210' y='260' width='4' height='4' opacity='.5'/%3E%3Crect x='350' y='360' width='2' height='2'/%3E%3Crect x='120' y='40' width='2' height='2' opacity='.6'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 240px 240px, 400px 400px;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
-  /* A few soft "stars" over a deep space gradient */
-  background:
-    radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.7), transparent),
-    radial-gradient(1px 1px at 70% 15%, rgba(255, 255, 255, 0.6), transparent),
-    radial-gradient(1.5px 1.5px at 85% 60%, rgba(255, 255, 255, 0.5), transparent),
-    radial-gradient(1px 1px at 40% 80%, rgba(255, 255, 255, 0.5), transparent),
-    linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
-  background-attachment: fixed;
+}
+
+/* A few stars that twinkle, on a layer behind everything */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' shape-rendering='crispEdges'%3E%3Cg fill='%23f4f4f4'%3E%3Crect x='44' y='96' width='4' height='4'/%3E%3Crect x='236' y='44' width='4' height='4'/%3E%3Crect x='180' y='252' width='4' height='4'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 320px 320px;
+  animation: px-twinkle 2.8s steps(1) infinite;
 }
 
 #root {
@@ -83,6 +135,7 @@ h2,
 h3 {
   margin: 0 0 8px;
   line-height: 1.2;
+  font-weight: 700;
   color: var(--text);
 }
 
@@ -97,7 +150,7 @@ a {
 button {
   font: inherit;
   min-height: var(--tap);
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   cursor: pointer;
 }
 
@@ -106,8 +159,8 @@ button:disabled {
 }
 
 :focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 3px;
+  outline: var(--px) solid var(--focus);
+  outline-offset: 2px;
 }
 
 .visually-hidden {
@@ -119,23 +172,202 @@ button:disabled {
   white-space: nowrap;
 }
 
+/* ---------- Pixel helpers ---------- */
+
+/* Any box with a thick pixel border. Set --edge to change the border colour. */
+.pixel-box {
+  --edge: var(--panel-border);
+  border: var(--px) solid var(--edge);
+  clip-path: var(--notch);
+}
+
+/* Small label in the pixel font: "NEW", "LOW!", names */
+.pixel-tag {
+  display: inline-block;
+  padding: 4px 6px;
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  line-height: 1.2;
+  letter-spacing: 0;
+  color: var(--ink);
+  background: var(--accent);
+}
+
+.pixel-title {
+  font-family: var(--font-pixel);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.pixel-sprite {
+  display: block;
+  flex: none;
+  max-width: none;
+}
+
+.pixel-icon {
+  display: inline-block;
+  vertical-align: middle;
+}
+
 /* ---------- Panel ---------- */
 .panel {
+  --edge: var(--panel-border);
   background: var(--panel);
-  border: 2px solid var(--panel-border);
-  border-radius: var(--radius);
+  border: var(--px) solid var(--edge);
+  clip-path: var(--notch);
   padding: 16px;
 }
 
 .panel__title {
-  font-size: 1.25rem;
+  margin: 0 0 12px;
+  font-family: var(--font-pixel);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--accent);
+}
+
+/* ---------- Portrait: a character's face in a frame ---------- */
+.portrait {
+  --edge: var(--text-dim);
+  box-sizing: content-box;
+  display: inline-block;
+  flex: none;
+  line-height: 0;
+  background: var(--panel-border);
+  border: var(--px) solid var(--edge);
+  clip-path: var(--notch);
+  overflow: hidden;
+}
+
+.portrait--nova { background: #29366f; --edge: var(--nova); }
+.portrait--sola { background: #257179; --edge: var(--sola); }
+.portrait--blip { background: #5d275d; --edge: var(--blip); }
+
+.portrait .pixel-sprite {
+  width: 100%;
+  height: 100%;
+}
+
+/* The eyes close for a moment, every few seconds */
+.portrait__blink {
+  visibility: hidden;
+  animation: px-eyes 4.2s steps(1) infinite;
+}
+
+.portrait--sola .portrait__blink { animation-delay: 1.3s; }
+.portrait--blip .portrait__blink { animation-delay: 2.1s; }
+
+/* ---------- SpeechBox: a character says something ---------- */
+.speech {
+  --edge: var(--panel-border);
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: var(--px) solid var(--edge);
+  clip-path: var(--notch);
+}
+
+.speech--nova { --edge: var(--nova); }
+.speech--sola { --edge: var(--sola); }
+.speech--blip { --edge: var(--blip); }
+.speech--alert { --edge: var(--focus); background: #2a2440; }
+.speech--quiet { --edge: var(--panel-border); }
+
+.speech__body {
+  min-width: 0;
+}
+
+.speech__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+}
+
+.speech__name {
+  margin: 0;
+  padding: 4px 6px;
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--ink);
+  background: var(--edge);
+}
+
+.speech__title {
+  order: 3;
+  flex-basis: 100%;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-dim);
+}
+
+.speech__icon {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.speech__tag {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  margin: 0;
+  padding: 4px 6px;
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--ink);
+  background: var(--focus);
+  animation: px-blink 1s steps(1) 3;
+}
+
+.speech__text {
+  margin: 0;
+  line-height: 1.3;
+  overflow-wrap: break-word;
+}
+
+.speech__text--big {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.speech__extra {
+  margin: 6px 0 0;
+  color: var(--text-dim);
+}
+
+.speech__extra > :last-child {
+  margin-bottom: 0;
+}
+
+/* Typed text: each letter appears a moment after the one before.
+   Without animation (or with "reduce motion") the whole text simply shows. */
+.typed__char {
+  animation: px-type 1ms linear backwards;
+  animation-delay: calc(var(--i) * 18ms);
+}
+
+.typed.is-done .typed__char {
+  animation: none;
 }
 
 /* ---------- Meter ---------- */
 .meter {
   --meter-color: var(--accent);
+  position: relative;
   display: grid;
   gap: 6px;
+  min-width: 0;
 }
 
 .meter--power { --meter-color: var(--power); }
@@ -147,85 +379,130 @@ button:disabled {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px 8px;
+  min-height: 24px;
 }
 
 .meter__icon {
-  font-size: 1.4rem;
+  display: inline-flex;
+  align-items: center;
+  font-size: 1.2rem;
   line-height: 1;
 }
 
 .meter__label {
   font-weight: 700;
+  line-height: 1.15;
 }
 
 .meter__value {
   margin-left: auto;
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .meter__alert {
+  padding: 4px 6px;
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--ink);
   background: var(--danger);
-  color: #1a0306;
-  font-weight: 800;
-  padding: 0 8px;
-  border-radius: 999px;
+  animation: px-blink 1s steps(1) infinite;
+}
+
+/* "+15" or "-20" after a move. An arrow and a sign, so it is not colour alone. */
+.meter__delta {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 4px 6px;
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--ink);
+  background: var(--health);
+  animation: px-pop 0.5s steps(4) 1;
+}
+
+.meter__delta.is-bad {
+  background: var(--danger);
 }
 
 .meter__track {
-  height: 16px;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
+  height: 20px;
+  background: var(--ink);
+  border: var(--px) solid var(--ink);
+  outline: 2px solid var(--panel-border);
+  outline-offset: -2px;
   overflow: hidden;
 }
 
 .meter--alert .meter__track {
-  box-shadow: 0 0 0 2px var(--danger);
+  outline-color: var(--danger);
 }
 
+/* The bar is cut into blocks, like an old game's health bar */
 .meter__fill {
   height: 100%;
-  background: var(--meter-color);
-  border-radius: 999px;
-  transition: width 0.4s ease;
+  background-color: var(--meter-color);
+  background-image: linear-gradient(90deg, transparent 0 8px, var(--ink) 8px 10px);
+  background-size: 10px 100%;
+  box-shadow: inset 0 -4px 0 0 rgba(0, 0, 0, 0.25);
+  transition: width 0.5s steps(8);
 }
 
 /* ---------- BigButton ---------- */
 .big-button {
+  --edge: var(--panel-border);
   display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
   min-height: 64px;
-  padding: 12px 16px;
+  padding: 8px 12px 12px;
   text-align: left;
   color: var(--text);
   background: var(--bg-2);
-  border: 2px solid var(--panel-border);
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  border: var(--px) solid var(--edge);
+  clip-path: var(--notch);
+  box-shadow: inset 0 -4px 0 0 rgba(0, 0, 0, 0.45), inset 0 4px 0 0 rgba(255, 255, 255, 0.06);
 }
 
 .big-button:hover:not(:disabled) {
-  border-color: var(--accent);
+  --edge: var(--accent);
 }
 
 .big-button:active:not(:disabled) {
-  transform: scale(0.98);
+  padding: 10px 12px 10px;
+  box-shadow: inset 0 4px 0 0 rgba(0, 0, 0, 0.45);
+}
+
+.big-button:focus-visible {
+  outline: none;
+  --edge: var(--focus);
+  box-shadow: inset 0 0 0 var(--px) var(--ink), inset 0 0 0 calc(var(--px) * 2) var(--focus);
 }
 
 .big-button:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
 .big-button.is-selected {
+  --edge: var(--accent);
   background: var(--accent);
-  border-color: var(--accent);
   color: var(--accent-contrast);
 }
 
 .big-button__icon {
-  font-size: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  font-size: 1.6rem;
   line-height: 1;
   flex: none;
 }
@@ -233,14 +510,18 @@ button:disabled {
 .big-button__text {
   display: grid;
   flex: 1;
+  min-width: 0;
 }
 
 .big-button__label {
-  font-weight: 800;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1.15;
 }
 
 .big-button__hint {
   color: var(--text-dim);
+  line-height: 1.2;
 }
 
 .big-button.is-selected .big-button__hint {
@@ -248,7 +529,8 @@ button:disabled {
 }
 
 .big-button__check {
-  font-weight: 800;
+  font-family: var(--font-pixel);
+  font-size: 16px;
   flex: none;
 }
 
@@ -256,64 +538,96 @@ button:disabled {
 .stars {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 10px;
   margin: 0;
 }
 
 .stars__icons {
-  font-size: 2rem;
-  letter-spacing: 2px;
-  line-height: 1;
+  display: inline-flex;
+  gap: 6px;
 }
 
-.stars__on { color: #ffd23f; }
-.stars__off { color: rgba(255, 255, 255, 0.3); }
+.stars__star.is-on {
+  animation: px-pop 0.6s steps(4) backwards;
+}
+
+.stars__star.is-on:nth-child(2) { animation-delay: 0.25s; }
+.stars__star.is-on:nth-child(3) { animation-delay: 0.5s; }
 
 .stars__label {
   font-weight: 700;
 }
 
-/* ---------- WhyCard ---------- */
-.why-card {
-  background: var(--bg-2);
-  border: 2px dashed var(--accent);
-  border-radius: var(--radius);
-  padding: 12px 16px;
-}
-
-.why-card__title {
-  font-size: 1.1rem;
-}
-
+/* ---------- WhyCard: BLIP the robot shares one real fact ---------- */
 .why-card__source {
+  margin: 6px 0 0;
   color: var(--text-dim);
-  margin: 0;
 }
 
 /* ---------- InfoTip ---------- */
 .info-tip__button {
+  --edge: var(--panel-border);
   min-height: var(--tap);
   padding: 4px 12px;
   color: var(--text);
-  background: transparent;
-  border: 2px solid var(--panel-border);
-  border-radius: 999px;
+  background: var(--bg-2);
+  border: var(--px) solid var(--edge);
+  clip-path: var(--notch);
+}
+
+.info-tip__button:focus-visible {
+  outline: none;
+  --edge: var(--focus);
 }
 
 .info-tip__button[aria-expanded='true'] {
-  border-color: var(--accent);
+  --edge: var(--accent);
+}
+
+.info-tip__mark {
+  font-family: var(--font-pixel);
+  font-size: 14px;
+  color: var(--accent);
 }
 
 .info-tip__text {
   margin: 8px 0 0;
   padding: 8px 12px;
   background: var(--bg-2);
-  border-left: 4px solid var(--accent);
-  border-radius: 8px;
+  border-left: var(--px) solid var(--accent);
 }
 
 .info-tip__text[hidden] {
   display: none;
+}
+
+/* ---------- Pixel animations (they move in steps, like old games) ---------- */
+@keyframes px-twinkle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.15; }
+}
+
+@keyframes px-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.25; }
+}
+
+@keyframes px-eyes {
+  0%, 94% { visibility: hidden; }
+  95%, 100% { visibility: visible; }
+}
+
+@keyframes px-type {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes px-pop {
+  0% { transform: scale(0.4); }
+  60% { transform: scale(1.25); }
+  100% { transform: scale(1); }
 }
 
 @media (prefers-reduced-motion: reduce) {
