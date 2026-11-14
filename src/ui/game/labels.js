@@ -123,16 +123,38 @@ export const NEW_TAG = 'New';
 
 // The tabs of each player's menu, like the pause menu of a game.
 //   sprite = pixel icon name (see ui/components/pixel/sprites.js)
+//   The meters are NOT in the menu: they stay in the top bar (hud/Vitals.jsx), always in view.
+//   The menu holds things like sound (the Options tab), messages and the quick buttons.
 export const ASTRONAUT_TABS = {
-  status: { label: 'Status', sprite: 'health' },
+  options: { label: 'Options', sprite: 'next' },
   messages: { label: 'Messages', sprite: 'signal' },
   moves: { label: 'Moves', sprite: 'shield' }
 };
 export const MISSION_CONTROL_TABS = {
+  options: { label: 'Options', sprite: 'next' },
   bigScreen: { label: 'Big screen', sprite: 'storm' },
   crew: { label: 'Crew', sprite: 'health' },
   warnings: { label: 'Warnings', sprite: 'signal' }
 };
+
+// The Options tab of the menu
+export const OPTIONS_TITLE = 'Options';
+export const BARS_TITLE = 'What do the bars mean?';
+export const BARS_TEXT = {
+  health: 'Crew health: how well the crew feels. At 0 the mission is lost.',
+  power: 'Power: runs the base. Shields and science use it up.',
+  oxygen: 'Oxygen: air to breathe. It drops when the power runs out.'
+};
+
+// Pause: opening the menu on one device pauses the game (the signal clock stops).
+// Online it cannot pause the other player, so the menu says the game keeps going.
+export const PAUSED_TITLE = 'Game paused';
+export const PAUSED_TEXT = 'The signal clock is stopped. Close the menu to play on.';
+export const ONLINE_NO_PAUSE_TEXT = 'Online games keep going while the menu is open. The clock is still running!';
+
+// Short names for the meters in the top bar (the full names stay in the menu and for screen readers)
+export const VITALS_LABEL = "The crew's meters";
+export const VITALS_SHORT = { crewHealth: 'Health', power: 'Power', oxygen: 'Oxygen', radiationDose: 'Radiation' };
 
 // One device (split mode): one player's screen at a time, and handing the device over.
 export const ROLE_NAMES = { astronaut: 'Astronaut', missionControl: 'Mission Control' };

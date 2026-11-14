@@ -85,12 +85,15 @@ export default function App() {
 // (leaving would close an online room).
 function Game({ session, onLevelEnd, onHome }) {
   const { mode, role, code, world, moonStars } = session;
+  // One device: a player opened the Menu, so the game (the signal clock) is paused.
+  const [paused, setPaused] = useState(false);
   const { state, sendMove, sendWarning, restart, partnerConnected, error } = useGameSession({
     mode,
     role,
     code,
     world,
     moonStars,
+    paused: mode === 'split' && paused,
   });
   const [showSources, setShowSources] = useState(false);
 
@@ -138,12 +141,14 @@ function Game({ session, onLevelEnd, onHome }) {
         missionControlView={getMissionControlView(state)}
         onMove={sendMove}
         onWarn={sendWarning}
+        onPauseChange={setPaused}
       />
     );
   } else if (isMissionControl) {
-    body = <MissionControlScreen view={getMissionControlView(state)} onWarn={sendWarning} />;
+    // Online: the menu cannot pause the other player, so it says the game keeps going.
+    body = <MissionControlScreen view={getMissionControlView(state)} onWarn={sendWarning} pauses={false} />;
   } else {
-    body = <AstronautScreen view={getAstronautView(state)} onMove={sendMove} />;
+    body = <AstronautScreen view={getAstronautView(state)} onMove={sendMove} pauses={false} />;
   }
 
   return (

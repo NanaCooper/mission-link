@@ -1,28 +1,25 @@
 import { useState } from 'react';
-import { Meter, BigButton, Panel, WhyCard, InfoTip, SpeechBox, Portrait, PixelIcon } from '../components/index.js';
+import { BigButton, WhyCard, SpeechBox, PixelIcon } from '../components/index.js';
 import BaseMap from './world/BaseMap.jsx';
 import MissionClock from './MissionClock.jsx';
 import GameHud from './hud/GameHud.jsx';
+import Vitals from './hud/Vitals.jsx';
+import OptionsPanel from './hud/OptionsPanel.jsx';
+import ScreenTools from './hud/ScreenTools.jsx';
 import { useGameMenu } from './hud/useGameMenu.js';
 import { usePopup } from './hud/usePopup.js';
 import { useMeterDeltas } from './useMeterDeltas.js';
-import { useGameSounds, useSoundOn, setSoundOn, unlockAudio } from './sound.js';
-import { useReadAloud } from './useReadAloud.js';
+import { useGameSounds } from './sound.js';
 import {
   CHARACTERS,
   ASTRONAUT_TABS,
   PREDICTION,
   predictionResultText,
   astronautReadText,
-  SOUND_ON_LABEL,
-  SOUND_OFF_LABEL,
-  READ_ALOUD_LABEL,
-  READ_ALOUD_STOP_LABEL,
   MOVE_INFO,
   MOVE_SCENE_TAG,
   WARNING_INFO,
   WORLD_NAMES,
-  RADIATION_EXPLAINER,
   NO_MESSAGE_TEXT,
   NO_MESSAGE_HINT,
   NO_NEW_MESSAGE_TEXT,
@@ -31,7 +28,6 @@ import {
   BLIP_QUESTION_TEXT,
   LEVEL_END_TEXT,
   radiationHitText,
-  novaMood,
   solaMoodForWarning,
   turnText,
 } from './labels.js';
@@ -39,8 +35,9 @@ import './AstronautScreen.css';
 
 // The Astronaut's screen, full screen and held sideways (see hud/GameHud.jsx):
 //   the map of the base fills the screen (Nova walks to a place and uses it to make her move),
-//   a slim bar on top, pop-ups for what is new (Sola's message, a radiation hit, BLIP's line),
-//   and a Menu with three tabs: Status (meters), Messages, Moves (the quick move buttons).
+//   a slim bar on top with the four meters (always in view), pop-ups for what is new (Sola's
+//   message, a radiation hit, BLIP's line), and a Menu with three tabs: Options (sound, read-aloud,
+//   what the bars mean), Messages, Moves (the quick move buttons).
 // It only shows the view it is given. The engine decides everything.
 //
 // Props:
@@ -48,7 +45,16 @@ import './AstronautScreen.css';
 //   onMove        onMove(moveKey)
 //   active        false while this screen is hidden on one device (no keyboard, pop-ups wait)
 //   switchButton  one device only: the top-bar button that hands the device to Mission Control
-export default function AstronautScreen({ view, onMove, active = true, switchButton = null }) {
+//   pauses        true on one device (the menu pauses the game), false online. See hud/GameHud.jsx.
+//   onMenuChange  (open) => ..., told when the menu opens or closes (to pause the signal clock)
+export default function AstronautScreen({
+  view,
+  onMove,
+  active = true,
+  switchButton = null,
+  pauses = null,
+  onMenuChange,
+}) {
   const isPlaying = view.status === 'playing';
   const ended = view.status === 'won' || view.status === 'lost';
   const lastLog = view.log.length > 0 ? view.log[view.log.length - 1] : null;
@@ -58,7 +64,7 @@ export default function AstronautScreen({ view, onMove, active = true, switchBut
   const deltas = useMeterDeltas(view.turn, view.meters);
   const hit = Math.max(0, deltas?.radiationDose ?? 0);
   const message = newestMessage(view);
-  const menu = useGameMenu('status');
+  const menu = useGameMenu('messages');
 
   useGameSounds(view);
 
@@ -125,9 +131,14 @@ export default function AstronautScreen({ view, onMove, active = true, switchBut
 
   const tabs = [
     {
-      id: 'status',
-      ...ASTRONAUT_TABS.status,
-      content: <StatusPanel view={view} deltas={deltas} />,
+      id: 'options',
+      ...ASTRONAUT_TABS.options,
+      content: (
+        <OptionsPanel
+          readText={astronautReadText(view)}
+          meters={['crewHealth', 'power', 'oxygen', 'radiationDose']}
+        />
+      ),
     },
     {
       id: 'messages',
@@ -172,7 +183,9 @@ export default function AstronautScreen({ view, onMove, active = true, switchBut
         title={WORLD_NAMES[view.world]}
         turn={turnText(view)}
         clock={<MissionClock view={view} who="astronaut" />}
-        tools={<ScreenTools readText={astronautReadText(view)} />}
+        vitals={<Vitals meters={view.meters} radiationLimit={view.radiationLimit} deltas={deltas} />}
+        pauses={pauses}
+        onMenuChange={onMenuChange}
         switchButton={switchButton}
         popups={popups}
         menu={menu}
@@ -227,41 +240,6 @@ export function MoveButtons({ disabled, onMove }) {
         ))}
       </div>
     </section>
-  );
-}
-
-// "Sound on / off" and "Read to me", shown in the top bar of both player screens.
-// Read to me is hidden when the browser cannot speak.
-export function ScreenTools({ readText }) {
-  const soundOn = useSoundOn();
-  const voice = useReadAloud();
-
-  const toggleSound = () => {
-    unlockAudio();
-    setSoundOn(!soundOn);
-  };
-
-  return (
-    <div className="screen-tools" role="group" aria-label="Sound and reading">
-      <button
-        type="button"
-        className={`screen-tools__button${soundOn ? '' : ' is-off'}`}
-        onClick={toggleSound}
-      >
-        <span aria-hidden="true">{soundOn ? '🔊' : '🔇'}</span>
-        <span>{soundOn ? SOUND_ON_LABEL : SOUND_OFF_LABEL}</span>
-      </button>
-      {voice.supported && (
-        <button
-          type="button"
-          className="screen-tools__button"
-          onClick={() => (voice.speaking ? voice.stop() : voice.read(readText))}
-        >
-          <span aria-hidden="true">{voice.speaking ? '⏹️' : '🗣️'}</span>
-          <span>{voice.speaking ? READ_ALOUD_STOP_LABEL : READ_ALOUD_LABEL}</span>
-        </button>
-      )}
-    </div>
   );
 }
 
@@ -335,58 +313,5 @@ function MissionControlMessage({ message }) {
   return <section className="astronaut-screen__message">{box}</section>;
 }
 
-// Nova's face and the four base meters. After a move, each meter shows how much it changed.
-function StatusPanel({ view, deltas }) {
-  const { meters } = view;
-  const mood = novaMood({ ...meters, radiationLimit: view.radiationLimit });
-  const name = CHARACTERS.astronaut.name;
-
-  return (
-    <Panel className="astronaut-screen__status">
-      <div className="astronaut-screen__crew">
-        <Portrait who={CHARACTERS.astronaut.who} mood={mood} size={48} label={`${name} looks ${mood}`} />
-        <Meter
-          icon={<PixelIcon name="health" size={20} />}
-          label="Crew health"
-          tone="health"
-          value={meters.crewHealth}
-          max={100}
-          showMax={false}
-          delta={deltas?.crewHealth}
-        />
-      </div>
-      <div className="astronaut-screen__pair">
-        <Meter
-          icon={<PixelIcon name="power" size={20} />}
-          label="Power"
-          tone="power"
-          value={meters.power}
-          max={100}
-          showMax={false}
-          delta={deltas?.power}
-        />
-        <Meter
-          icon={<PixelIcon name="oxygen" size={20} />}
-          label="Oxygen"
-          tone="oxygen"
-          value={meters.oxygen}
-          max={100}
-          showMax={false}
-          delta={deltas?.oxygen}
-        />
-      </div>
-      <div className="astronaut-screen__radiation">
-        <Meter
-          icon={<PixelIcon name="radiation" size={20} />}
-          label="Storm radiation budget"
-          tone="radiation"
-          value={meters.radiationDose}
-          max={view.radiationLimit}
-          alertWhen="high"
-          delta={deltas?.radiationDose}
-        />
-        <InfoTip>{RADIATION_EXPLAINER}</InfoTip>
-      </div>
-    </Panel>
-  );
-}
+// Sound on/off and Read to me now live in hud/ScreenTools.jsx. Kept here so old imports still work.
+export { ScreenTools };

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import AstronautScreen from './AstronautScreen.jsx';
 import MissionControlScreen from './MissionControlScreen.jsx';
 import SwitchButton from './hud/SwitchButton.jsx';
@@ -12,8 +12,25 @@ import './SplitScreen.css';
 //   Both screens stay mounted (so things like where Nova stands are kept), but only the one that
 //   shows is `active`: it alone gets the keyboard, and its pop-ups wait until it shows.
 //
-// Props: { astronautView, missionControlView, onMove, onWarn }
-export default function SplitScreen({ astronautView, missionControlView, onMove, onWarn }) {
+//   Opening the Menu pauses the game: onPauseChange(true) while a menu is open on the screen
+//   that shows, onPauseChange(false) when it closes (the app then stops the signal clock).
+//
+// Props: { astronautView, missionControlView, onMove, onWarn, onPauseChange }
+export default function SplitScreen({ astronautView, missionControlView, onMove, onWarn, onPauseChange }) {
+  // Whose menu is open. Only the screen that shows can have one open (GameHud reports a hidden
+  // screen as closed), so handing the device over always un-pauses.
+  const [menuOpen, setMenuOpen] = useState({ missionControl: false, astronaut: false });
+  const paused = menuOpen.missionControl || menuOpen.astronaut;
+  const report = useRef(onPauseChange);
+  useEffect(() => {
+    report.current = onPauseChange; // always call the newest one
+  });
+  useEffect(() => {
+    report.current?.(paused);
+  }, [paused]);
+  const menuChange = (player) => (open) =>
+    setMenuOpen((now) => (now[player] === open ? now : { ...now, [player]: open }));
+
   // Whose screen shows, and the turn number when it was opened. Mission Control plays first each turn.
   const [showing, setShowing] = useState({ tab: 'missionControl', sinceTurn: astronautView.turn });
   // While the "Pass the device" card shows: who gets the device next.
@@ -42,6 +59,8 @@ export default function SplitScreen({ astronautView, missionControlView, onMove,
           view={missionControlView}
           onWarn={onWarn}
           active={isActive('missionControl')}
+          pauses
+          onMenuChange={menuChange('missionControl')}
           switchButton={<SwitchButton to="astronaut" nudged={nudgeAstronaut} onClick={() => setPassingTo('astronaut')} />}
         />
       </div>
@@ -51,6 +70,8 @@ export default function SplitScreen({ astronautView, missionControlView, onMove,
           view={astronautView}
           onMove={onMove}
           active={isActive('astronaut')}
+          pauses
+          onMenuChange={menuChange('astronaut')}
           switchButton={
             <SwitchButton to="missionControl" nudged={nudgeMissionControl} onClick={() => setPassingTo('missionControl')} />
           }

@@ -63,25 +63,100 @@ describe('the menu: a side panel with tabs', () => {
     expect(render({ open: false })).toMatch(/<div id="m" class="game-menu" role="dialog" aria-label="Test menu" hidden="">/);
   });
 
-  it('Astronaut: Status, Messages and Moves; the menu starts closed with the map in view', () => {
+  it('Astronaut: Options, Messages and Moves; the menu starts closed with the map in view', () => {
     const html = astronaut(fakeAstronautView);
-    expect(tabButtons(html).map((b) => b.replace(/<[^>]+>/g, ''))).toEqual(['Status', 'MessagesNew', 'Moves']);
+    expect(tabButtons(html).map((b) => b.replace(/<[^>]+>/g, ''))).toEqual(['Options', 'MessagesNew', 'Moves']);
     expect(menuTag(html)).toContain('hidden=""');
     expect(html).toContain('world__view');
     expect(html).toMatch(/<button type="button" class="hud-menu-button" aria-expanded="false"[^>]*>.*Menu<\/span>/);
   });
 
-  it('Astronaut: the meters are in Status and the quick moves in Moves', () => {
+  it('Astronaut: sound is in Options and the quick moves in Moves', () => {
     const html = astronaut(fakeAstronautView);
-    expect(html).toMatch(/game-menu__panel--status">.*Storm radiation budget/);
+    expect(html).toMatch(/game-menu__panel--options" hidden="">.*Sound on/);
     expect(html).toMatch(/game-menu__panel--moves" hidden="">.*Quick moves/);
   });
 
-  it('Mission Control: Big screen, Crew and Warnings', () => {
+  it('Mission Control: Options, Big screen, Crew and Warnings', () => {
     const html = missionControl(fakeMissionControlView);
-    expect(tabButtons(html).map((b) => b.replace(/<[^>]+>/g, ''))).toEqual(['Big screen', 'Crew', 'Warnings']);
+    expect(tabButtons(html).map((b) => b.replace(/<[^>]+>/g, ''))).toEqual(['Options', 'Big screen', 'Crew', 'Warnings']);
     expect(html).toMatch(/game-menu__panel--bigScreen">.*scene--space/);
     expect(html).toMatch(/game-menu__panel--warnings" hidden="">.*Quick warnings/);
+  });
+});
+
+// The top bar, up to where the pop-ups start
+const topBar = (html) => html.match(/<header class="hud-top">(.*?)<\/header>/)?.[1] ?? '';
+
+describe("the crew's meters stay in the top bar, outside the menu", () => {
+  it('Astronaut: Nova and all four meters are in the top bar', () => {
+    const bar = topBar(astronaut(fakeAstronautView));
+    expect(bar).toContain('class="vitals vitals--4"');
+    for (const name of ['Crew health', 'Power', 'Oxygen', 'Storm radiation budget']) {
+      expect(bar).toContain(`aria-label="${name}"`);
+    }
+    expect(bar).toContain('aria-label="Nova looks happy"');
+  });
+
+  it('Astronaut: the meters are not in the menu any more', () => {
+    const html = astronaut(fakeAstronautView);
+    const menu = html.slice(html.indexOf('class="game-menu"'));
+    expect(menu).not.toContain('role="meter"');
+  });
+
+  it('Mission Control: only Nova and crew health, never power, oxygen or radiation', () => {
+    const bar = topBar(missionControl(fakeMissionControlView));
+    expect(bar).toContain('class="vitals vitals--1"');
+    expect(bar).toContain('aria-label="Crew health"');
+    expect(bar).not.toContain('Power');
+    expect(bar).not.toContain('Oxygen');
+    expect(bar).not.toContain('Radiation');
+  });
+
+  it('marks a low meter with a "!" and words for screen readers, not only colour', () => {
+    const low = { ...fakeAstronautView, meters: { ...fakeAstronautView.meters, oxygen: 10 } };
+    const bar = topBar(astronaut(low));
+    expect(bar).toContain('vitals__meter vitals__meter--oxygen is-alert');
+    expect(bar).toContain('aria-valuetext="10 of 100, Low!"');
+    expect(bar).toContain('<span class="vitals__alert" aria-hidden="true">!</span>');
+  });
+
+  it('marks a nearly used-up radiation budget as High!', () => {
+    const high = { ...fakeAstronautView, meters: { ...fakeAstronautView.meters, radiationDose: 35 } };
+    expect(topBar(astronaut(high))).toContain('aria-valuetext="35 of 40, High!"');
+  });
+});
+
+describe('the menu: Options and pause', () => {
+  it('Options has Sound and explains only the bars this player can see', () => {
+    const astro = astronaut(fakeAstronautView);
+    expect(astro).toContain('What do the bars mean?');
+    expect(astro).toContain('Oxygen: air to breathe.');
+    const mc = missionControl(fakeMissionControlView);
+    expect(mc).toContain('Crew health: how well the crew feels.');
+    expect(mc).not.toContain('Oxygen: air to breathe.');
+    expect(mc).not.toContain('Power: runs the base.');
+  });
+
+  it('says "Game paused" on one device, and that online games keep going', () => {
+    const oneDevice = renderToStaticMarkup(<AstronautScreen view={fakeAstronautView} onMove={noop} pauses />);
+    expect(oneDevice).toContain('Game paused');
+    expect(oneDevice).toContain('The signal clock is stopped.');
+    const online = renderToStaticMarkup(<AstronautScreen view={fakeAstronautView} onMove={noop} pauses={false} />);
+    expect(online).toContain('Online games keep going');
+    expect(online).not.toContain('Game paused');
+    expect(astronaut(fakeAstronautView)).not.toContain('game-menu__note');
+  });
+
+  it('is not paused while the menu is closed', () => {
+    const html = renderToStaticMarkup(<AstronautScreen view={fakeAstronautView} onMove={noop} pauses />);
+    expect(html).toContain('class="game-hud"');
+    expect(html).not.toContain('is-paused');
+  });
+
+  it('keeps Sound and Read to me out of the top bar', () => {
+    expect(topBar(astronaut(fakeAstronautView))).not.toContain('screen-tools');
+    expect(topBar(missionControl(fakeMissionControlView))).not.toContain('screen-tools');
   });
 });
 

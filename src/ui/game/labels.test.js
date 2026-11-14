@@ -126,8 +126,9 @@ describe('full-screen game words', () => {
       expect(tab.label).toBeTruthy();
       expect(ICONS).toHaveProperty(tab.sprite);
     }
-    expect(Object.keys(ASTRONAUT_TABS)).toEqual(['status', 'messages', 'moves']);
-    expect(Object.keys(MISSION_CONTROL_TABS)).toEqual(['bigScreen', 'crew', 'warnings']);
+    // The meters are not a menu tab any more: they stay in the top bar. Options holds the sound.
+    expect(Object.keys(ASTRONAUT_TABS)).toEqual(['options', 'messages', 'moves']);
+    expect(Object.keys(MISSION_CONTROL_TABS)).toEqual(['options', 'bigScreen', 'crew', 'warnings']);
   });
 
   it('names both roles, with the same keys as ROLES in the contract', () => {
