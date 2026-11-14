@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { MOVES, WARNINGS } from '../shared/contract.js';
+import { initialState, MOVES, WARNINGS } from '../shared/contract.js';
+import { LEVELS } from '../engine/balance.js'; // read-only: Dev 1's numbers, so this test never hard-codes them
 import * as engine from './fakeEngine.js';
 import * as realEngine from './engineAdapter.js';
 import { createHostSession, createGuestSession, splitReducer } from './session.js';
@@ -235,6 +236,130 @@ describe('with the real engine (engineAdapter.js)', () => {
       expect(host.getState().inbox.length).toBeGreaterThan(0);
     });
   }
+});
+
+describe('restart (replay, and "Fly to Mars")', () => {
+  const online = ({ world = 'moon', moonStars = 0, restored = null } = {}) => {
+    const net = memoryRooms();
+    const host = createHostSession({ room: net.hostRoom, engine: realEngine, world, moonStars, restored });
+    const guest = createGuestSession({ room: net.guestRoom });
+    return { net, host, guest };
+  };
+  const playOut = (host) => {
+    for (let i = 0; i < 6 && host.getState().status === 'playing'; i++) host.sendMove('shelter');
+  };
+
+  it('online: after the Moon, the host flies to Mars in the same room and Mission Control follows', () => {
+    const { net, host, guest } = online();
+    net.join(net.host);
+    net.join(net.guest);
+    playOut(host);
+    const moonEnd = host.getState();
+    expect(['won', 'lost']).toContain(moonEnd.status);
+
+    host.restart({ world: 'mars', moonStars: 2 });
+    expect(host.getState()).toEqual(
+      realEngine.createGame({ mode: 'online', world: 'mars', stormId: moonEnd.stormId, moonStars: 2 }),
+    );
+    expect(guest.getState().world).toBe('mars');
+    expect(guest.getState().turn).toBe(0);
+    expect(guest.getState().status).toBe('playing');
+    expect(guest.getState()).toEqual(host.getState());
+  });
+
+  it('online: a warning left over from the old game is ignored after restart', () => {
+    const { net, host } = online();
+    net.join(net.host);
+    net.join(net.guest);
+    for (let i = 0; i < 3; i++) host.sendMove('shelter'); // now turn 3
+    host.restart({ world: 'mars', moonStars: 1 });
+    net.guestRoom.send('sendWarning', { turn: 3, warning: 'shelterNow' }); // sent before the restart arrived
+    expect(host.getState().inbox).toEqual([]);
+    expect(host.getState().outbox).toEqual([]);
+  });
+
+  it('online: Moon stars give the Mars base extra power (real engine)', () => {
+    const marsPower = (moonStars) => {
+      const { net, host } = online();
+      net.join(net.host);
+      net.join(net.guest);
+      host.restart({ world: 'mars', moonStars });
+      return host.getState().meters.power;
+    };
+    const { powerPenalty, powerPerStar } = LEVELS.mars;
+    expect(marsPower(0)).toBe(initialState.meters.power - powerPenalty);
+    expect(marsPower(2)).toBe(initialState.meters.power - powerPenalty + 2 * powerPerStar);
+  });
+
+  it('online: restart() replays the same level from turn 0', () => {
+    const { net, host, guest } = online({ world: 'mars', moonStars: 1 });
+    net.join(net.host);
+    net.join(net.guest);
+    host.sendMove('savePower');
+    host.sendMove('shelter');
+
+    host.restart();
+    expect(host.getState().turn).toBe(0);
+    expect(host.getState().status).toBe('playing');
+    expect(host.getState().world).toBe('mars');
+    expect(host.getState().moonStars).toBe(1);
+    expect(guest.getState()).toEqual(host.getState());
+  });
+
+  it('online: restart in the lobby picks the level, and the game starts when Mission Control joins', () => {
+    const { net, host, guest } = online();
+    net.join(net.host);
+    host.restart({ world: 'mars', moonStars: 3 });
+    expect(host.getState().status).toBe('lobby');
+    expect(host.getState().world).toBe('mars');
+
+    net.join(net.guest);
+    expect(host.getState().status).toBe('playing');
+    expect(host.getState().world).toBe('mars');
+    expect(host.getState().moonStars).toBe(3);
+    expect(guest.getState()).toEqual(host.getState());
+  });
+
+  it('a restored host replays the level it was on, not the one it was created with', () => {
+    const first = online({ world: 'mars', moonStars: 2 });
+    first.net.join(first.net.host);
+    first.net.join(first.net.guest);
+    first.host.sendMove('shelter');
+
+    const second = online({ world: 'moon', restored: first.host.getState() });
+    second.net.join(second.net.host);
+    second.net.join(second.net.guest);
+    second.host.restart();
+    expect(second.host.getState().world).toBe('mars');
+    expect(second.host.getState().moonStars).toBe(2);
+    expect(second.host.getState().turn).toBe(0);
+  });
+
+  it('ignores bad options: unknown world, out-of-range stars, a click event', () => {
+    const { net, host } = online();
+    net.join(net.host);
+    net.join(net.guest);
+    host.restart({ world: 'jupiter', moonStars: 9 });
+    expect(host.getState().world).toBe('moon');
+    expect(host.getState().moonStars).toBe(3);
+
+    host.restart({ type: 'click', target: {} }); // what onClick={restart} passes
+    expect(host.getState().world).toBe('moon');
+    expect(host.getState().moonStars).toBe(3);
+  });
+
+  it('split: restart works after the game ends, and can switch to Mars', () => {
+    const reduce = splitReducer(realEngine);
+    let s = realEngine.createGame({ mode: 'split' });
+    for (let i = 0; i < 6 && s.status === 'playing'; i++) s = reduce(s, { type: 'move', move: 'shelter' });
+    expect(['won', 'lost']).toContain(s.status);
+
+    const again = reduce(s, { type: 'restart' });
+    expect(again).toEqual(realEngine.createGame({ mode: 'split', stormId: s.stormId }));
+
+    const mars = reduce(s, { type: 'restart', options: { world: 'mars', moonStars: 3 } });
+    expect(mars).toEqual(realEngine.createGame({ mode: 'split', world: 'mars', stormId: s.stormId, moonStars: 3 }));
+  });
 });
 
 describe('fake engine (placeholder for Dev 1)', () => {

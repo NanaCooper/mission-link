@@ -113,7 +113,7 @@ function PingTest({ role, code }) {
 }
 
 function GameTest({ mode, role, code, world }) {
-  const { state, sendMove, sendWarning, connected, partnerConnected, error } = useGameSession({
+  const { state, sendMove, sendWarning, restart, connected, partnerConnected, error } = useGameSession({
     mode,
     role,
     code,
@@ -165,6 +165,23 @@ function GameTest({ mode, role, code, world }) {
             </button>
           ))}
         </div>
+      )}
+      {canMove ? (
+        <div>
+          <b>Restart (same room):</b>
+          <br />
+          <button style={btn} onClick={restart}>
+            Play again (same level)
+          </button>
+          <button style={btn} onClick={() => restart({ world: 'mars', moonStars: state.stars })}>
+            Fly to Mars ({state.stars} {state.stars === 1 ? 'star' : 'stars'})
+          </button>
+          <button style={btn} onClick={() => restart({ world: 'moon' })}>
+            Back to the Moon
+          </button>
+        </div>
+      ) : (
+        <p>Only the Astronaut can restart. This screen follows the Astronaut's level.</p>
       )}
       <p>
         Inbox: {state.inbox.map((w) => `t${w.turn} ${w.warning}`).join(', ') || 'empty'} · Outbox (Mars):{' '}
