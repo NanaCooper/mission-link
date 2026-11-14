@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
 import { ROLES } from '../shared/contract.js';
 import { createRoom, openRoom } from './room.js';
-import * as engine from './fakeEngine.js';
+import * as engine from './engineSource.js';
 import { createGuestSession, createHostSession } from './session.js';
 
 const url = import.meta.env?.VITE_SUPABASE_URL;

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { MOVES, WARNINGS } from '../shared/contract.js';
 import * as engine from './fakeEngine.js';
+import * as realEngine from './engineSource.js';
 import { createHostSession, createGuestSession, splitReducer } from './session.js';
 
 // Two linked fake rooms. Messages only arrive while both sides are connected, like the real thing.
@@ -211,6 +212,29 @@ describe('split mode reducer', () => {
     const over = { ...s, status: 'won' };
     expect(reduce(over, { type: 'move', move: 'shelter' })).toBe(over);
   });
+});
+
+describe('with the real engine (engineSource.js)', () => {
+  for (const world of ['moon', 'mars']) {
+    it(`plays a full ${world} game in sync and stops at the end`, () => {
+      const net = memoryRooms();
+      const host = createHostSession({ room: net.hostRoom, engine: realEngine, world });
+      const guest = createGuestSession({ room: net.guestRoom });
+      net.join(net.host);
+      net.join(net.guest);
+      expect(host.getState().status).toBe('playing');
+      expect(host.getState().world).toBe(world);
+
+      for (let i = 0; i < 6 && host.getState().status === 'playing'; i++) {
+        guest.sendWarning('shelterNow');
+        expect(guest.getState()).toEqual(host.getState());
+        host.sendMove('shelter');
+        expect(guest.getState()).toEqual(host.getState());
+      }
+      expect(['won', 'lost']).toContain(host.getState().status);
+      expect(host.getState().inbox.length).toBeGreaterThan(0);
+    });
+  }
 });
 
 describe('fake engine (placeholder for Dev 1)', () => {
