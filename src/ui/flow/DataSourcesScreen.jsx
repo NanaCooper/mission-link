@@ -1,6 +1,7 @@
 import { BigButton, Panel } from '../components/index.js';
 import { FLOW_FACTS } from './facts.js';
 import { archivedLabel } from './text.js';
+import SpaceWeatherPanel from './SpaceWeatherPanel.jsx';
 import './flow.css';
 
 // Where every fact in the game comes from. Judges and teachers can check each one.
@@ -13,9 +14,11 @@ export default function DataSourcesScreen({ storm, onBack }) {
     <main className="flow-screen">
       <h1 className="flow-title">Where our facts come from</h1>
       <p className="flow-lead">
-        Everything real in this game comes from NASA. We saved the data once, so the game does not
-        use live data while you play.
+        Everything real in this game comes from NASA. We saved the storm data once, so the game does
+        not use live data while you play. Only the box below is live.
       </p>
+
+      <SpaceWeatherPanel />
 
       {storm && (
         <Panel title="The storm">

@@ -168,6 +168,11 @@
   text-align: center;
 }
 
+/* Live data badge: different border from the archived one, so live never looks saved or the other way round */
+.flow-badge--live {
+  border-style: dashed;
+}
+
 /* End screen */
 .flow-result {
   text-align: center;

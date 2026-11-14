@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BigButton, Panel } from '../components/index.js';
 import { joinRoom } from '../../realtime/room.js';
 import { WORLD_NAMES, crates } from './text.js';
+import SpaceWeatherPanel from './SpaceWeatherPanel.jsx';
 import './flow.css';
 
 // Tapping the title this many times unlocks Mars, for judges and the demo.
@@ -130,6 +131,8 @@ export default function HomeScreen({
           />
         </form>
       </Panel>
+
+      <SpaceWeatherPanel />
 
       <nav className="flow-links" aria-label="More">
         <button type="button" className="flow-link" onClick={onHowToPlay}>
