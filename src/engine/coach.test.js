@@ -69,3 +69,35 @@ describe('lastWarningCheck', () => {
     expect(getAstronautView(s)).not.toHaveProperty('lastWarningCheck');
   });
 });
+
+describe('the level history (for the end screen)', () => {
+  it('keeps every move result and every warning check, in order, each for its own view', () => {
+    let s = moon();
+    expect(getAstronautView(s).moveResults).toEqual([]);
+    expect(getMissionControlView(s).warningChecks).toEqual([]);
+    s = applyMove(sendWarning(s, 'stormComing'), 'raiseShield');
+    s = applyMove(sendWarning(s, 'allClear'), 'shelter');
+    s = applyMove(s, 'raiseShield'); // no warning on wave 3
+    expect(s.moveResults.map((r) => r.move)).toEqual(['raiseShield', 'shelter', 'raiseShield']);
+    expect(s.warningChecks.map((c) => [c.turn, c.sent, c.best])).toEqual([
+      [1, 'stormComing', 'stormComing'],
+      [2, 'allClear', 'shelterNow'],
+      [3, null, 'stormComing']
+    ]);
+    expect(getAstronautView(s).moveResults).toEqual(s.moveResults);
+    expect(getAstronautView(s)).not.toHaveProperty('warningChecks');
+    expect(getMissionControlView(s).warningChecks).toEqual(s.warningChecks);
+    expect(getMissionControlView(s)).not.toHaveProperty('moveResults');
+  });
+
+  it('skips the warning check on the Mars blackout wave and in Play alone', () => {
+    let s = mars();
+    for (const w of ['shelterNow', 'stormComing']) s = applyMove(sendWarning(s, w), 'raiseShield');
+    s = applyMove(s, 'shelter');
+    expect(s.moveResults).toHaveLength(3);
+    expect(s.warningChecks).toHaveLength(2);
+    let solo = moon({ solo: true });
+    solo = applyMove(solo, 'shelter');
+    expect(solo.warningChecks).toEqual([]);
+  });
+});

@@ -2,6 +2,7 @@
   "name": "mission-link",
   "private": true,
   "version": "0.0.0",
+  "description": "Mission Link: a two-player browser game for kids aged 7-12 about a real NASA solar storm (NASA Space Apps 2026). Code written with the help of Claude Code (Anthropic), a Super Intelligence (SI) tool, tested by the team; see the README section 'Use of Super Intelligence (SI)'.",
   "type": "module",
   "engines": {
     "node": "24.x"

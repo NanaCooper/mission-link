@@ -1,13 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { getStorm } from '../../engine/storms/index.js';
+import { getStorm, REAL_STORM_IDS } from '../../engine/storms/index.js';
+import { peakFor, fadeFor } from '../../engine/storms/fromData.js';
 import HomeScreen from './HomeScreen.jsx';
 import LobbyScreen from './LobbyScreen.jsx';
 import EndScreen from './EndScreen.jsx';
 import HowToPlayScreen from './HowToPlayScreen.jsx';
 import DataSourcesScreen from './DataSourcesScreen.jsx';
+import TeacherScreen, { HOW_TO_RUN, QUESTIONS, TEACHES } from './TeacherScreen.jsx';
 import { ALERTS_FACT, BLACKOUT_FACT, MARS_FACT, MOON_DELAY_FACT } from './facts.js';
-import { DEBRIEF_TIPS, debriefLines } from './debrief.js';
+import { LEARNED, TRY_NEXT, missionControlScore, missionDebrief } from './debrief.js';
 import { fakeMarsWin, fakeMoonLost, fakeMoonWin } from './fakeFlow.js';
 import { archivedLabel, crates, formatDate } from './text.js';
 
@@ -142,35 +144,93 @@ describe('HowToPlayScreen', () => {
   });
 });
 
-describe('What your choices meant', () => {
-  it('turns the Astronaut view into plain sentences, with every number from the view', () => {
-    expect(debriefLines(fakeMoonWin)).toEqual([
-      'You used 18 of your 40 radiation points.',
-      'You ended with 35 power and 100 oxygen.',
-      'Crew health: 72 out of 100.',
-      'You earned 2 science points.',
-      DEBRIEF_TIPS.perfect
+describe('the mission debrief', () => {
+  it('a win: why it worked, what you learned, and one question to try next, every number from the view', () => {
+    const d = missionDebrief({ crew: fakeMoonWin });
+    expect(d.whyTitle).toBe('Why your mission succeeded');
+    expect(d.why).toEqual([
+      'The crew took 18 of 40 radiation points, so they stayed under the limit.',
+      'You kept 35 power, so the air pumps never stopped.',
+      'Crew health ended at 72 of 100.',
+      'You earned 2 science points.'
     ]);
+    expect(d.learned).toEqual([LEARNED.radiation, LEARNED.cost, LEARNED.power, LEARNED.team]);
+    expect(d.tryNext).toBe(TRY_NEXT.toMars); // 3 stars on the Moon: next, Mars
+    expect(d.team).toBeNull(); // no warning checks in this view
   });
 
-  it('says when the radiation budget ran out, and gives the tip for how the game was lost', () => {
-    const lines = debriefLines(fakeMoonLost);
-    expect(lines[0]).toBe('Radiation reached 41 of your 40 points, so the storm budget ran out.');
-    expect(lines.at(-1)).toBe(DEBRIEF_TIPS.radiation);
+  it('a loss: why it ended, the biggest hit, and the question for that reason', () => {
+    const crew = {
+      ...fakeMoonLost,
+      moveResults: [
+        { turn: 1, move: 'raiseShield', radiation: 2 },
+        { turn: 2, move: 'doScience', radiation: 40 }
+      ]
+    };
+    const d = missionDebrief({ crew });
+    expect(d.whyTitle).toBe('Why your mission ended');
+    expect(d.why[0]).toBe('Radiation reached 41 of 40 points, so the storm budget ran out.');
+    expect(d.why[1]).toBe('The biggest hit was wave 2: 40 radiation got through after "Do science".');
+    expect(d.tryNext).toBe(TRY_NEXT.radiation);
     for (const reason of ['oxygen', 'health', 'time']) {
-      expect(debriefLines({ ...fakeMoonLost, lostReason: reason }).at(-1)).toBe(DEBRIEF_TIPS[reason]);
+      expect(missionDebrief({ crew: { ...fakeMoonLost, lostReason: reason } }).tryNext).toBe(TRY_NEXT[reason]);
     }
   });
 
-  it('suggests more stars when the win was not perfect, and says 1 science point, not 1 points', () => {
-    const lines = debriefLines({ ...fakeMarsWin, science: 1 });
-    expect(lines).toContain('You earned 1 science point.');
-    expect(lines.at(-1)).toBe(DEBRIEF_TIPS.moreStars);
+  it('picks the question from how the level was played, and says 1 science point, not 1 points', () => {
+    expect(missionDebrief({ crew: { ...fakeMarsWin, stars: 3 } }).tryNext).toBe(TRY_NEXT.otherStorm);
+    expect(missionDebrief({ crew: { ...fakeMarsWin, meters: { ...fakeMarsWin.meters, crewHealth: 50 } } }).tryNext).toBe(TRY_NEXT.healthier);
+    expect(missionDebrief({ crew: { ...fakeMarsWin, science: 0 } }).tryNext).toBe(TRY_NEXT.firstScience);
+    const one = missionDebrief({ crew: { ...fakeMarsWin, science: 1 } });
+    expect(one.tryNext).toBe(TRY_NEXT.oneMoreScience);
+    expect(one.why).toContain('You earned 1 science point: 2 earn the third star.');
+    expect(one.learned).toContain(LEARNED.mars);
   });
 
-  it('shows on the end screen when the crew view is passed, and not without it', () => {
-    expect(html(<EndScreen view={fakeMoonWin} storm={storm} crew={fakeMoonWin} />)).toContain('What your choices meant');
-    expect(html(<EndScreen view={fakeMoonWin} storm={storm} />)).not.toContain('What your choices meant');
+  it("scores Mission Control's warnings, kindly, and links a missed warning to the hit it caused", () => {
+    const crew = { ...fakeMoonWin, moveResults: [{ turn: 1, move: 'raiseShield', radiation: 2 }, { turn: 2, move: 'doScience', radiation: 40 }] };
+    const missionControl = {
+      warningChecks: [
+        { turn: 1, sent: 'stormComing', best: 'stormComing', delayTurns: 0 },
+        { turn: 2, sent: 'allClear', best: 'shelterNow', delayTurns: 0 },
+        { turn: 3, sent: 'shelterNow', best: 'stormComing', delayTurns: 0 }
+      ]
+    };
+    const team = missionControlScore(missionControl, crew);
+    expect(team).toMatchObject({ great: 1, close: 1, total: 3 });
+    expect(team.line).toBe('1 of 3 warnings were just right, and 1 was close.');
+    expect(team.rating).toBe('Good teamwork: most warnings helped the crew.');
+    expect(team.linked).toBe('Wave 2: the warning was "All clear", and 40 radiation hit the crew.');
+    // The crew raised the shield anyway: the warning did not mislead them, so nothing is linked
+    const shielded = { ...crew, moveResults: [{ turn: 2, move: 'raiseShield', radiation: 12, shieldFailed: false }] };
+    expect(missionControlScore(missionControl, shielded).linked).toBeNull();
+    const perfect = { warningChecks: [{ turn: 1, sent: 'stormComing', best: 'stormComing', delayTurns: 0 }] };
+    expect(missionControlScore(perfect, crew).rating).toMatch(/^Perfect warnings!/);
+    // Half is not "most": 1 right and 1 wrong asks to keep practising
+    const half = { warningChecks: missionControl.warningChecks.slice(0, 2) };
+    expect(missionControlScore(half, crew).rating).toMatch(/^Keep practising/);
+  });
+
+  it('on Mars, a missed warning is linked to the next wave (the one it was meant for)', () => {
+    const crew = { ...fakeMarsWin, moveResults: [{ turn: 1, move: 'shelter', radiation: 1 }, { turn: 2, move: 'doScience', radiation: 30 }] };
+    const missionControl = { warningChecks: [{ turn: 1, sent: null, best: 'shelterNow', delayTurns: 1 }] };
+    expect(missionControlScore(missionControl, crew).linked).toBe('Wave 2: no warning was sent, and 30 radiation hit the crew.');
+  });
+
+  it('no Mission Control score in Play alone, and no debrief without the crew view', () => {
+    const checks = { warningChecks: [{ turn: 1, sent: 'allClear', best: 'stormComing', delayTurns: 0 }] };
+    expect(missionControlScore(checks, { ...fakeMoonWin, solo: true })).toBeNull();
+    expect(missionDebrief({ crew: { ...fakeMoonWin, solo: true } }).learned).toContain(LEARNED.solo);
+    expect(missionDebrief({})).toBeNull();
+  });
+
+  it('shows on the end screen with all its parts when the crew view is passed, and not without it', () => {
+    const missionControl = { warningChecks: [{ turn: 1, sent: 'stormComing', best: 'stormComing', delayTurns: 0 }] };
+    const out = html(<EndScreen view={fakeMoonWin} storm={storm} crew={fakeMoonWin} missionControl={missionControl} />);
+    for (const part of ['Mission debrief', 'Why your mission succeeded', 'Mission Control', 'What you learned', 'Try this next time']) {
+      expect(out).toContain(part);
+    }
+    expect(html(<EndScreen view={fakeMoonWin} storm={storm} />)).not.toContain('Mission debrief');
   });
 });
 
@@ -183,6 +243,49 @@ describe('DataSourcesScreen', () => {
     }
     expect(out).toContain(`href="${MARS_FACT.source.url}"`);
     expect(out).toContain(`href="${BLACKOUT_FACT.source.url}"`);
-    expect(out).toContain('not real radiation doses');
+    expect(out).toContain('Not a real dose.');
+  });
+
+  it('explains how the real NASA numbers became game points, with the same rule the storm files follow', () => {
+    const out = html(<DataSourcesScreen storm={storm} />);
+    expect(out).toContain('From NASA data to the game');
+    // The numbers on screen are the ones the rule gives for the real storms
+    expect(out).toContain(`X1 to X9.9: ${peakFor('X5.8')} points`);
+    expect(out).toContain(`M class (or weaker): ${peakFor('M8.1')} points`);
+    expect(out).toContain(`1,000 to 2,000 km a second: ${fadeFor(1263)} points`);
+    // ...and every storm file really follows it
+    for (const id of REAL_STORM_IDS) {
+      const s = getStorm(id);
+      const flare = s.stages[1].realData.flareClass;
+      const speed = s.stages[2].realData.cmeSpeedKmPerSec;
+      expect([s.stages[3].incoming, s.stages[4].incoming]).toEqual([peakFor(flare), fadeFor(speed)]);
+    }
+    expect(out).toContain('Simplified: the class tells how big the flash was.');
+  });
+
+  it('from Home: lists both real storms, and each fact only once', () => {
+    const storms = REAL_STORM_IDS.map((id) => getStorm(id));
+    const out = html(<DataSourcesScreen storms={storms} />);
+    expect(out).toContain('The real storms');
+    for (const s of storms) expect(out).toContain(s.title);
+    const alerts = out.split(ALERTS_FACT.text).length - 1;
+    expect(alerts).toBe(1);
+  });
+});
+
+describe('TeacherScreen', () => {
+  it('says what the game teaches, how to run it, and what to talk about, in short lines', () => {
+    const out = html(<TeacherScreen onBack={() => {}} onDataSources={() => {}} />);
+    for (const line of [...TEACHES, ...HOW_TO_RUN, ...QUESTIONS]) {
+      expect(out).toContain(line.replace(/'/g, '&#x27;'));
+      expect(line.split(/\s+/).length).toBeLessThanOrEqual(25);
+    }
+    expect(QUESTIONS.length).toBeGreaterThanOrEqual(4);
+    expect(out).toContain('See every source');
+  });
+
+  it('is linked from Home only when the app passes the link', () => {
+    expect(html(<HomeScreen onTeachers={() => {}} />)).toContain('For teachers');
+    expect(html(<HomeScreen />)).not.toContain('For teachers');
   });
 });

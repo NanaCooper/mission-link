@@ -8,3 +8,5 @@ export { getAstronautView, getMissionControlView, getStorm } from '../engine/ind
 export { getGameStorm, isValidStorm } from '../engine/index.js';
 // The real NASA storms a new game picks from (Dev 4's storm files).
 export { REAL_STORM_IDS } from '../engine/storms/index.js';
+// How the real NASA numbers became game points (shown on the Data sources screen).
+export { PEAK_RULE, FADE_RULE } from '../engine/storms/fromData.js';

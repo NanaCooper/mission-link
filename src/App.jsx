@@ -17,6 +17,7 @@ import LobbyScreen from './ui/flow/LobbyScreen.jsx';
 import EndScreen from './ui/flow/EndScreen.jsx';
 import HowToPlayScreen from './ui/flow/HowToPlayScreen.jsx';
 import DataSourcesScreen from './ui/flow/DataSourcesScreen.jsx';
+import TeacherScreen from './ui/flow/TeacherScreen.jsx';
 import MissionBriefing from './ui/game/intro/MissionBriefing.jsx';
 import { hasSeenBriefing, markBriefingSeen } from './ui/game/intro/briefingText.js';
 import { gameBanner, loadProgress, pickGameScreen, pickStorm, progressAfter, saveProgress } from './ui/flow/appFlow.js';
@@ -25,7 +26,7 @@ import { gameBanner, loadProgress, pickGameScreen, pickStorm, progressAfter, sav
 //   home -> play on one device -> game -> end
 //   home -> create room -> lobby -> Astronaut game -> end
 //   home -> join room -> Mission Control game -> end
-//   home <-> How to play, home/end <-> Data sources
+//   home <-> How to play, home <-> For teachers, home/end <-> Data sources
 //   the first mission on this device starts with the mission briefing (also: home -> Mission briefing)
 
 const scrollToTop = () => {
@@ -37,7 +38,7 @@ const scrollToTop = () => {
 };
 
 export default function App() {
-  const [page, setPage] = useState('home'); // 'home' | 'howTo' | 'sources' | 'briefing' | 'game'
+  const [page, setPage] = useState('home'); // 'home' | 'howTo' | 'sources' | 'teachers' | 'briefing' | 'game'
   const [session, setSession] = useState(null); // { id, mode, role, code, world, moonStars, stormId, solo }
   const [progress, setProgress] = useState(() => loadProgress());
   // The mission waiting behind the briefing (the first time), or null when it was opened from home.
@@ -98,7 +99,10 @@ export default function App() {
     );
   }
   if (page === 'howTo') return <HowToPlayScreen onBack={() => setPage('home')} />;
-  if (page === 'sources') return <DataSourcesScreen storm={getStorm(null)} onBack={() => setPage('home')} />;
+  if (page === 'teachers') return <TeacherScreen onBack={() => setPage('home')} onDataSources={() => setPage('sources')} />;
+  if (page === 'sources') {
+    return <DataSourcesScreen storms={REAL_STORM_IDS.map((id) => getStorm(id))} onBack={() => setPage('home')} />;
+  }
 
   return (
     <HomeScreen
@@ -113,6 +117,7 @@ export default function App() {
       onHowToPlay={() => setPage('howTo')}
       onBriefing={() => setPage('briefing')}
       onDataSources={() => setPage('sources')}
+      onTeachers={() => setPage('teachers')}
       onUnlockMars={() => updateProgress((old) => (old.marsUnlocked ? old : { ...old, marsUnlocked: true }))}
     />
   );
@@ -169,6 +174,7 @@ function Game({ session, onLevelEnd, onHome }) {
         view={view}
         storm={getGameStorm(state)}
         crew={getAstronautView(state)}
+        missionControl={getMissionControlView(state)}
         canContinue={!isMissionControl}
         onNextLevel={(stars) => restart({ world: 'mars', moonStars: stars })}
         // Play again: the same level with another real storm, so it plays differently

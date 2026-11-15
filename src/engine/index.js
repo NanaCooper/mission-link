@@ -310,6 +310,9 @@ export function applyMove(state, move) {
     lastMove: move,
     lastResult,
     lastWarningCheck,
+    // The whole level, for the end screen (older saved games may not have these lists yet)
+    moveResults: [...(state.moveResults ?? []), lastResult],
+    warningChecks: lastWarningCheck ? [...(state.warningChecks ?? []), lastWarningCheck] : (state.warningChecks ?? []),
     lastFact: stage.fact ?? null,
     signalSecondsLeft: SIGNAL_SECONDS, // a new turn: the clock starts again
     log,
@@ -331,6 +334,7 @@ export function getAstronautView(state) {
     log: state.log,
     lastMove: state.lastMove,
     lastResult: state.lastResult ?? null,
+    moveResults: state.moveResults ?? [],
     lastFact: state.lastFact ?? null,
     lostReason: state.lostReason,
     stars: state.stars,
@@ -375,6 +379,7 @@ export function getMissionControlView(state) {
     crewHealth: state.meters.crewHealth,
     warningThisTurn: sentNow ? sentNow.warning : null,
     lastWarningCheck: state.lastWarningCheck ?? null,
+    warningChecks: state.warningChecks ?? [],
     lostReason: state.lostReason,
     stars: state.stars,
     solo: Boolean(state.solo),
