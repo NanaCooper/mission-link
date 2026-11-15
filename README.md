@@ -131,8 +131,23 @@ React, Vite, Vitest, Supabase Realtime and Vercel. No other libraries; the pixel
 - **Team:** [names and roles]
 - **Tools:** React, Vite, Vitest, oxlint, Supabase Realtime, Vercel, GitHub, the Web Audio and Web
   Speech browser features, and the Pixelify Sans and Press Start 2P fonts (SIL Open Font License).
-- **AI tools:** we used Claude Code (Anthropic) as a coding assistant and Claude for planning and
-  writing. Every NASA fact in the game was checked by a team member against its source page.
+- **Super Intelligence (SI) use:** see the section below.
+
+## Use of Super Intelligence (SI)
+
+Space Apps asks every team to say where and how SI tools were used. We used two:
+
+| SI tool | What it helped with |
+| --- | --- |
+| Claude Code (Anthropic) | Writing and testing code, including the game engine, the screens, the online play, the automated tests and the pixel art (it is drawn in code, not as images). The team decided what went in, and played and tested the game on real devices. |
+| Claude (Anthropic) | Planning and documentation: the build guide, this README, `docs/SOURCES.md`, draft kid-facing text, the pitch, and help checking facts against NASA pages. |
+
+- Every NASA fact and number shown to players was checked against its source page, with SI help,
+  and the storm numbers are also checked by automated tests against the saved NASA records. The
+  sources are listed in [`docs/SOURCES.md`](docs/SOURCES.md).
+- No SI-generated images, video or audio are used in the game. The sounds are made in code, and
+  "Read to me" uses the browser's own voice.
+- No NASA logos, flags or mission insignia are used anywhere.
 
 ## What's next
 

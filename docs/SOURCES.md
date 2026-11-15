@@ -91,5 +91,8 @@ These are game rules. The game never presents them as real numbers.
 | Pixelify Sans font (SIL Open Font License 1.1) | Pixel look | https://github.com/eifetx/Pixelify-Sans |
 | Press Start 2P font (SIL Open Font License 1.1) | Pixel look | https://fonts.google.com/specimen/Press+Start+2P |
 | Playwright (local only, not in the repo) | Playing the game in a browser to test it at 360px | https://playwright.dev |
-| Claude Code (Anthropic) | AI coding assistant used by all four devs | https://claude.com/claude-code |
-| Claude (Anthropic) | AI assistant for planning, the build guide and writing | https://claude.ai |
+| Claude Code (Anthropic) | Super Intelligence (SI) coding assistant: code, tests and the pixel art drawn in code; the team played and tested the game | https://claude.com/claude-code |
+| Claude (Anthropic) | Super Intelligence (SI) assistant: planning, documentation, draft text and help checking facts | https://claude.ai |
+
+SI use, as Space Apps asks: see "Use of Super Intelligence (SI)" in the README. No SI-generated
+images, video or audio are used. Every NASA fact was checked against its source page, with SI help.
