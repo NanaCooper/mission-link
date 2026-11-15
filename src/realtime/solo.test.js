@@ -13,6 +13,13 @@ describe('Play alone through restarts', () => {
     expect('solo' in nextLevel({ world: 'moon' }, {})).toBe(false);
   });
 
+  it('a saved storm stays through Fly to Mars, and restart({ stormId }) changes it', () => {
+    const may2025 = engine.createGame({ mode: 'split', world: 'moon', stormId: 'storm-2025-05-31' });
+    expect(reduce(may2025, { type: 'restart', options: { world: 'mars', moonStars: 1 } }).stormId).toBe('storm-2025-05-31');
+    expect(reduce(may2025, { type: 'restart', options: { stormId: 'storm-2024-05-11' } }).stormId).toBe('storm-2024-05-11');
+    expect(nextLevel({ world: 'moon', stormId: 'a' }, { stormId: 'b' }).stormId).toBe('b');
+  });
+
   it('restart() and restart({ world: "mars" }) keep Commander Sola sending the warnings', () => {
     const again = reduce(solo(), { type: 'restart' });
     expect(again.solo).toBe(true);

@@ -6,3 +6,5 @@ export { createGame, sendWarning, applyMove, tick } from '../engine/index.js';
 export { getAstronautView, getMissionControlView, getStorm } from '../engine/index.js';
 // Level 3 (Live Sun): the storm a game actually plays (state.storm or the saved one), and the safety check.
 export { getGameStorm, isValidStorm } from '../engine/index.js';
+// The real NASA storms a new game picks from (Dev 4's storm files).
+export { REAL_STORM_IDS } from '../engine/storms/index.js';

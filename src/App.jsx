@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
 import { ROLES } from './shared/contract.js';
 import { useGameSession } from './realtime/useGameSession.js';
-import { getAstronautView, getMissionControlView, getGameStorm, getStorm } from './realtime/engineAdapter.js';
+import {
+  getAstronautView,
+  getMissionControlView,
+  getGameStorm,
+  getStorm,
+  REAL_STORM_IDS
+} from './realtime/engineAdapter.js';
 import { makeRoomCode } from './realtime/room.js';
 import SplitScreen from './ui/game/SplitScreen.jsx';
 import AstronautScreen from './ui/game/AstronautScreen.jsx';
@@ -13,7 +19,7 @@ import HowToPlayScreen from './ui/flow/HowToPlayScreen.jsx';
 import DataSourcesScreen from './ui/flow/DataSourcesScreen.jsx';
 import MissionBriefing from './ui/game/intro/MissionBriefing.jsx';
 import { hasSeenBriefing, markBriefingSeen } from './ui/game/intro/briefingText.js';
-import { gameBanner, loadProgress, pickGameScreen, progressAfter, saveProgress } from './ui/flow/appFlow.js';
+import { gameBanner, loadProgress, pickGameScreen, pickStorm, progressAfter, saveProgress } from './ui/flow/appFlow.js';
 
 // Screen switching with React state, no router.
 //   home -> play on one device -> game -> end
@@ -32,7 +38,7 @@ const scrollToTop = () => {
 
 export default function App() {
   const [page, setPage] = useState('home'); // 'home' | 'howTo' | 'sources' | 'briefing' | 'game'
-  const [session, setSession] = useState(null); // { id, mode, role, code, world, moonStars }
+  const [session, setSession] = useState(null); // { id, mode, role, code, world, moonStars, stormId, solo }
   const [progress, setProgress] = useState(() => loadProgress());
   // The mission waiting behind the briefing (the first time), or null when it was opened from home.
   const [afterBriefing, setAfterBriefing] = useState(null);
@@ -52,9 +58,12 @@ export default function App() {
     setPage('game');
   };
   // The first mission on this device opens the briefing first, so everyone knows the goal.
+  // Every new game plays one of the real NASA storms, picked at random (chosen here, so the
+  // briefing can name it). Mission Control joining a room never picks: it follows the Astronaut.
   const start = (options) => {
-    if (hasSeenBriefing()) return startNow(options);
-    setAfterBriefing(options);
+    const game = options.role === ROLES.MISSION_CONTROL ? options : { ...options, stormId: pickStorm(REAL_STORM_IDS) };
+    if (hasSeenBriefing()) return startNow(game);
+    setAfterBriefing(game);
     setPage('briefing');
   };
   const briefingDone = () => {
@@ -82,7 +91,7 @@ export default function App() {
   if (page === 'briefing') {
     return (
       <MissionBriefing
-        storm={getStorm(null)}
+        storm={getStorm(afterBriefing?.stormId ?? null)}
         onDone={briefingDone}
         startLabel={afterBriefing ? undefined : 'Back to home'}
       />
@@ -112,7 +121,7 @@ export default function App() {
 // One running session. Lives as long as the room, so Data sources opens inside it
 // (leaving would close an online room).
 function Game({ session, onLevelEnd, onHome }) {
-  const { mode, role, code, world, moonStars, solo = false } = session;
+  const { mode, role, code, world, moonStars, stormId = null, solo = false } = session;
   // One device: a player opened the Menu, so the game (the signal clock) is paused.
   const [paused, setPaused] = useState(false);
   const { state, sendMove, sendWarning, restart, partnerConnected, error } = useGameSession({
@@ -124,6 +133,8 @@ function Game({ session, onLevelEnd, onHome }) {
     paused: mode === 'split' && paused,
     // Play alone: Commander Sola sends the warnings (one device only)
     solo,
+    // The real storm this game plays (picked at random when it started)
+    stormId,
   });
   const [showSources, setShowSources] = useState(false);
 
@@ -160,7 +171,8 @@ function Game({ session, onLevelEnd, onHome }) {
         crew={getAstronautView(state)}
         canContinue={!isMissionControl}
         onNextLevel={(stars) => restart({ world: 'mars', moonStars: stars })}
-        onPlayAgain={() => restart()}
+        // Play again: the same level with another real storm, so it plays differently
+        onPlayAgain={() => restart({ stormId: pickStorm(REAL_STORM_IDS, state.stormId) })}
         onHome={onHome}
         onDataSources={() => setShowSources(true)}
       />

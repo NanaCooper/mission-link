@@ -58,3 +58,17 @@ export function progressAfter(progress, { status, world, stars }) {
   if (progress.marsUnlocked && moonStars === progress.moonStars) return progress;
   return { marsUnlocked: true, moonStars };
 }
+
+/**
+ * Which real storm a game plays. A new game picks one at random; "Play again" passes the storm
+ * just played as `current`, so it gets a different one when there is more than one.
+ *   ids      the real storm ids (REAL_STORM_IDS)
+ *   current  the storm to avoid, or null
+ *   random   () => a number in [0, 1), Math.random by default (tests pass their own)
+ */
+export function pickStorm(ids, current = null, random = Math.random) {
+  if (!ids?.length) return null;
+  const others = ids.filter((id) => id !== current);
+  const pool = others.length ? others : ids;
+  return pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))];
+}

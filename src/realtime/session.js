@@ -37,6 +37,8 @@ export function canSendStorm(storm) {
  *   { storm: null }       play the saved storm again (for example "back to level 2")
  *   no `storm` key        keep the current storm when the world stays the same (Play again),
  *                         drop it when the world changes (a live storm never follows you to another world)
+ * Saved storms: { stormId } plays that saved storm instead (a new random real storm for Play again).
+ *   Without it the saved storm stays, also to Mars, so the two levels tell one story.
  */
 export function nextLevel(current, options = {}) {
   const { world, moonStars } = options ?? {};
@@ -51,10 +53,14 @@ export function nextLevel(current, options = {}) {
     storm = current.storm ?? null;
   }
 
+  // { stormId: 'storm-2025-05-31' } plays that saved storm (Play again with a different real storm).
+  const askedId = typeof options?.stormId === 'string' && options.stormId ? options.stormId : null;
+  if (askedId) storm = null;
+
   return {
     world: nextWorld,
     // A live storm's id means nothing without the storm, so drop it with the storm.
-    stormId: !storm && current.storm ? null : (current.stormId ?? null),
+    stormId: askedId ?? (!storm && current.storm ? null : (current.stormId ?? null)),
     moonStars: Number.isInteger(moonStars) ? Math.min(3, Math.max(0, moonStars)) : (current.moonStars ?? 0),
     // Only passed when there is one, so createGame sees exactly the old arguments for levels 1 and 2.
     ...(storm ? { storm } : {}),
