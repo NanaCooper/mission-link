@@ -49,6 +49,23 @@ its own score (how many warnings were just right, and the wave where a missed wa
 what the players learned, and asks one question to try next time. Then it shows what really happened
 in the real storm.
 
+**A 3D world built from pixels.** The Moon base, the Mars base and the control room are small 3D
+worlds made cube by cube from the game's own pixel art. Both players walk around them, and a few
+details teach as you play:
+
+- **Low gravity.** The Moon and Mars pull less than Earth, so Nova walks in slow, floaty hops. You
+  cannot walk fast there, even by tapping quickly.
+- **The telescope.** In Mission Control, using the telescope turns the big wall screen into a moving
+  picture of the storm now and what comes next.
+- **What Sola said.** The base acts out the warning the Astronaut received: orange alarm lights for
+  "Storm coming", a lit path to the door for "Shelter now", dim lights for "Save power", green lights
+  for "All clear". It shows what Sola *said*, never the real storm, so the Astronaut still has to ask.
+- **Music.** Original music, made in code, with a Music switch in the menu.
+- **Older devices.** If a device cannot show 3D, the game uses the flat pixel map instead (add
+  `?3d=off` to the address to see it).
+
+Every new game starts with a short **mission briefing** (Skip is always there).
+
 **Moon, then Mars.** The Moon is the training level. On Mars, warnings arrive a wave late, dust covers
 the solar panels on one wave, and on another the Sun blocks the radio signal completely, as it really
 does when Earth and Mars are on opposite sides of the Sun. Stars won on the Moon become supply crates
@@ -120,16 +137,16 @@ Online play (two devices) needs a Supabase project: copy `.env.example` to `.env
 | `src/engine/` | The game rules: pure functions, the same choices always give the same result, fully tested |
 | `src/engine/storms/` | The real storm, turned into game stages |
 | `src/realtime/` | Two-device play with Supabase Realtime; the Astronaut's device runs the game |
-| `src/ui/game/` | The player screens, the walkable pixel maps, sounds and read-aloud |
+| `src/ui/game/` | The player screens, the walkable maps (the flat pixel map and `world3d/`, the 3D version), sounds, music and read-aloud |
 | `src/ui/flow/` | Home, lobby, end screen, How to play, Data sources |
 | `docs/` | The shared contract between the parts, the archived NASA data, and every source |
 
-React, Vite, Vitest, Supabase Realtime and Vercel. No other libraries; the pixel art is drawn in code.
+React, Vite, Vitest, Supabase Realtime, three.js (the 3D picture) and Vercel. The pixel art is drawn in code, and the 3D models are built from it.
 
 ## Team and tools
 
 - **Team:** Normally: Cooper, Maurus, Bryan and Patrick
-- **Tools:** React, Vite, Vitest, oxlint, Supabase Realtime, Vercel, GitHub, the Web Audio and Web
+- **Tools:** React, Vite, Vitest, oxlint, Supabase Realtime, three.js (MIT licence), Vercel, GitHub, the Web Audio and Web
   Speech browser features, and the Pixelify Sans and Press Start 2P fonts (SIL Open Font License).
 - **Super Intelligence (SI) use:** see the section below.
 
@@ -139,13 +156,13 @@ Space Apps asks every team to say where and how SI tools were used. We used two:
 
 | SI tool | What it helped with |
 | --- | --- |
-| Claude Code (Anthropic) | Writing and testing code, including the game engine, the screens, the online play, the automated tests and the pixel art (it is drawn in code, not as images). The team decided what went in, and played and tested the game on real devices. |
+| Claude Code (Anthropic) | Writing and testing code, including the game engine, the screens, the online play, the automated tests, the pixel art and the 3D worlds (both are drawn in code, not as images) and the music (written as notes in code). The team decided what went in, and played and tested the game on real devices. |
 | Claude (Anthropic) | Planning and documentation: the build guide, this README, `docs/SOURCES.md`, draft kid-facing text, the pitch, and help checking facts against NASA pages. |
 
 - Every NASA fact and number shown to players was checked against its source page, with SI help,
   and the storm numbers are also checked by automated tests against the saved NASA records. The
   sources are listed in [`docs/SOURCES.md`](docs/SOURCES.md).
-- No SI-generated images, video or audio are used in the game. The sounds are made in code, and
+- No SI-generated images, video or audio are used in the game. The sounds and music are made in code, and
   "Read to me" uses the browser's own voice.
 - No NASA logos, flags or mission insignia are used anywhere.
 

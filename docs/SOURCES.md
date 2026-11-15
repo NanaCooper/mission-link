@@ -87,6 +87,7 @@ These are game rules. The game never presents them as real numbers.
 | Vitest 5 | Tests | https://vitest.dev |
 | oxlint | Linting | https://oxc.rs |
 | Supabase Realtime (supabase-js 2) | Syncing two devices in online play | https://supabase.com/docs/guides/realtime |
+| three.js 0.170 (MIT licence) | The 3D picture of the maps | https://threejs.org |
 | Vercel | Hosting | https://vercel.com |
 | GitHub | Code and collaboration | https://github.com/NanaCooper/mission-link |
 | Web Audio API | Sound effects, made in code (no audio files) | https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API |

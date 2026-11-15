@@ -8,7 +8,7 @@ import { CLOCK_URGENT } from './clock.js';
 export const HIT_SOUND_MIN = 10;
 
 // How loud a sound effect gets (0..1). The background music (music.js) stays below it.
-export const SOUND_VOLUME = 0.08;
+export const SOUND_VOLUME = 0.6;
 
 // Each sound is a list of tones: f = start pitch (Hz), to = end pitch, d = length (s),
 // at = start time (s), type = oscillator wave.

@@ -10,7 +10,7 @@ import { getAudio, isSoundOn, onSoundChange, onAudioUnlock, listenForFirstTap } 
 
 // How loud the music is, before each voice's own level. With every voice playing at once it
 // stays below a sound effect (SOUND_VOLUME in sound.js), so warnings are always heard.
-export const MUSIC_VOLUME = 0.03;
+export const MUSIC_VOLUME = 0.3;
 
 // Fading between two tracks (a new screen), and fading out to silence, in seconds
 export const FADE_SECONDS = 1.2;
