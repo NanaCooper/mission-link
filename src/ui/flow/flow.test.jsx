@@ -188,7 +188,7 @@ describe('the mission debrief', () => {
   });
 
   it("scores Mission Control's warnings, kindly, and links a missed warning to the hit it caused", () => {
-    const crew = { ...fakeMoonWin, moveResults: [{ turn: 1, move: 'raiseShield', radiation: 2 }, { turn: 2, move: 'raiseShield', radiation: 40 }] };
+    const crew = { ...fakeMoonWin, moveResults: [{ turn: 1, move: 'raiseShield', radiation: 2 }, { turn: 2, move: 'doScience', radiation: 40 }] };
     const missionControl = {
       warningChecks: [
         { turn: 1, sent: 'stormComing', best: 'stormComing', delayTurns: 0 },
@@ -201,8 +201,14 @@ describe('the mission debrief', () => {
     expect(team.line).toBe('1 of 3 warnings were just right, and 1 was close.');
     expect(team.rating).toBe('Good teamwork: most warnings helped the crew.');
     expect(team.linked).toBe('Wave 2: the warning was "All clear", and 40 radiation hit the crew.');
+    // The crew raised the shield anyway: the warning did not mislead them, so nothing is linked
+    const shielded = { ...crew, moveResults: [{ turn: 2, move: 'raiseShield', radiation: 12, shieldFailed: false }] };
+    expect(missionControlScore(missionControl, shielded).linked).toBeNull();
     const perfect = { warningChecks: [{ turn: 1, sent: 'stormComing', best: 'stormComing', delayTurns: 0 }] };
     expect(missionControlScore(perfect, crew).rating).toMatch(/^Perfect warnings!/);
+    // Half is not "most": 1 right and 1 wrong asks to keep practising
+    const half = { warningChecks: missionControl.warningChecks.slice(0, 2) };
+    expect(missionControlScore(half, crew).rating).toMatch(/^Keep practising/);
   });
 
   it('on Mars, a missed warning is linked to the next wave (the one it was meant for)', () => {

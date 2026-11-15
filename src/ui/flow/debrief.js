@@ -56,17 +56,19 @@ export function missionControlScore(missionControl, crew) {
 
   let rating;
   if (great === total) rating = 'Perfect warnings! A real Mission Control team.';
-  else if (great + close >= Math.ceil(total / 2)) rating = 'Good teamwork: most warnings helped the crew.';
+  else if (great + close > total / 2) rating = 'Good teamwork: most warnings helped the crew.';
   else rating = 'Keep practising: look at what is coming, and warn before it arrives.';
 
-  // A warning that was not right, and the wave it was meant for hit the crew hard.
+  // A warning that was not right, and on the wave it was meant for the crew was left unprotected
+  // (no shield, no shelter, or a shield with no power) and hit hard: the warning may have misled them.
   // On Mars a warning helps the next wave, so that is the wave to look at.
   let linked = null;
   for (const c of checks) {
     if (c.sent === c.best || (DANGER.includes(c.sent) && DANGER.includes(c.best))) continue;
     const wave = c.turn + (c.delayTurns ?? 0);
     const hit = (crew?.moveResults ?? []).find((r) => r.turn === wave);
-    if (hit && hit.radiation >= 10) {
+    const unprotected = hit && (hit.move === 'savePower' || hit.move === 'doScience' || hit.shieldFailed);
+    if (unprotected && hit.radiation >= 10) {
       const sent = c.sent ? `the warning was "${WARNING_INFO[c.sent]?.label}"` : 'no warning was sent';
       linked = `Wave ${wave}: ${sent}, and ${hit.radiation} radiation hit the crew.`;
       break;
