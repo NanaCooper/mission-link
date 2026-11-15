@@ -10,7 +10,8 @@ real solar storm recorded by NASA, first on a Moon base, then on a Mars base.
 
 ## The idea
 
-Mission Control can see the storm coming but cannot touch the base. The Astronaut can protect the
+Mission Link is a game about making mission-critical decisions with incomplete information and
+limited resources. Mission Control can see the storm coming but cannot touch the base. The Astronaut can protect the
 crew but cannot see the storm. They have to talk to survive, and every move costs something. On Mars,
 Mission Control's warnings arrive one wave late, the way real messages take minutes to reach Mars, so
 kids feel the communication delay instead of reading about it.
@@ -41,7 +42,12 @@ A level is one storm in **3 waves**: the flare, the peak, and the fading storm. 
 
 The base uses power every wave, and when the power runs out the oxygen drops. Too much radiation, no
 oxygen or no crew health ends the mission. Surviving earns 1 star, a healthy crew 2, and science on top
-of that 3. The end screen explains what your choices meant and what really happened in the real storm.
+of that 3.
+
+The end screen's **Mission debrief** explains why the mission succeeded or ended, gives Mission Control
+its own score (how many warnings were just right, and the wave where a missed warning hurt), sums up
+what the players learned, and asks one question to try next time. Then it shows what really happened
+in the real storm.
 
 **Moon, then Mars.** The Moon is the training level. On Mars, warnings arrive a wave late, dust covers
 the solar panels on one wave, and on another the Sun blocks the radio signal completely, as it really
@@ -75,6 +81,9 @@ for astronauts, which is exactly the trade-off the game teaches.
 - Automated tests check each storm file against its saved records, and check that each storm's waves
   follow its real flare class and cloud speed.
 - The radiation meter counts game points, not real doses, and the game says so in plain words.
+- The in-game **Data sources** screen explains how each NASA number became game points (the flare class
+  sets the strongest wave, the cloud speed the fading wave) and what is simplified. The rule lives in
+  one file, `src/engine/storms/fromData.js`, which the storm tests and the screen both use.
 - Every fact shown to players links to the NASA page it came from. The full list, with the file each
   fact lives in, is in [`docs/SOURCES.md`](docs/SOURCES.md), and the in-game "Data sources" screen
   lists them too.
@@ -82,11 +91,15 @@ for astronauts, which is exactly the trade-off the game teaches.
 ## Built for kids
 
 - Short sentences and plain words; space words are explained where they appear.
-- Four meters (power, oxygen, crew health, a storm radiation budget) and four moves. The challenge
-  advises two or three core systems for young players, so we left out food on purpose.
+- Three systems, as the challenge advises for young players: power, life support (oxygen and crew
+  health) and radiation shielding, with four moves. We left out food on purpose, to keep it readable
+  for a 7-year-old.
+- BLIP, the base robot, coaches both players: what each move cost, and how good each warning was.
 - Keyboard, touch joystick or on-screen arrows; "Read to me" reads the messages aloud; sound can be
   turned off.
 - Losing ends with an explanation and one tap to try again, not a scolding.
+- A **For teachers** page (linked from Home): what the game teaches, how to run it with a group in
+  about 20 minutes, and five questions to talk about afterwards.
 
 ## Run it locally
 
@@ -127,4 +140,3 @@ React, Vite, Vitest, Supabase Realtime and Vercel. No other libraries; the pixel
 - **Food:** a greenhouse as a later resource, using the Canadian Space Agency's food production toolkit.
 - **More NASA data:** dose readings from the ISS (RadLab), astronaut health findings (OSDR), and a real
   Mars site from Mars Trek.
-- **A teacher mode** with discussion questions after each level.
