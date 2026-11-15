@@ -21,6 +21,8 @@ export const initialState = {
   inbox: [],           // warnings delivered to the Astronaut: { turn, warning }
   outbox: [],          // warnings not yet delivered (Mars delay): { turnSent, warning }
   lastMove: null,
+  lastResult: null,    // what the last move did (Astronaut only): { turn, move, radiation, shieldFailed, dust, powerOut }
+  lastWarningCheck: null, // Mission Control's last warning next to Commander Sola's pick: { turn, sent, best, delayTurns }
   log: [],             // { turn, text } short kid-friendly lines
   lostReason: null,    // 'oxygen' | 'health' | 'radiation' | 'time'
   signalSecondsLeft: 0, // the signal clock: seconds left for Mission Control to send a warning this turn

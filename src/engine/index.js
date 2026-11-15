@@ -185,6 +185,11 @@ export function sendWarning(state, warning) {
 export function applyMove(state, move) {
   if (state.status !== 'playing' || !MOVES.includes(move)) return state;
 
+  // How Mission Control's warning for this wave compares with Commander Sola's pick (autoWarning),
+  // so BLIP can coach. Not in Play alone (Sola sent it) or when the signal could not get through.
+  const best = state.solo ? null : autoWarning(state);
+  const sentNow = warningSentThisTurn(state);
+
   const stage = currentStage(state);
   const effect = MOVE_EFFECTS[move];
   let { power, oxygen, radiationDose, crewHealth } = state.meters;
@@ -242,6 +247,18 @@ export function applyMove(state, move) {
   if (powerOut) text += ' Power ran out, so oxygen went down!';
   const log = [...state.log, { turn: state.turn + 1, text }];
 
+  const lastResult = {
+    turn: state.turn + 1,
+    move,
+    radiation: radiationThisTurn,
+    shieldFailed: move === 'raiseShield' && multiplier === effect.failedMultiplier,
+    dust: move === 'savePower' && isDustStage(state),
+    powerOut
+  };
+  const lastWarningCheck = best
+    ? { turn: state.turn + 1, sent: sentNow ? sentNow.warning : null, best, delayTurns: levelOf(state).delayTurns }
+    : null;
+
   // 7. Next turn: the next wave's storm stage (after the last wave it stays on the last one)
   const turn = state.turn + 1;
   const stormStage = WAVES[turn] ?? state.stormStage;
@@ -283,6 +300,8 @@ export function applyMove(state, move) {
     inbox,
     outbox,
     lastMove: move,
+    lastResult,
+    lastWarningCheck,
     lastFact: stage.fact ?? null,
     signalSecondsLeft: SIGNAL_SECONDS, // a new turn: the clock starts again
     log,
@@ -303,6 +322,7 @@ export function getAstronautView(state) {
     inbox: state.inbox,
     log: state.log,
     lastMove: state.lastMove,
+    lastResult: state.lastResult ?? null,
     lastFact: state.lastFact ?? null,
     lostReason: state.lostReason,
     stars: state.stars,
@@ -345,6 +365,7 @@ export function getMissionControlView(state) {
     lastFact: state.lastFact ?? null,
     crewHealth: state.meters.crewHealth,
     warningThisTurn: sentNow ? sentNow.warning : null,
+    lastWarningCheck: state.lastWarningCheck ?? null,
     lostReason: state.lostReason,
     stars: state.stars,
     solo: Boolean(state.solo),
