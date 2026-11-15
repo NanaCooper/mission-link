@@ -3,6 +3,7 @@ import GameMenu from './GameMenu.jsx';
 import RotateCard from './RotateCard.jsx';
 import HudIcon from './HudIcon.jsx';
 import { tryLandscape, useLandscape } from './landscape.js';
+import { useViewport } from './viewport.js';
 import { MENU_LABEL, PAUSED_TITLE, PAUSED_TEXT, ONLINE_NO_PAUSE_TEXT } from '../labels.js';
 import './hud.css';
 
@@ -79,6 +80,8 @@ export default function GameHud({
   // On a touch device: full screen and sideways when the game starts (and on a tap, if the
   // browser said "not yet").
   useLandscape(active);
+  // Size the game to the part of the screen the player can really see (phone toolbars).
+  useViewport();
 
   // Escape closes the menu, but only on the screen that is showing.
   useEffect(() => {
