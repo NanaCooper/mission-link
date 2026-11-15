@@ -19,6 +19,8 @@ import HowToPlayScreen from './ui/flow/HowToPlayScreen.jsx';
 import DataSourcesScreen from './ui/flow/DataSourcesScreen.jsx';
 import TeacherScreen from './ui/flow/TeacherScreen.jsx';
 import MissionBriefing from './ui/game/intro/MissionBriefing.jsx';
+import { trackFor, useBackgroundMusic } from './ui/game/music.js';
+import { listenForFirstTap } from './ui/game/sound.js';
 import {
   gameBanner, loadProgress, newGameStarted, pickGameScreen, pickStorm, progressAfter, saveProgress
 } from './ui/flow/appFlow.js';
@@ -49,6 +51,8 @@ export default function App() {
   const [briefingStormId, setBriefingStormId] = useState(null);
 
   useEffect(scrollToTop, [page]);
+  // Sound and music need a first tap or key press (browser rule): listen for it from the start.
+  useEffect(listenForFirstTap, []);
 
   const updateProgress = (next) => {
     setProgress((old) => {
@@ -188,6 +192,24 @@ function Game({ session, onLevelEnd, onHome, onNewGame }) {
     if (isMissionControl && newGameStarted(before, state.status)) onNewGame?.(state.stormId);
   }, [isMissionControl, state.status, state.stormId, onNewGame]);
 
+  // The background music of the game screen on show (music.js). One device: whoever holds it.
+  // Online: each device plays its own player's music. Nothing on the end screen, lobby or briefing.
+  const [splitPlayer, setSplitPlayer] = useState(ROLES.MISSION_CONTROL);
+  let musicPlayer = null;
+  if (screen === 'game' && !showSources) {
+    if (mode === 'split') musicPlayer = solo ? ROLES.ASTRONAUT : splitPlayer;
+    else musicPlayer = isMissionControl ? ROLES.MISSION_CONTROL : ROLES.ASTRONAUT;
+  }
+  useBackgroundMusic(
+    trackFor({
+      player: musicPlayer,
+      world: state.world,
+      status: state.status,
+      // The Astronaut's own messages only (the base gets tenser after a danger warning)
+      inbox: musicPlayer === ROLES.ASTRONAUT ? getAstronautView(state).inbox : []
+    })
+  );
+
   if (showSources) {
     return <DataSourcesScreen storm={getGameStorm(state)} onBack={() => setShowSources(false)} />;
   }
@@ -236,6 +258,7 @@ function Game({ session, onLevelEnd, onHome, onNewGame }) {
         onMove={sendMove}
         onWarn={sendWarning}
         onPauseChange={setPaused}
+        onShowingChange={setSplitPlayer}
       />
     );
   } else if (isMissionControl) {
