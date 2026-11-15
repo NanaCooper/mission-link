@@ -137,6 +137,34 @@ export function frameCamera({ aspect, fov = CAMERA_FOV, map, hero, lookHeight = 
   };
 }
 
+// The camera while Commander Sola looks through the telescope: closer to the big wall screen,
+// almost straight in front of it, with the screen in the part of the view the text box leaves
+// free (the box covers the bottom of the map).
+//   aspect   width / height of the box
+//   screen   { x, y, z, width, height } the screen on the wall (z = the front of the wall)
+//   free     how much of the view's height, from the top, the text box leaves free (0..1)
+//   farthest the camera never goes farther from the wall than this
+// Returns { target, position }, or null when the screen cannot be shown closer than the usual
+// camera (a small phone, where the box covers most of the map): then the usual camera stays.
+export const WALL_FARTHEST = 130;
+
+export function frameWall({ aspect, fov = CAMERA_FOV, screen, free = 1, farthest = WALL_FARTHEST }) {
+  const tanV = Math.tan(((fov / 2) * Math.PI) / 180);
+  const tanH = tanV * Math.max(0.2, aspect);
+  const room = clamp(free, 0.3, 1) * 0.9; // a little gap above the text box
+  // Near enough to fill most of the free part, far enough for the whole screen to fit in it
+  const distance = Math.max(screen.width / 0.9 / (2 * tanH), screen.height / room / (2 * tanV));
+  if (distance > farthest) return null;
+  const viewHeight = 2 * distance * tanV;
+  // Aim below the screen, so the screen sits in the middle of the free part at the top
+  const y = screen.y - ((1 - clamp(free, 0.3, 1)) * viewHeight) / 2;
+  if (y < 4) return null; // the camera would sink into the floor
+  return {
+    target: { x: screen.x, y, z: screen.z },
+    position: { x: screen.x, y: y + distance * 0.06, z: screen.z + distance }
+  };
+}
+
 // The colours of the ground and the light, per world. Moon and Mars match the 2D map (BaseMap.jsx).
 export const LOOK_3D = {
   moon: {

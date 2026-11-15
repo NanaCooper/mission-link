@@ -70,6 +70,16 @@ export default function World3D({
       : null;
     seen?.observe(box);
 
+    // How much of the picture, from the top, the map's text box leaves free (0..1). The control
+    // room camera keeps the big screen in that part while the telescope box is open.
+    const freePart = () => {
+      const textBox = box.closest('.world')?.querySelector('.world__textbox');
+      if (!textBox) return 1;
+      const picture = box.getBoundingClientRect();
+      if (!(picture.height > 0)) return 1;
+      return Math.max(0, Math.min(1, (textBox.getBoundingClientRect().top - picture.top) / picture.height));
+    };
+
     let frameId = 0;
     let last = performance.now();
     const loop = (now) => {
@@ -78,7 +88,8 @@ export default function World3D({
       last = now;
       if (!onScreen || document.hidden) return;
       try {
-        view.frame(latest.current, dt, now / 1000);
+        const state = latest.current;
+        view.frame(state.scene?.focus ? { ...state, free: freePart() } : state, dt, now / 1000);
       } catch {
         cancelAnimationFrame(frameId);
         fail();

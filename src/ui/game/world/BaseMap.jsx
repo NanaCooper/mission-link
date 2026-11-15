@@ -8,7 +8,8 @@ import { NOVA } from './heroes.js';
 import { spriteRects } from '../../components/pixel/spriteRects.jsx';
 import { PIECES, PALETTE } from '../../components/pixel/sprites.js';
 import { PixelIcon } from '../../components/index.js';
-import { MOVE_INFO } from '../labels.js';
+import { MOVE_INFO, WARNING_INFO } from '../labels.js';
+import { baseCues } from '../world3d/baseCues.js';
 import { ANTENNA, FLAG_A, FLAG_B, LANDER, CRATES, BLIP_BOT_A, BLIP_BOT_B, SATELLITE, SHIELD_TOWER } from './props.js';
 
 // Where each letter of the map first appears, in squares of the drawing: { x, y } or null
@@ -66,6 +67,14 @@ const WHAT_HAPPENED = {
   doScience: 'Nova is doing science outside.'
 };
 
+// The light on the dome for Sola's message: its colour, and whether it flashes
+const ALARM_2D = {
+  stormComing: { fill: PALETTE.O, flash: true },
+  shelterNow: { fill: PALETTE.r, flash: true },
+  savePower: { fill: PALETTE.Y, flash: false },
+  allClear: { fill: PALETTE.L, flash: false }
+};
+
 const STARS = [
   [4, 3], [15, 8], [27, 2], [38, 6], [52, 3], [63, 9], [71, 2], [84, 7], [104, 9], [110, 3], [116, 7]
 ];
@@ -108,9 +117,15 @@ export default function BaseMap({ view, onMove, hit = 0, overlay, active = true 
   const tower = place('shieldTower');
   const rover = place('rover');
 
+  // What the base acts out: Sola's newest message, and what the move really did. Only the
+  // Astronaut view goes in, never the storm (baseCues.js).
+  const cues = baseCues(view);
+  const alarm = cues.warning ? ALARM_2D[cues.warning] : null;
+
   const label =
     `Picture: the ${look.name} base. ${WHAT_HAPPENED[lastMove] ?? 'Nova stands by the base.'}` +
-    (hit > 0 ? ' Radiation hit the base.' : '');
+    (hit > 0 ? ' Radiation hit the base.' : '') +
+    (cues.warning ? ` Commander Sola says: ${WARNING_INFO[cues.warning].label}.` : '');
 
   // "Raise shield? [Yes] [No]": which place is asking, and on which turn. A new turn, a step,
   // Yes or No closes it.
@@ -163,8 +178,9 @@ export default function BaseMap({ view, onMove, hit = 0, overlay, active = true 
       stepMs={BASE_STEP_MS[view.world] ?? BASE_STEP_MS.moon}
       celebrate={false}
       walkText={`Walk Nova to a place, then press USE. ${LOW_GRAVITY_TEXT[view.world] ?? LOW_GRAVITY_TEXT.moon}`}
-      // The 3D picture shows the same things as the 2D one below (world3d/scene.js)
-      scene3d={{ kind: 'base', world: view.world, turn, shielded, saving, sheltering, science, lowPower, hit, bigHit: hit >= BIG_HIT }}
+      // The 3D picture shows the same things as the 2D one below, and acts out Sola's message
+      // and what the move did (world3d/scene.js, world3d/baseCues.js)
+      scene3d={{ kind: 'base', ...cues, hit, bigHit: hit >= BIG_HIT }}
       foreground={
         <>
           {/* The shield: a glowing dome over the base */}
@@ -316,6 +332,18 @@ export default function BaseMap({ view, onMove, hit = 0, overlay, active = true 
           <rect x={dome.x + 7} y={dome.y + 5} width={2} height={2} fill={PALETTE.Y} />
           <rect x={dome.x + 15} y={dome.y + 5} width={2} height={2} fill={PALETTE.Y} />
         </g>
+      )}
+      {/* Sola's newest message: a light on top of the dome (the 3D base acts it out more) */}
+      {alarm && (
+        <rect
+          key={`alarm-${cues.warningKey}`}
+          x={dome.x + 11}
+          y={dome.y + TILE - 14}
+          width={2}
+          height={1}
+          fill={alarm.fill}
+          className={`world__alarm world__alarm--${cues.warning}${alarm.flash ? ' px-blink-fast' : ''}`}
+        />
       )}
       {sheltering && (
         <g key={`door-${turn}`}>

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   gridToWorld, placeCentre, letterCentre, letterSpots, drawingToWorld, FACING_ANGLE, turnToward, moveToward, frameCamera, walkFeel, TILE3,
-  edgeLights, PLANET_MARGIN, CAMERA_FOV, LOOK_3D
+  edgeLights, PLANET_MARGIN, CAMERA_FOV, LOOK_3D, frameWall
 } from './layout.js';
 import { roundWorld } from './voxels.js';
 import { BASE_MAP, BASE_START } from '../world/baseMapData.js';
@@ -81,6 +81,43 @@ describe('the camera', () => {
     expect(near.target.x).toBe(-20);
     const edge = frameCamera({ aspect: 0.5, map: BASE_MAP, hero: { x: -54, z: 0 } });
     expect(edge.target.x).toBeGreaterThan(-54);
+  });
+
+  describe('looking at the wall screen (the telescope)', () => {
+    const screen = { x: -1, y: 23, z: -36, width: 74, height: 34 };
+    const tan = Math.tan((CAMERA_FOV / 2) * (Math.PI / 180));
+
+    // Where the screen's top and bottom land in the view: 0 = top, 1 = bottom
+    function spot(view, y) {
+      const distance = view.position.z - view.target.z;
+      const half = distance * tan;
+      return 0.5 - (y - view.target.y) / (2 * half);
+    }
+
+    it('moves closer than the usual camera, in front of the wall', () => {
+      for (const aspect of [1280 / 734, 16 / 9, 1.4]) {
+        const view = frameWall({ aspect, screen, free: 0.7 });
+        const usual = frameCamera({ aspect, map: ROOM_MAP, hero: { x: -48, z: -30 }, lookHeight: 12 });
+        expect(view.position.z).toBeGreaterThan(screen.z);
+        expect(view.position.z - screen.z).toBeLessThan(usual.position.z - screen.z);
+        expect(Math.abs(view.position.x - screen.x)).toBeLessThan(1); // straight in front
+      }
+    });
+
+    it('keeps the whole screen in the free part, above the text box', () => {
+      for (const [aspect, free] of [[1280 / 734, 0.7], [16 / 9, 0.6], [1.4, 0.85], [2, 1]]) {
+        const view = frameWall({ aspect, screen, free });
+        expect(spot(view, screen.y + screen.height / 2)).toBeGreaterThanOrEqual(0);
+        expect(spot(view, screen.y - screen.height / 2)).toBeLessThanOrEqual(free);
+        const halfWidth = (view.position.z - view.target.z) * tan * aspect;
+        expect(screen.width / 2).toBeLessThanOrEqual(halfWidth);
+      }
+    });
+
+    it('keeps the usual camera when the box leaves too little room (a small phone)', () => {
+      expect(frameWall({ aspect: 844 / 324, screen, free: 0.38 })).toBeNull();
+      expect(frameWall({ aspect: 0.5, screen, free: 0.5 })).toBeNull();
+    });
   });
 
   it('never goes too close or too far', () => {

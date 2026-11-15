@@ -52,8 +52,10 @@ describe('the base map', () => {
 });
 
 describe('BaseMap (what the Astronaut sees)', () => {
+  // Changed on purpose (3d-world): the words now also say Sola's new message, so this check
+  // uses an empty inbox to keep the words exact.
   it('says in words what the picture shows, for each move', () => {
-    expect(render(moonAt(null))).toContain('aria-label="Picture: the Moon base. Nova stands by the base."');
+    expect(render(moonAt(null, { inbox: [] }))).toContain('aria-label="Picture: the Moon base. Nova stands by the base."');
     expect(render(moonAt('raiseShield'))).toContain('The shield is up over the base.');
     expect(render(moonAt('shelter'))).toContain('The crew is safe inside the shelter.');
     expect(render(moonAt('savePower'))).toContain('The lights are off to save power.');
@@ -83,6 +85,22 @@ describe('BaseMap (what the Astronaut sees)', () => {
     expect(small).toContain('class="scene__hit"');
     expect(small).toContain('Radiation hit the base.');
     expect(render(moonAt(null), { hit: BIG_HIT })).toContain('scene__hit--big');
+  });
+
+  it("lights the dome in the colour of Sola's new message, and says it in words", () => {
+    const html = render(moonAt(null)); // the inbox has "Shelter now" from this wave
+    expect(html).toContain('world__alarm--shelterNow px-blink-fast');
+    expect(html).toContain('Commander Sola says: Shelter now.');
+    const calm = render(moonAt(null, { inbox: [{ turn: 1, warning: 'allClear' }] }));
+    expect(calm).toContain('world__alarm--allClear"'); // a steady light: no flashing for All clear
+  });
+
+  it("shows no light for last wave's message, or before any message", () => {
+    for (const inbox of [[], [{ turn: 0, warning: 'shelterNow' }]]) {
+      const html = render(moonAt(null, { inbox }));
+      expect(html).not.toContain('world__alarm');
+      expect(html).not.toContain('Commander Sola says');
+    }
   });
 
   it('never shows the storm: no flying particles, no flare, no gas cloud, no dust', () => {

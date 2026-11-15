@@ -3,15 +3,20 @@
 // It only draws: walking, using places and the text boxes stay in WorldMap.jsx, and the engine
 // decides what happens. Like the 2D map, the base never shows the storm coming: the Astronaut
 // cannot see it. A radiation hit is only shown after the move, as the 2D map flashes.
+// The base acts out what Commander Sola SAID (her newest message, right or wrong: baseCues.js),
+// and after the move what really happened (lastResult). The control room's wall screen shows the
+// storm itself (roomScreen.js), but only Mission Control's map has it.
 //
 // createWorld({ canvas, kind, map, hero, world, reducedMotion }) returns
 //   frame(state, dt, t)   draws one picture. state = { position, steps, hidden, used, near, scene,
-//                         puff, stepMs, celebrate } (the same things WorldMap draws in 2D;
-//                         scene = the map's scene3d prop)
+//                         puff, stepMs, celebrate, free } (the same things WorldMap draws in 2D;
+//                         scene = the map's scene3d prop; free = how much of the picture, from
+//                         the top, the text box leaves free)
 //   resize(width, height)
 //   dispose()             frees the graphics memory
 import * as THREE from 'three';
-import { PALETTE, PIECES } from '../../components/pixel/sprites.js';
+import { PALETTE, PIECES, ICONS } from '../../components/pixel/sprites.js';
+import { painter, paintStorm, paintWord, paintMonitor, STORM_W, STORM_H, MONITOR_W, MONITOR_H } from './wallScreen.js';
 import {
   ANTENNA, FLAG_A, LANDER, CRATES, BLIP_BOT_A, SATELLITE, SHIELD_TOWER,
   COOLER, SERVER, DESK, SCREEN_BACK, ENGINEER, TELESCOPE, MONITOR, RADIO_DESK, PLANT
@@ -19,7 +24,7 @@ import {
 import { extrude, lathe, hull, ball, island, roundWorld } from './voxels.js';
 import {
   TILE3, RIM, gridToWorld, placeCentre, letterCentre, letterSpots, drawingToWorld,
-  FACING_ANGLE, turnToward, moveToward, walkFeel, frameCamera, CAMERA_FOV, LOOK_3D, PLANET_MARGIN, edgeLights
+  FACING_ANGLE, turnToward, moveToward, walkFeel, frameCamera, frameWall, CAMERA_FOV, LOOK_3D, PLANET_MARGIN, edgeLights
 } from './layout.js';
 
 // Colours go to the screen exactly as written, so the 3D view keeps the game's palette.
@@ -33,6 +38,18 @@ const STORM_FROM = new THREE.Vector3(0.47, 0.25, -0.88).normalize(); // radiatio
 const DOWN_ARROW = ['KKKKKKK', 'KYYYYYK', '.KYYYK.', '..KYK..', '...K...'];
 const DOME_SHIFT = 6; // the round dome is two squares deep in 3D, so it sits a little further back
 const SHIELD_RADIUS = 80;
+
+// Commander Sola's warning on the base: the alarm light's colour, and whether it flashes
+const ALARM = {
+  stormComing: { color: PALETTE.O, flash: true },
+  shelterNow: { color: PALETTE.r, flash: true },
+  allClear: { color: PALETTE.L, flash: false }
+};
+// 'd' is a dim window light, for "Save power"
+const DIM_PALETTE = { ...PALETTE, d: '#8a6d3b' };
+const DUST = ['#c98b5a', '#e8b07a', '#b0553a'];
+const BLIP_WALK = 26; // units a second on patrol
+const BLIP_HURRY = 60; // units a second when Sola says "Storm coming"
 
 // Little stones on the ground, as in the 2D map (drawing squares): [x, y, light?]
 const PEBBLES = [
@@ -149,14 +166,22 @@ function buildBase({ scene, map, world, kit, register, reducedMotion, small }) {
     return lights;
   });
 
-  // Solar panel. It sparkles when Nova saves power.
+  // Solar panel. It sparkles when Nova saves power, and turns to face the Sun when Sola says
+  // "Save power".
   const panel = placeAt('solarPanel');
   if (panel) {
-    register('solarPanel', add(kit.block(extrude(PIECES.solarPanel, 4), panel.x, 0, panel.z, 1.15)));
+    const panelMesh = kit.block(extrude(PIECES.solarPanel, 4), panel.x, 0, panel.z, 1.15);
+    register('solarPanel', panelMesh);
+    parts.panel = add(new THREE.Group());
+    parts.panel.position.set(panel.x, 0, panel.z);
+    panelMesh.position.set(0, 0, 0);
+    parts.panel.add(panelMesh);
+    parts.panelToSun = Math.atan2(SUN_AT.x - panel.x, SUN_AT.z - panel.z);
     parts.panelSparks = [0, 1, 2, 3, 4, 5].map((i) => {
-      const spark = add(kit.cube(1.1, i % 2 ? PALETTE.W : PALETTE.C));
-      spark.position.set(panel.x - 5 + i * 2, 9.5, panel.z + 2.7);
+      const spark = kit.cube(1.1, i % 2 ? PALETTE.W : PALETTE.C);
+      spark.position.set(-5 + i * 2, 9.5, 2.7);
       spark.visible = false;
+      parts.panel.add(spark);
       return spark;
     });
   }
@@ -166,21 +191,48 @@ function buildBase({ scene, map, world, kit, register, reducedMotion, small }) {
   if (shelter) {
     const dome = { x: shelter.x, z: shelter.z - DOME_SHIFT };
     register('shelter', add(kit.block(lathe(PIECES.dome), dome.x, 0, dome.z)));
+    // Each window has three panes, one shows at a time: lit, dim (Sola said "Save power"), dark
     parts.windows = [];
+    const glass = { lit: 'Y', dim: 'd', dark: 'k' };
     for (const x of [-4, 4]) {
       const z = Math.sqrt(121 - x * x) - 0.6;
-      for (const lit of [true, false]) {
-        const pane = add(kit.block(extrude(['KKKK', lit ? 'KYYK' : 'KkkK', lit ? 'KYYK' : 'KkkK', 'KKKK'], 1), dome.x + x, 4, dome.z + z));
+      const panes = {};
+      for (const [name, letter] of Object.entries(glass)) {
+        const pane = add(kit.block(extrude(['KKKK', `K${letter}${letter}K`, `K${letter}${letter}K`, 'KKKK'], 1, DIM_PALETTE), dome.x + x, 4, dome.z + z));
         pane.rotation.y = Math.atan2(x, z);
         pane.castShadow = false;
-        pane.visible = lit;
-        parts.windows.push({ pane, lit });
+        pane.visible = name === 'lit';
+        panes[name] = pane;
       }
+      parts.windows.push(panes);
     }
-    add(kit.block(extrude(['KKKK', 'KbbK', 'KbbK'], 1), dome.x, 1, dome.z + 12.3)).castShadow = false;
+    // The door. On "Shelter now" it slides open, the doorway lights up, and lights on the ground
+    // run towards it, showing the way in.
+    parts.door = add(kit.block(extrude(['KKKK', 'KbbK', 'KbbK'], 1), dome.x, 1, dome.z + 12.3));
+    parts.door.castShadow = false;
+    parts.doorway = add(kit.block(extrude(['KKKK', 'KYYK', 'KYYK'], 1), dome.x, 1, dome.z + 12.2));
+    parts.doorway.castShadow = false;
+    parts.doorway.visible = false;
     parts.doorLight = add(kit.cube(1.4, PALETTE.L));
     parts.doorLight.position.set(dome.x, 5.4, dome.z + 12.9);
     parts.doorLight.visible = false;
+    parts.path = [0, 1, 2, 3, 4, 5, 6].map((i) => {
+      const light = add(new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 2.2), kit.flat(PALETTE.Y)));
+      light.position.set(dome.x, 0.25, dome.z + 16 + i * 4.5);
+      light.visible = false;
+      return light;
+    });
+    // The alarm light on top of the dome (Sola's warning sets its colour), and the glow it gives
+    const top = PIECES.dome.length;
+    add(new THREE.Mesh(new THREE.BoxGeometry(4, 1, 4), new THREE.MeshLambertMaterial({ color: PALETTE.K }))).position.set(dome.x, top + 0.5, dome.z);
+    parts.alarm = add(kit.cube(3, PALETTE.r));
+    parts.alarm.position.set(dome.x, top + 2.5, dome.z);
+    parts.alarm.visible = false;
+    parts.alarmHalo = add(new THREE.Mesh(new THREE.BoxGeometry(7, 7, 7), kit.flat(PALETTE.r, { transparent: true, opacity: 0.35, depthWrite: false })));
+    parts.alarmHalo.position.copy(parts.alarm.position);
+    parts.alarmHalo.visible = false;
+    parts.alarmGlow = add(new THREE.PointLight(PALETTE.r, 0, 150, 0));
+    parts.alarmGlow.position.set(dome.x, 22, dome.z + 16);
     parts.dome = dome;
   }
 
@@ -226,6 +278,8 @@ function buildBase({ scene, map, world, kit, register, reducedMotion, small }) {
   const blipRow = gridToWorld(map, 0, map.height - 1);
   parts.blip = add(kit.block(extrude(BLIP_BOT_A, 6), blipRow.x, 0, blipRow.z));
   parts.blipFrom = drawingToWorld(map, 6, 0).x;
+  parts.blipAt = { x: parts.blipFrom, z: blipRow.z };
+  parts.blipRow = blipRow.z;
 
   // Pebbles (only on open ground), and the power cable from the solar panel to the dome
   for (const [x, y, light] of PEBBLES) {
@@ -279,6 +333,44 @@ function buildBase({ scene, map, world, kit, register, reducedMotion, small }) {
     parts.whirl.position.set(start.x, 0, start.z);
     parts.whirlFrom = start.x;
   }
+
+  // "Storm coming": a faint orange glow on the horizon, behind the base
+  {
+    const canvas = document.createElement('canvas');
+    canvas.width = 2;
+    canvas.height = 64;
+    const g = canvas.getContext('2d');
+    if (g) {
+      const fade = g.createLinearGradient(0, 0, 0, 64);
+      fade.addColorStop(0, 'rgba(239,125,87,0)');
+      fade.addColorStop(0.55, 'rgba(239,125,87,0.9)');
+      fade.addColorStop(1, 'rgba(239,125,87,0)');
+      g.fillStyle = fade;
+      g.fillRect(0, 0, 2, 64);
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    parts.glow = add(new THREE.Mesh(
+      new THREE.PlaneGeometry(1400, 260),
+      kit.flat(0xffffff, { map: texture, transparent: true, opacity: 0, depthWrite: false, fog: false })
+    ));
+    parts.glow.position.set(0, -60, -380);
+    parts.glow.visible = false;
+  }
+
+  // After "Save power" on the Mars dust wave: a cloud of dust over the base and the solar panel
+  parts.dust = add(new THREE.Group());
+  for (let i = 0; i < 14; i += 1) {
+    const size = 7 + (i % 4) * 2.5;
+    const cloud = new THREE.Mesh(
+      new THREE.BoxGeometry(size, size * 0.6, size),
+      kit.flat(DUST[i % DUST.length], { transparent: true, opacity: 0.42, depthWrite: false })
+    );
+    const spot = { x: -50 + ((i * 37) % 100), y: 10 + ((i * 13) % 16), z: -26 + ((i * 23) % 40) };
+    cloud.position.set(spot.x, spot.y, spot.z);
+    cloud.userData = { ...spot, phase: i * 0.7 };
+    parts.dust.add(cloud);
+  }
+  parts.dust.visible = false;
 
   // The shield: a glowing bubble over the whole base
   parts.bubble = add(new THREE.Mesh(
@@ -343,27 +435,136 @@ function buildBase({ scene, map, world, kit, register, reducedMotion, small }) {
 
   const blink = (t, perSecond, phase = 0) => reducedMotion || Math.floor((t + phase) * perSecond * 2) % 2 === 0;
   let lastHit = null;
+  let cueKey = null; // Sola's message now on show, and when it arrived
+  let cueAt = -10;
+  let failKey = null; // the shield that failed, and when
+  let failAt = -10;
+
+  // BLIP: patrols the bottom of the base, hurries to the dome door on "Storm coming",
+  // and stops and relaxes on "All clear"
+  function moveBlip(sc, dt, t) {
+    const blip = parts.blip;
+    const hurry = sc.warning === 'stormComing' && parts.dome;
+    if (sc.warning === 'allClear') {
+      blip.position.y = 0;
+      blip.rotation.y = reducedMotion ? 0 : turnToward(blip.rotation.y, 0, dt * 3);
+      blip.rotation.z = reducedMotion ? 0 : Math.sin(t * 1.4) * 0.1; // a slow, happy sway
+      return;
+    }
+    const goal = hurry
+      ? { x: parts.dome.x + 9, z: parts.dome.z + 17 }
+      : { x: parts.blipFrom + (reducedMotion ? 0 : ((Math.sin(t * 0.6) + 1) / 2) * 40), z: parts.blipRow };
+    const moved = reducedMotion ? { ...goal, distance: 0 } : moveToward(parts.blipAt, goal, (hurry ? BLIP_HURRY : BLIP_WALK) * dt, Infinity);
+    const dx = moved.x - parts.blipAt.x;
+    const dz = moved.z - parts.blipAt.z;
+    if (Math.hypot(dx, dz) > 0.01) blip.rotation.y = turnToward(blip.rotation.y, Math.atan2(dx, dz), dt * 12);
+    parts.blipAt = { x: moved.x, z: moved.z };
+    const arrived = hurry && Math.hypot(goal.x - moved.x, goal.z - moved.z) < 0.5;
+    blip.position.set(moved.x, reducedMotion ? 0 : Math.floor(t * (hurry ? 10 : 6)) % 2 ? 0.5 : 0, moved.z);
+    blip.rotation.z = arrived && !reducedMotion ? Math.sin(t * 18) * 0.12 : 0; // waiting at the door, in a fluster
+  }
 
   return {
     lookHeight: 4,
     margin: PLANET_MARGIN, // show the planet's curve and the space around it
     update(sc, dt, t) {
-      const bubble = parts.bubble;
       const twinkle = reducedMotion ? 0 : Math.floor(t * 1.2) % 2;
       parts.edgeLights.forEach((lights, odd) => lights.material.color.set(odd === twinkle ? PALETTE.C : PALETTE.b));
 
-      const goal = sc.shielded ? 1 : 0.001;
-      const size = reducedMotion ? goal : bubble.scale.x + (goal - bubble.scale.x) * Math.min(1, dt * 4);
-      bubble.scale.setScalar(size);
-      bubble.visible = size > 0.01;
+      // Sola's message (what she SAID, right or wrong). The colours of its alarm light.
+      const alarm = ALARM[sc.warning] ?? null;
+      if (sc.warningKey !== cueKey) {
+        cueKey = sc.warningKey;
+        cueAt = t;
+      }
+      const cueAge = t - cueAt;
+      const powerOut = Boolean(sc.powerOut);
 
+      // The shield: up after Raise shield. With no power it flickers, then goes out.
+      const failed = sc.shield === 'failed';
+      const thisFail = failed ? String(sc.turn) : null;
+      if (thisFail && thisFail !== failKey) failAt = t;
+      failKey = thisFail;
+      const flickering = failed && !reducedMotion && t - failAt < 1.6;
+      const bubble = parts.bubble;
+      const goal = sc.shield === 'up' || flickering ? 1 : 0.001;
+      const size = reducedMotion ? goal : bubble.scale.x + (goal - bubble.scale.x) * Math.min(1, dt * (failed ? 6 : 4));
+      bubble.scale.setScalar(size);
+      bubble.visible = size > 0.01 && (!flickering || Math.floor(t * 14) % 3 !== 0);
+
+      // The dome windows: lit, dim ("Save power"), or dark (saving power, or no power left)
       if (parts.windows) {
-        const lightsOn = !sc.saving && !(sc.lowPower && !reducedMotion && Math.floor(t * 6) % 3 === 0);
-        parts.windows.forEach(({ pane, lit }) => {
-          pane.visible = lit ? lightsOn : !lightsOn;
+        const lightsOn = !sc.saving && !powerOut && !(sc.lowPower && !reducedMotion && Math.floor(t * 6) % 3 === 0);
+        const dim = sc.warning === 'savePower';
+        parts.windows.forEach((panes) => {
+          panes.lit.visible = lightsOn && !dim;
+          panes.dim.visible = lightsOn && dim;
+          panes.dark.visible = !lightsOn;
         });
       }
-      if (parts.doorLight) parts.doorLight.visible = Boolean(sc.sheltering) && blink(t, 0.8);
+      if (parts.doorLight) parts.doorLight.visible = Boolean(sc.sheltering) && !powerOut && blink(t, 0.8);
+
+      // "Shelter now": the door slides open and lights on the ground run to it
+      if (parts.door) {
+        const opening = sc.warning === 'shelterNow';
+        const open = opening ? (reducedMotion ? 1 : Math.min(1, cueAge / 0.6)) : 0;
+        parts.door.position.y = 1 + open * 3.2;
+        parts.door.visible = open < 1;
+        parts.doorway.visible = open > 0.2;
+        const run = Math.floor(t * 7);
+        parts.path.forEach((light, i) => {
+          light.visible = opening && (reducedMotion || (i + run) % 4 < 2);
+        });
+      }
+
+      // The alarm light on the dome, its glow, and the light on the shield tower
+      if (parts.alarm) {
+        const lit = Boolean(alarm) && (!alarm.flash || blink(t, 2.5));
+        parts.alarm.visible = Boolean(alarm); // the lamp stays; it glows when lit
+        parts.alarmHalo.visible = lit;
+        if (alarm) {
+          parts.alarm.material.color.set(lit ? alarm.color : PALETTE.k);
+          parts.alarmHalo.material.color.set(alarm.color);
+          parts.alarmGlow.color.set(alarm.color);
+        }
+        parts.alarmGlow.intensity = !alarm ? 0 : alarm.flash ? (lit ? 3 : 0.4) : 0.9;
+      }
+      if (parts.beacon) {
+        if (alarm) {
+          parts.beacon.material.color.set(alarm.color);
+          parts.beacon.visible = !alarm.flash || blink(t, 3, 0.17);
+        } else {
+          parts.beacon.material.color.set(PALETTE.r);
+          parts.beacon.visible = !powerOut && !failed && blink(t, sc.shield === 'up' ? 3 : 0.75);
+        }
+      }
+
+      // "Storm coming": an orange glow on the horizon
+      if (parts.glow) {
+        const material = parts.glow.material;
+        const wanted = sc.warning === 'stormComing' ? (reducedMotion ? 0.45 : 0.36 + Math.sin(t * 2) * 0.12) : 0;
+        material.opacity = reducedMotion ? wanted : material.opacity + (wanted - material.opacity) * Math.min(1, dt * 2);
+        parts.glow.visible = material.opacity > 0.01;
+      }
+
+      // "Save power": the solar panel turns to face the Sun (and back after)
+      if (parts.panel) {
+        const angle = sc.warning === 'savePower' ? parts.panelToSun : 0;
+        parts.panel.rotation.y = reducedMotion ? angle : turnToward(parts.panel.rotation.y, angle, dt * 1.5);
+      }
+
+      // After Save power on the Mars dust wave: dust over the base
+      if (parts.dust) {
+        parts.dust.visible = Boolean(sc.dust);
+        if (sc.dust && !reducedMotion) {
+          parts.dust.children.forEach((cloud) => {
+            const { x, y, phase } = cloud.userData;
+            cloud.position.x = x + Math.sin(t * 0.5 + phase) * 6;
+            cloud.position.y = y + Math.sin(t * 0.8 + phase) * 1.2;
+          });
+        }
+      }
+
       parts.panelSparks?.forEach((spark, i) => {
         spark.visible = Boolean(sc.saving) && (reducedMotion || Math.floor(t * 5 + i) % 3 === 0);
       });
@@ -372,17 +573,13 @@ function buildBase({ scene, map, world, kit, register, reducedMotion, small }) {
         spark.visible = Boolean(sc.science);
         spark.position.set(spark.userData.x, 7 + k * 16, spark.userData.z);
       });
-      if (parts.beacon) parts.beacon.visible = blink(t, sc.shielded ? 3 : 0.75);
-      if (parts.dishLight) parts.dishLight.visible = blink(t, 1.5);
-      if (parts.landerLight) parts.landerLight.visible = blink(t, 0.6, 0.3);
-      if (parts.cableLight) parts.cableLight.visible = blink(t, 0.6);
+      if (parts.dishLight) parts.dishLight.visible = !powerOut && blink(t, 1.5);
+      if (parts.landerLight) parts.landerLight.visible = !powerOut && blink(t, 0.6, 0.3);
+      if (parts.cableLight) parts.cableLight.visible = !powerOut && blink(t, 0.6);
 
+      moveBlip(sc, dt, t);
       if (!reducedMotion) {
         if (parts.flag) parts.flag.rotation.y = Math.sin(t * 2.2) * 0.18;
-        const k = (Math.sin(t * 0.6) + 1) / 2;
-        parts.blip.position.x = parts.blipFrom + k * 40;
-        parts.blip.position.y = Math.floor(t * 6) % 2 ? 0.5 : 0;
-        parts.blip.rotation.y = Math.cos(t * 0.6) > 0 ? PI / 2 : -PI / 2;
         parts.satellite.position.x = -380 + ((t * 24) % 760);
         if (parts.whirl) {
           parts.whirl.rotation.y = t * 3;
@@ -397,13 +594,43 @@ function buildBase({ scene, map, world, kit, register, reducedMotion, small }) {
         rad.carry = 0;
       }
       lastHit = hitKey;
-      stormStep(dt, t, Boolean(sc.shielded));
+      stormStep(dt, t, sc.shield === 'up');
     }
   };
 }
 
+// The big wall screen once Commander Sola has looked through the telescope this wave, in wall
+// pixels from the middle of the wall: NOW (what the storm does) and NEXT (the next wave).
+const STORM_SCREEN = { left: -38, top: 5, width: 74, height: 34 };
+const NOW_PANEL = { dx: 2, dy: 8, w: STORM_W, h: STORM_H };
+const NEXT_PANEL = { dx: 52, dy: 14, w: 20, h: 10 };
+
+function paintStormScreen(rect, mid, screen, t) {
+  const x = mid + STORM_SCREEN.left;
+  const y = STORM_SCREEN.top;
+  const { width: w, height: h } = STORM_SCREEN;
+  const p = painter(rect);
+  p.rect(x - 1, y - 1, w + 2, h + 2, PALETTE.K);
+  p.rect(x, y, w, h, PALETTE.K);
+  p.rect(x, y, w, 1, PALETTE.b);
+  p.rect(x, y + h - 1, w, 1, PALETTE.b);
+  p.rect(x + 51, y + 3, 1, h - 6, PALETTE.D);
+  paintWord(p, 'NOW', x + 3, y + 2, PALETTE.C);
+  paintWord(p, 'NEXT', x + 54, y + 7, PALETTE.G);
+  const now = { x: x + NOW_PANEL.dx, y: y + NOW_PANEL.dy, w: NOW_PANEL.w, h: NOW_PANEL.h };
+  paintStorm(painter(rect, now), screen.now, t);
+  const next = { x: x + NEXT_PANEL.dx, y: y + NEXT_PANEL.dy, w: NEXT_PANEL.w, h: NEXT_PANEL.h };
+  if (screen.next) {
+    paintStorm(painter(rect, next, next.w / STORM_W), { look: screen.next, world: screen.now.world }, t, { small: true });
+  } else {
+    // The last wave: after it, the stars
+    p.sprite(ICONS.star, next.x + 5, next.y);
+  }
+}
+
 // The wall of the control room, drawn like the 2D wall: the big screen with the Sun and Earth,
 // a clock, a Moon poster, a Mars poster and status lights. One pixel = one unit of the wall.
+// After the telescope, the big screen shows the storm instead (paintStormScreen).
 function makeWallArt(width, height, reducedMotion) {
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -421,7 +648,7 @@ function makeWallArt(width, height, reducedMotion) {
     for (let y = -r; y <= r; y += 1) for (let x = -r; x <= r; x += 1) if (x * x + y * y <= r * r + r * 0.8) rect(cx + x, cy + y, 1, 1, color);
   };
   const mid = Math.round(width / 2);
-  const draw = (t) => {
+  const draw = (t, screen = null) => {
     if (!g) return;
     const tick = reducedMotion ? 0 : Math.floor(t * 2);
     rect(0, 0, width, height, PALETTE.k);
@@ -453,10 +680,39 @@ function makeWallArt(width, height, reducedMotion) {
     [[mid - 56, PALETTE.L, 0], [mid - 52, PALETTE.L, 1], [mid + 50, PALETTE.C, 0], [mid + 54, PALETTE.C, 1]].forEach(([x, color, phase]) => {
       if (reducedMotion || (tick + phase) % 2 === 0) rect(x, height - 8, 3, 1, color);
     });
+    if (screen) paintStormScreen(rect, mid, screen, reducedMotion ? 0 : t);
     texture.needsUpdate = true;
   };
   draw(0);
-  return { texture, draw, next: 0 };
+  // Where the storm screen is on the wall, in wall pixels (0, 0 = top left)
+  const stormScreen = { x: mid + STORM_SCREEN.left + STORM_SCREEN.width / 2, y: STORM_SCREEN.top + STORM_SCREEN.height / 2 };
+  return { texture, draw, next: 0, shown: null, stormScreen };
+}
+
+// The crew monitor's screen: Nova's last move as an icon and crew health as a bar (paintMonitor)
+function makeMonitorArt() {
+  const canvas = document.createElement('canvas');
+  canvas.width = MONITOR_W;
+  canvas.height = MONITOR_H;
+  const g = canvas.getContext('2d');
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.generateMipmaps = false;
+  let shown = null;
+  return {
+    texture,
+    draw(crew) {
+      const key = `${crew.icon}:${crew.health}`;
+      if (!g || key === shown) return;
+      shown = key;
+      paintMonitor((x, y, w, h, color) => {
+        g.fillStyle = color;
+        g.fillRect(x, y, w, h);
+      }, crew);
+      texture.needsUpdate = true;
+    }
+  };
 }
 
 // ---------- The control room on Earth (Mission Control's map) ----------
@@ -487,6 +743,14 @@ function buildRoom({ scene, map, kit, register, reducedMotion, small }) {
   const picture = add(new THREE.Mesh(new THREE.PlaneGeometry(halfWidth * 2, wallHeight), new THREE.MeshLambertMaterial({ map: art.texture })));
   picture.position.set(0, wallHeight / 2, wallFront + 0.05);
   picture.receiveShadow = true;
+  // The storm screen in the room (one wall pixel = one unit), for the telescope camera
+  const wallScreen = {
+    x: art.stormScreen.x - halfWidth,
+    y: wallHeight - art.stormScreen.y,
+    z: wallFront,
+    width: STORM_SCREEN.width,
+    height: STORM_SCREEN.height
+  };
   const sideDepth = (map.height - 1) * TILE3 + RIM * 2;
   const side = add(new THREE.Mesh(new THREE.BoxGeometry(RIM, 27, sideDepth), new THREE.MeshLambertMaterial({ color: PALETTE.k })));
   side.position.set(-halfWidth + RIM / 2, 13.5, 0);
@@ -523,8 +787,10 @@ function buildRoom({ scene, map, kit, register, reducedMotion, small }) {
   const monitor = placeAt('monitor');
   if (monitor) {
     register('monitor', add(kit.block(extrude(MONITOR, 5), monitor.x, 0, monitor.z, 1.2)));
-    parts.monitorLight = add(kit.cube(0.9, PALETTE.L));
-    parts.monitorLight.position.set(monitor.x - 4.2, 9, monitor.z + 3.2);
+    // Its screen (squares 1-10 across, rows 1-6 of the sprite): Nova's last move and crew health
+    parts.monitorArt = makeMonitorArt();
+    const screen = add(new THREE.Mesh(new THREE.PlaneGeometry(12, 7.2), kit.flat(0xffffff, { map: parts.monitorArt.texture })));
+    screen.position.set(monitor.x, 7.2, monitor.z + 3.05);
   }
   const radio = placeAt('radio');
   if (radio) {
@@ -549,14 +815,24 @@ function buildRoom({ scene, map, kit, register, reducedMotion, small }) {
         parts.radioLight.material.color.set(color);
         parts.radioLight.visible = sc.radio === 'blackout' || sc.radio === 'sent' ? blink(t, 3) : true;
       }
-      if (parts.monitorLight) parts.monitorLight.visible = blink(t, 0.6);
+      if (sc.screen) parts.monitorArt?.draw(sc.screen.crew);
       parts.rackLights?.forEach((light, i) => {
         light.visible = blink(t, [3, 1.2, 0.6][i % 3], i * 0.21);
       });
-      if (t >= art.next) {
-        art.draw(t);
-        art.next = t + 0.25;
+      // The big screen: the storm once Sola has used the telescope this wave. It moves faster
+      // while she looks through the telescope.
+      const screen = sc.wall === 'storm' && sc.screen ? sc.screen : null;
+      const shown = screen ? JSON.stringify(screen.now) + screen.next : null;
+      if (t >= art.next || shown !== art.shown) {
+        art.draw(t, screen);
+        art.shown = shown;
+        art.next = t + (sc.focus ? 0.1 : 0.25);
       }
+    },
+    // While the telescope box is open: the camera moves closer to the big screen (null = the usual camera)
+    camera(sc, aspect, free) {
+      if (!sc.focus) return null;
+      return frameWall({ aspect, screen: wallScreen, free });
     }
   };
 }
@@ -636,7 +912,7 @@ export function createWorld({ canvas, kind, map, hero, world = 'moon', reducedMo
   function frame(state, dt, t) {
     const {
       position, steps = 0, hidden = false, used = { count: 0, place: null }, near = null,
-      scene: sc = {}, puff = null, stepMs, celebrate = true
+      scene: sc = {}, puff = null, stepMs, celebrate = true, free = 1
     } = state;
     // Low gravity on the Moon and Mars: slow, floaty hops. Earth: a quick walk.
     const feel = walkFeel({ stepMs, world: sc.world });
@@ -717,8 +993,11 @@ export function createWorld({ canvas, kind, map, hero, world = 'moon', reducedMo
 
     content.update(sc, dt, t);
 
-    // The camera glides after the character (it starts in place, with no glide)
-    const view = frameCamera({ aspect, map, hero: { x: character.x, z: character.z }, lookHeight: content.lookHeight, margin: content.margin });
+    // The camera glides after the character (it starts in place, with no glide). In the control
+    // room it glides up to the big screen while the telescope box is open, and back after.
+    const view =
+      content.camera?.(sc, aspect, free) ??
+      frameCamera({ aspect, map, hero: { x: character.x, z: character.z }, lookHeight: content.lookHeight, margin: content.margin });
     const k = firstFrame ? 1 : Math.min(1, dt * 3);
     camera.position.lerp(wanted.set(view.position.x, view.position.y, view.position.z), k);
     lookAt.lerp(wanted.set(view.target.x, view.target.y, view.target.z), k);

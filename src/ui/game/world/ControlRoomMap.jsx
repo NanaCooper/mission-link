@@ -9,6 +9,7 @@ import { spriteRects, diskRects } from '../../components/pixel/spriteRects.jsx';
 import { PALETTE } from '../../components/pixel/sprites.js';
 import { PixelIcon } from '../../components/index.js';
 import { COOLER, SERVER, DESK, SCREEN_BACK, ENGINEER, TELESCOPE, MONITOR, RADIO_DESK, PLANT } from './props.js';
+import { roomScreen } from '../world3d/roomScreen.js';
 
 // Mission Control's map: the control room on Earth, seen from above like an old role-playing game.
 // Commander Sola walks to a place and uses it:
@@ -42,6 +43,10 @@ export default function ControlRoomMap({ view, onWarn, active = true }) {
   const [open, setOpen] = useState(null); // { id, turn }
   const openId = open && open.turn === view.turn && playing ? open.id : null;
   const close = () => setOpen(null);
+
+  // The 3D wall screen shows the storm once Sola has looked through the telescope this wave
+  const waveKey = `${gameNumber}:${view.turn}`;
+  const [lookedAt, setLookedAt] = useState(null);
 
   // Sending a warning closes the box. The screen's own pop-up then says "Sent: ...".
   const dialog =
@@ -86,7 +91,10 @@ export default function ControlRoomMap({ view, onWarn, active = true }) {
       resetKey={gameNumber}
       placeNames={ROOM_PLACE_NAMES}
       describeUse={describeUse}
-      onUse={(spot) => setOpen({ id: spot.id, turn: view.turn })}
+      onUse={(spot) => {
+        setOpen({ id: spot.id, turn: view.turn });
+        if (spot.id === 'telescope') setLookedAt(waveKey);
+      }}
       canUse={playing}
       active={active}
       ground={PALETTE.k}
@@ -96,7 +104,16 @@ export default function ControlRoomMap({ view, onWarn, active = true }) {
       dialog={dialog || null}
       // The 3D picture shows the same things as the 2D one below (world3d/scene.js).
       // radio: the light on the radio desk (red in the blackout, cyan once a warning is sent)
-      scene3d={{ kind: 'room', radio: blackout ? 'blackout' : view.warningThisTurn ? 'sent' : 'idle' }}
+      // screen: what the wall screen and the crew monitor show (roomScreen.js)
+      // wall: 'storm' once the telescope was used this wave, else the usual Sun and Earth
+      // focus: the camera moves closer to the wall screen while the telescope box is open
+      scene3d={{
+        kind: 'room',
+        radio: blackout ? 'blackout' : view.warningThisTurn ? 'sent' : 'idle',
+        screen: roomScreen(view),
+        wall: lookedAt === waveKey ? 'storm' : 'idle',
+        focus: openId === 'telescope'
+      }}
     >
       {/* Floor tiles */}
       <rect width={width} height={ROOM_MAP.height * TILE} fill={PALETTE.k} />
