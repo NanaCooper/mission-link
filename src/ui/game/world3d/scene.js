@@ -16,10 +16,10 @@ import {
   ANTENNA, FLAG_A, LANDER, CRATES, BLIP_BOT_A, SATELLITE, SHIELD_TOWER,
   COOLER, SERVER, DESK, SCREEN_BACK, ENGINEER, TELESCOPE, MONITOR, RADIO_DESK, PLANT
 } from '../world/props.js';
-import { extrude, lathe, hull, ball, island } from './voxels.js';
+import { extrude, lathe, hull, ball, island, roundWorld } from './voxels.js';
 import {
   TILE3, RIM, gridToWorld, placeCentre, letterCentre, letterSpots, drawingToWorld,
-  FACING_ANGLE, turnToward, moveToward, walkFeel, frameCamera, CAMERA_FOV, LOOK_3D
+  FACING_ANGLE, turnToward, moveToward, walkFeel, frameCamera, CAMERA_FOV, LOOK_3D, PLANET_MARGIN, edgeLights
 } from './layout.js';
 
 // Colours go to the screen exactly as written, so the 3D view keeps the game's palette.
@@ -70,12 +70,13 @@ function makeKit(voxelMaterial) {
   };
 }
 
-function keyLight(direction, intensity, small) {
+// reach: how far from the middle the shadows must work (bigger for the round planet)
+function keyLight(direction, intensity, small, reach = 110) {
   const light = new THREE.DirectionalLight(0xfff3e0, intensity);
   light.position.copy(direction).multiplyScalar(280);
   light.castShadow = true;
   const shadowCamera = light.shadow.camera;
-  Object.assign(shadowCamera, { left: -110, right: 110, top: 110, bottom: -110, near: 20, far: 700 });
+  Object.assign(shadowCamera, { left: -reach, right: reach, top: reach, bottom: -reach, near: 20, far: 700 });
   shadowCamera.updateProjectionMatrix();
   const size = small ? 1024 : 2048;
   light.shadow.mapSize.set(size, size);
@@ -83,13 +84,14 @@ function keyLight(direction, intensity, small) {
   return [light, light.target];
 }
 
-function makeStars() {
+// allRound: stars below the horizon too (the round planet has space on every side)
+function makeStars(allRound = false) {
   const points = [];
   for (let i = 0; i < 1400; i += 1) {
     const u = Math.random() * 2 - 1;
     const a = Math.random() * 2 * PI;
     const s = Math.sqrt(1 - u * u);
-    points.push(s * Math.cos(a) * 1100, Math.abs(u) * 1000 - 60, s * Math.sin(a) * 1100);
+    points.push(s * Math.cos(a) * 1100, allRound ? u * 1000 : Math.abs(u) * 1000 - 60, s * Math.sin(a) * 1100);
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
@@ -129,10 +131,23 @@ function buildBase({ scene, map, world, kit, register, reducedMotion, small }) {
   const parts = {};
 
   scene.background = new THREE.Color(look.background);
-  add(makeStars());
+  add(makeStars(true));
   add(new THREE.HemisphereLight(look.sky, look.low, 0.5 * PI));
-  keyLight(LIGHT_DIR, 0.58 * PI, small).forEach(add);
-  add(kit.block(island(map.rows, look, { depthMax: 9 })));
+  // The ground: a tiny round planet with the base on its flat top
+  const ground = roundWorld(map.rows, look);
+  const planet = { radius: ground.planet.radius, y: ground.planet.centre[1] };
+  keyLight(LIGHT_DIR, 0.58 * PI, small, planet.radius + 20).forEach(add);
+  add(kit.block(ground));
+
+  // Where the walking area ends: a dotted line of tiny lights (no wall). Every other one twinkles.
+  const lightSpots = edgeLights(map);
+  parts.edgeLights = [0, 1].map((odd) => {
+    const spots = lightSpots.filter((_, i) => i % 2 === odd);
+    const lights = add(new THREE.InstancedMesh(new THREE.BoxGeometry(1.1, 1.1, 1.1), kit.flat(PALETTE.C), spots.length));
+    const at = new THREE.Matrix4();
+    spots.forEach((spot, i) => lights.setMatrixAt(i, at.makeTranslation(spot.x, 0.55, spot.z)));
+    return lights;
+  });
 
   // Solar panel. It sparkles when Nova saves power.
   const panel = placeAt('solarPanel');
@@ -319,7 +334,8 @@ function buildBase({ scene, map, world, kit, register, reducedMotion, small }) {
       const x = rad.p[j];
       const y = rad.p[j + 1];
       const z = rad.p[j + 2];
-      if (y < 0 || (shielded && Math.hypot(x, y, z) < radius)) rad.life[i] = 0; // the shield stops it
+      const inGround = y < 0 && Math.hypot(x, y - planet.y, z) < planet.radius;
+      if (inGround || (shielded && Math.hypot(x, y, z) < radius)) rad.life[i] = 0; // the shield stops it
       storm.setMatrixAt(i, rad.life[i] > 0 ? matrix.makeTranslation(x, y, z) : nothing);
     }
     if (changed) storm.instanceMatrix.needsUpdate = true;
@@ -330,8 +346,12 @@ function buildBase({ scene, map, world, kit, register, reducedMotion, small }) {
 
   return {
     lookHeight: 4,
+    margin: PLANET_MARGIN, // show the planet's curve and the space around it
     update(sc, dt, t) {
       const bubble = parts.bubble;
+      const twinkle = reducedMotion ? 0 : Math.floor(t * 1.2) % 2;
+      parts.edgeLights.forEach((lights, odd) => lights.material.color.set(odd === twinkle ? PALETTE.C : PALETTE.b));
+
       const goal = sc.shielded ? 1 : 0.001;
       const size = reducedMotion ? goal : bubble.scale.x + (goal - bubble.scale.x) * Math.min(1, dt * 4);
       bubble.scale.setScalar(size);
@@ -698,7 +718,7 @@ export function createWorld({ canvas, kind, map, hero, world = 'moon', reducedMo
     content.update(sc, dt, t);
 
     // The camera glides after the character (it starts in place, with no glide)
-    const view = frameCamera({ aspect, map, hero: { x: character.x, z: character.z }, lookHeight: content.lookHeight });
+    const view = frameCamera({ aspect, map, hero: { x: character.x, z: character.z }, lookHeight: content.lookHeight, margin: content.margin });
     const k = firstFrame ? 1 : Math.min(1, dt * 3);
     camera.position.lerp(wanted.set(view.position.x, view.position.y, view.position.z), k);
     lookAt.lerp(wanted.set(view.target.x, view.target.y, view.target.z), k);

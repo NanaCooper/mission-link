@@ -230,3 +230,122 @@ export function island(rows, look, { depthMax = 9, cells = 4, unit = 3, margin =
   };
   return voxelBlock(nx, top + 2, nz, solid, color, { unit, offsetY: -(top + 1) * unit });
 }
+
+// The ground of the Moon or Mars base: a tiny round planet with the base on top.
+// The map's walkable squares are flat, at y = 0, exactly where island() puts them. Around them
+// the ground stays flat for a little way, then curves down and away like a ball, all the way
+// round to the underside.
+//   rows     the map's rows of letters (row 0, the sky, is left out, as in island())
+//   look     { ground, light, dark, crater, side, deep } colours
+//   options  cells, unit    cubes per map square, and the size of one cube (as in island())
+//            flatMargin     flat ground kept beyond the corners of the walkable squares
+//            radius         the planet's radius (default: 1.6 times the flat part)
+//            blend          how softly the flat top turns into the curve (0 = a sharp edge)
+//            rocks          false: no rocks and no extra craters outside the walkable squares
+//            clear          cubes kept free of rocks around the walkable squares (for the edge lights)
+// Returns the same things as the other builders, plus
+//   planet: { radius, centre: [x, y, z], flatRadius }   the ball the ground is cut from
+export function roundWorld(rows, look, {
+  cells = 4, unit = 3, flatMargin = 5, radius = null, blend = 9, rocks = true, clear = 2
+} = {}) {
+  const across = rows[0].length;
+  const deep = rows.length - 1;
+  const halfX = (across * cells) / 2; // half the walkable squares, in cubes
+  const halfZ = (deep * cells) / 2;
+  const flatRadius = Math.hypot(halfX, halfZ) * unit + flatMargin;
+  const R = Math.max(radius ?? Math.round(flatRadius * 1.6), flatRadius + unit);
+  // The ball's middle is this far under the base. Its top is sliced off flat at y = 0.
+  const drop = Math.sqrt(R * R - flatRadius * flatRadius) - blend;
+  const half = Math.ceil(R / unit);
+  const n = half * 2;
+  const lowest = Math.floor((-drop - R) / unit); // the lowest row of cubes (cube i fills y = i*unit to (i+1)*unit)
+  const ny = 1 - lowest; // rows of cubes from `lowest` up to 0 (a rock on the flat ground)
+
+  // How high the smooth ground is at a point, or null past the planet's edge.
+  // It is exactly 0 on the flat part, then eases into the ball.
+  const heightAt = (wx, wz) => {
+    const r2 = wx * wx + wz * wz;
+    if (r2 >= R * R) return null;
+    const ballTop = Math.sqrt(R * R - r2) - drop;
+    const ease = blend > 0 ? Math.max(blend - Math.abs(ballTop), 0) ** 2 / (4 * blend) : 0;
+    return Math.min(0, ballTop) - ease;
+  };
+
+  // One pass over the columns: the top and bottom cube of each, and how its top is painted.
+  const GROUND = 0;
+  const LIGHT = 1;
+  const DARK = 2;
+  const CRATER = 3;
+  const tops = new Int16Array(n * n).fill(lowest - 1); // top below bottom = no column here
+  const bottoms = new Int16Array(n * n);
+  const paint = new Uint8Array(n * n);
+  const isRock = new Uint8Array(n * n);
+  const onMap = new Uint8Array(n * n);
+  const middle = (cells - 1) / 2;
+  for (let x = 0; x < n; x += 1) {
+    for (let z = 0; z < n; z += 1) {
+      const wx = (x - half + 0.5) * unit;
+      const wz = (z - half + 0.5) * unit;
+      const height = heightAt(wx, wz);
+      if (height === null) continue;
+      const k = x * n + z;
+      let top = Math.round(height / unit) - 1;
+      const gx = x - half + halfX; // cubes from the left edge of the walkable squares
+      const gz = z - half + halfZ;
+      const bx = Math.floor(gx / cells); // the map square (also counted on beyond the map)
+      const bz = Math.floor(gz / cells);
+      const lx = gx - bx * cells;
+      const lz = gz - bz * cells;
+      const inner = Math.abs(lx - middle) < middle && Math.abs(lz - middle) < middle; // not on the square's rim
+      const speckle = cellNoise(x, z) > 0.82 ? LIGHT : GROUND;
+      if (bx >= 0 && bx < across && bz >= 0 && bz < deep) {
+        // On the map: the same craters and dark patches as the 2D map
+        const letter = rows[bz + 1][bx];
+        onMap[k] = 1;
+        if (letter === 'o' && inner) {
+          top -= 1;
+          paint[k] = CRATER;
+        } else paint[k] = letter === 'o' || letter === ',' ? DARK : speckle;
+      } else {
+        // Beyond the map: a few more craters, dark patches and rocks, so it looks like the Moon
+        const outside = Math.max(-gx, gx - (across * cells - 1), -gz, gz - (deep * cells - 1));
+        const patch = rocks && outside > clear + cells ? cellNoise(bx + 57, bz + 91) : 0;
+        if (patch > 0.9 && inner) {
+          top -= 1;
+          paint[k] = CRATER;
+        } else if (patch > 0.78) paint[k] = DARK;
+        else if (rocks && outside > clear && cellNoise(x, z) > 0.95) {
+          top += 1;
+          isRock[k] = 1;
+          paint[k] = LIGHT;
+        } else paint[k] = speckle;
+      }
+      const bottom = Math.round((-drop - Math.sqrt(R * R - wx * wx - wz * wz)) / unit);
+      if (bottom > top) continue;
+      tops[k] = top;
+      bottoms[k] = bottom;
+    }
+  }
+
+  const PAINT = [look.ground, look.light, look.dark, look.crater];
+  const equator = -drop / unit;
+  const solid = (x, y, z) => {
+    if (x < 0 || z < 0 || x >= n || z >= n || y < 0 || y >= ny) return false;
+    const k = x * n + z;
+    const i = y + lowest;
+    return i <= tops[k] && i >= bottoms[k];
+  };
+  const color = (x, y, z, face) => {
+    const k = x * n + z;
+    const i = y + lowest;
+    if (face === TOP && i === tops[k]) return PAINT[paint[k]];
+    if (isRock[k] && i === tops[k]) return look.dark; // the sides of a rock
+    if (onMap[k]) return look.dark; // the walls of a crater on the map
+    // The steps of the curve: ground colour with a few dark stones, darker on the underside
+    if (i < equator - half / 2) return look.deep;
+    if (i < equator) return look.side;
+    return cellNoise(x + i * 7, z - i * 3) > 0.85 ? look.dark : look.ground;
+  };
+  const block = voxelBlock(n, ny, n, solid, color, { unit, offsetY: lowest * unit });
+  return { ...block, planet: { radius: R, centre: [0, -drop, 0], flatRadius } };
+}

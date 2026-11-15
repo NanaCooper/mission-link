@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { voxelBlock, extrude, lathe, hull, ball, island, hexToRgb, letterAt, FACES } from './voxels.js';
+import { voxelBlock, extrude, lathe, hull, ball, island, roundWorld, hexToRgb, letterAt, FACES } from './voxels.js';
 import { PALETTE, PIECES } from '../../components/pixel/sprites.js';
 import { NOVA, SOLA } from '../world/heroes.js';
 import * as PROPS from '../world/props.js';
 import { BASE_MAP } from '../world/baseMapData.js';
 import { ROOM_MAP } from '../world/controlRoomData.js';
-import { LOOK_3D } from './layout.js';
+import { LOOK_3D, gridToWorld } from './layout.js';
 
 // The highest and lowest value of every 3rd number, starting at `axis` (0 = x, 1 = y, 2 = z)
 function range(positions, axis) {
@@ -162,5 +162,123 @@ describe('the ground', () => {
   it('the control room floor is flat (no rocks, no craters)', () => {
     const block = island(ROOM_MAP.rows, LOOK_3D.room, { depthMax: 3, rocks: false });
     expect(range(block.positions, 1)[1]).toBe(0);
+  });
+});
+
+// The middle of every face that points up: [{ x, y, z }]
+function topFaces(block) {
+  const list = [];
+  for (let i = 0; i < block.positions.length; i += 18) {
+    if (block.normals[i + 1] !== 1) continue;
+    const xs = [];
+    const zs = [];
+    for (let k = 0; k < 18; k += 3) {
+      xs.push(block.positions[i + k]);
+      zs.push(block.positions[i + k + 2]);
+    }
+    list.push({
+      x: (Math.min(...xs) + Math.max(...xs)) / 2,
+      y: block.positions[i + 1],
+      z: (Math.min(...zs) + Math.max(...zs)) / 2
+    });
+  }
+  return list;
+}
+
+describe('the round planet under the base (roundWorld)', () => {
+  const moon = roundWorld(BASE_MAP.rows, LOOK_3D.moon);
+  const tops = topFaces(moon);
+  // The walkable squares: 10 across and 6 deep, 12 units each, centred on 0
+  const onSquares = (p, extra = 0) => Math.abs(p.x) < 60 + extra && Math.abs(p.z) < 36 + extra;
+  const average = (list) => list.reduce((sum, p) => sum + p.y, 0) / list.length;
+  const ring = (from, to) => tops.filter((p) => !onSquares(p) && Math.hypot(p.x, p.z) >= from && Math.hypot(p.x, p.z) < to);
+
+  it('the walkable top is at y = 0, and every walkable square is there', () => {
+    const walkable = tops.filter((p) => onSquares(p));
+    expect(walkable).toHaveLength(10 * 6 * 16); // each square is 4 x 4 cubes
+    const craterSquares = BASE_MAP.rows.join('').split('o').length - 1;
+    expect(walkable.filter((p) => p.y === -3)).toHaveLength(craterSquares * 4); // craters dip one cube
+    expect(walkable.filter((p) => p.y === 0)).toHaveLength(10 * 6 * 16 - craterSquares * 4);
+  });
+
+  it('is flat inside the walkable area: nothing sticks up, also not just outside it (the edge lights)', () => {
+    let highest = -Infinity;
+    for (let i = 0; i < moon.positions.length; i += 3) {
+      const p = { x: moon.positions[i], y: moon.positions[i + 1], z: moon.positions[i + 2] };
+      if (onSquares(p, 6)) highest = Math.max(highest, p.y);
+    }
+    expect(highest).toBe(0);
+  });
+
+  it('the craters are where the 2D map has them', () => {
+    BASE_MAP.rows.forEach((row, y) => [...row].forEach((letter, x) => {
+      if (letter !== 'o') return;
+      const middle = gridToWorld(BASE_MAP, x, y);
+      const dips = tops.filter((p) => p.y === -3 && Math.abs(p.x - middle.x) < 3 && Math.abs(p.z - middle.z) < 3);
+      expect(dips).toHaveLength(4);
+    }));
+  });
+
+  it('stays flat for a little way past the corners, then curves down more and more', () => {
+    const { flatRadius, radius } = moon.planet;
+    expect(flatRadius).toBeGreaterThan(Math.hypot(60, 36));
+    expect(Math.abs(average(ring(0, flatRadius)))).toBeLessThan(1);
+    const near = average(ring(flatRadius + 5, flatRadius + 15));
+    const mid = average(ring(flatRadius + 20, flatRadius + 30));
+    const far = average(ring(radius - 12, radius - 2));
+    expect(near).toBeLessThan(-1);
+    expect(mid).toBeLessThan(near - 5);
+    expect(far).toBeLessThan(mid - 15);
+    // It gets steeper on the way out, like a ball
+    expect(mid - far).toBeGreaterThan(near - mid);
+  });
+
+  it('everything is inside the planet (give or take two cubes), all the way round to the underside', () => {
+    const { radius, centre } = moon.planet;
+    let furthest = 0;
+    let lowest = 0;
+    for (let i = 0; i < moon.positions.length; i += 3) {
+      const d = Math.hypot(moon.positions[i] - centre[0], moon.positions[i + 1] - centre[1], moon.positions[i + 2] - centre[2]);
+      furthest = Math.max(furthest, d);
+      lowest = Math.min(lowest, moon.positions[i + 1]);
+    }
+    expect(furthest).toBeLessThanOrEqual(radius + 6);
+    expect(centre[1]).toBeLessThan(0); // the middle of the ball is under the base
+    expect(lowest).toBeLessThan(centre[1] - radius + 6); // the ball is whole: it has an underside
+    expect(range(moon.positions, 0)[1]).toBeGreaterThan(radius - 6); // and it is as wide as the ball
+  });
+
+  it('keeps the map colours: ground, light, dark patches and craters, on the Moon and on Mars', () => {
+    for (const look of [LOOK_3D.moon, LOOK_3D.mars]) {
+      const block = roundWorld(BASE_MAP.rows, look);
+      const allowed = [look.ground, look.light, look.dark, look.crater].map(hexToRgb);
+      const close = (a, b) => a.every((v, k) => Math.abs(v - b[k]) < 1e-4);
+      const used = new Set();
+      let wrong = 0;
+      for (let i = 0; i < block.positions.length; i += 18) {
+        if (block.normals[i + 1] !== 1) continue; // tops have a shade of 1, so the colour is as written
+        const rgb = [block.colors[i], block.colors[i + 1], block.colors[i + 2]];
+        const which = allowed.findIndex((c) => close(c, rgb));
+        if (which < 0) wrong += 1;
+        used.add(which);
+      }
+      expect(wrong).toBe(0);
+      expect(used.size).toBe(4);
+    }
+  });
+
+  it('has rocks and a few more craters beyond the map, and none with rocks: false', () => {
+    expect(range(moon.positions, 1)[1]).toBe(3); // a rock stands one cube above the flat ground
+    const bare = roundWorld(BASE_MAP.rows, LOOK_3D.moon, { rocks: false });
+    expect(range(bare.positions, 1)[1]).toBe(0);
+    // With no rocks and no extra craters, the flat ground beyond the map is all at y = 0
+    const flatBeyond = topFaces(bare).filter((p) => !onSquares(p) && Math.hypot(p.x, p.z) < bare.planet.flatRadius - 3);
+    expect(flatBeyond.length).toBeGreaterThan(100);
+    expect(flatBeyond.filter((p) => p.y !== 0)).toHaveLength(0);
+  });
+
+  it('is light enough for a phone: far under 200 000 triangles', () => {
+    expect(moon.faces * 2).toBeLessThan(120000);
+    expect(roundWorld(BASE_MAP.rows, LOOK_3D.mars).faces).toBe(moon.faces); // same shape, other colours
   });
 });

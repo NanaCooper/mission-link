@@ -47,6 +47,25 @@ export function drawingToWorld(map, x, y) {
   return { x: x - (map.width * TILE3) / 2, z: y - TILE3 - ((map.height - 1) * TILE3) / 2 };
 }
 
+// Where the walking area ends: a dotted line of tiny lights just outside the walkable squares,
+// so kids can see the edge without a wall. Returns ground points [{ x, z }], going round once.
+//   gap   the space between two lights
+//   out   how far outside the walkable squares the line runs
+export function edgeLights(map, { gap = 6, out = 3 } = {}) {
+  const halfX = (map.width * TILE3) / 2 + out;
+  const halfZ = ((map.height - 1) * TILE3) / 2 + out;
+  const line = (half) => {
+    const count = Math.max(1, Math.round((half * 2) / gap));
+    return Array.from({ length: count }, (_, i) => -half + (i * half * 2) / count);
+  };
+  return [
+    ...line(halfX).map((x) => ({ x, z: -halfZ })), // along the back, left to right
+    ...line(halfZ).map((z) => ({ x: halfX, z })), // down the right side
+    ...line(halfX).map((x) => ({ x: -x, z: halfZ })), // along the front, right to left
+    ...line(halfZ).map((z) => ({ x: -halfX, z: -z })) // up the left side
+  ];
+}
+
 // Which way a character looks, as a turn round the up axis. They face the camera (+z) at 0.
 export const FACING_ANGLE = { down: 0, up: Math.PI, right: Math.PI / 2, left: -Math.PI / 2 };
 
@@ -93,14 +112,20 @@ const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
 //   map         the map (for its width)
 //   hero        { x, z } the character on the ground
 //   lookHeight  how high the camera aims (higher for the control room, to show the wall)
+//   margin      how much to show on each side of the walkable squares. The control room shows
+//               just its rim. The base shows more (PLANET_MARGIN), so the round planet's curve
+//               and the space around it are in the picture.
 // Returns { target: { x, y, z }, position: { x, y, z } }
 export const CAMERA_FOV = 38;
 const CAMERA_TILT = { y: 0.4, z: 1 }; // the way from the target to the camera (about 22 degrees up)
 
-export function frameCamera({ aspect, fov = CAMERA_FOV, map, hero, lookHeight = 4 }) {
+// The base on its round planet: this much ground and space shows on each side of the squares
+export const PLANET_MARGIN = 36;
+
+export function frameCamera({ aspect, fov = CAMERA_FOV, map, hero, lookHeight = 4, margin = RIM }) {
   const halfWidth = (map.width * TILE3) / 2 + RIM;
   const tanH = Math.tan(((fov / 2) * Math.PI) / 180) * Math.max(0.2, aspect);
-  const distance = clamp((halfWidth / tanH) * 1.1, 100, 240);
+  const distance = clamp((((map.width * TILE3) / 2 + margin) / tanH) * 1.1, 100, 240);
   const visibleHalf = distance * tanH;
   const room = Math.max(0, halfWidth - visibleHalf);
   const x = room > 0 ? clamp(hero.x, -room, room) : hero.x * 0.15;
