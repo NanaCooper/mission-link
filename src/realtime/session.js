@@ -58,6 +58,8 @@ export function nextLevel(current, options = {}) {
     moonStars: Number.isInteger(moonStars) ? Math.min(3, Math.max(0, moonStars)) : (current.moonStars ?? 0),
     // Only passed when there is one, so createGame sees exactly the old arguments for levels 1 and 2.
     ...(storm ? { storm } : {}),
+    // Play alone stays on through Play again and Fly to Mars (only passed when on, like storm).
+    ...((options?.solo ?? current.solo) ? { solo: true } : {}),
   };
 }
 

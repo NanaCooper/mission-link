@@ -25,6 +25,7 @@ import {
   NO_NEW_MESSAGE_TEXT,
   MESSAGE_TITLE,
   NEW_TAG,
+  SOLO_TAG,
   BLIP_QUESTION_TEXT,
   LEVEL_END_TEXT,
   radiationHitText,
@@ -93,7 +94,7 @@ export default function AstronautScreen({
             mood={solaMoodForWarning(message.warning)}
             name={director.name}
             title={messageFresh ? MESSAGE_TITLE : undefined}
-            tag={NEW_TAG}
+            tag={view.solo ? SOLO_TAG : NEW_TAG}
             tone="alert"
             size={messageFresh ? 48 : 32}
             big={messageFresh}
@@ -146,7 +147,7 @@ export default function AstronautScreen({
       badge: Boolean(message?.isNew) || guess.asking,
       content: (
         <div className="astronaut-screen__messages">
-          <MissionControlMessage message={message} />
+          <MissionControlMessage message={message} solo={view.solo} />
           {guess.asking && <PredictionQuestion onAnswer={guess.answer} />}
           <div className="astronaut-screen__result">
             {guess.result && (
@@ -182,7 +183,8 @@ export default function AstronautScreen({
         active={active}
         title={WORLD_NAMES[view.world]}
         turn={turnText(view)}
-        clock={<MissionClock view={view} who="astronaut" />}
+        // Play alone: no signal clock (Commander Sola sends the warnings herself)
+        clock={view.solo ? null : <MissionClock view={view} who="astronaut" />}
         vitals={<Vitals meters={view.meters} radiationLimit={view.radiationLimit} deltas={deltas} />}
         pauses={pauses}
         onMenuChange={onMenuChange}
@@ -277,7 +279,7 @@ function PredictionQuestion({ onAnswer }) {
 
 // The newest message from Mission Control, spoken by Commander Sola (in the Messages tab).
 // A message that arrived this turn is "new". An older one is shown quietly.
-function MissionControlMessage({ message }) {
+function MissionControlMessage({ message, solo = false }) {
   const director = CHARACTERS.director;
 
   let box;
@@ -288,7 +290,7 @@ function MissionControlMessage({ message }) {
         mood={solaMoodForWarning(message.warning)}
         name={director.name}
         title={MESSAGE_TITLE}
-        tag={NEW_TAG}
+        tag={solo ? SOLO_TAG : NEW_TAG}
         tone="alert"
         size={48}
         big

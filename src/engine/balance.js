@@ -29,6 +29,11 @@ export const STARS = { healthForTwo: 60, scienceForThree: 2 };
 // The signal clock: each turn, Mission Control has this many seconds to send a warning.
 // If the clock reaches 0 first, the crew is lost ('time'). 3 waves x 60 s = 3 minutes.
 export const SIGNAL_SECONDS = 60;
+
+// Play alone (solo): Commander Sola sends the warnings herself. She warns about the wave her
+// message will arrive in: radiation of shelterAt or more = "Shelter now", any radiation =
+// "Storm coming", none and power under lowPower = "Save power", otherwise "All clear".
+export const SOLO_WARNING = { shelterAt: 30, lowPower: 30 };
 // Not used yet: the other idea, one clock for the whole level. Kept so a switch is a small change.
 export const MISSION_SECONDS = 360;
 

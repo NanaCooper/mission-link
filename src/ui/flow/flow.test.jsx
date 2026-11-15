@@ -32,6 +32,13 @@ describe('text helpers', () => {
 });
 
 describe('HomeScreen', () => {
+  it('offers Play alone when the app passes it, and says what it means', () => {
+    const out = html(<HomeScreen onPlayAlone={() => {}} />);
+    expect(out).toContain('Play alone');
+    expect(out).toContain('Commander Sola sends the warnings for you.');
+    expect(html(<HomeScreen />)).not.toContain('>Play alone<');
+  });
+
   it('locks Mars until the Moon is won', () => {
     const out = html(<HomeScreen marsUnlocked={false} />);
     expect(out).toContain('Level 2: Mars base');

@@ -2,7 +2,7 @@
 
 **One sees the storm. One saves the base.**
 
-A two-player browser game for kids aged 7-12, built for the 2026 NASA Space Apps Challenge
+A two-player browser game for kids aged 7-12 (one player can play alone too), built for the 2026 NASA Space Apps Challenge
 ("Build a Junior Astronaut Mission Trainer"). Mission Control on Earth guides an Astronaut through a
 real solar storm recorded by NASA, first on a Moon base, then on a Mars base.
 
@@ -17,6 +17,8 @@ kids feel the communication delay instead of reading about it.
 
 ## How to play
 
+- **Play alone:** you are the Astronaut and Commander Sola sends the warnings by herself. On Mars her
+  messages still arrive a wave late, and the blackout still blocks them. No signal clock.
 - **One device:** two players share a phone or laptop and pass it at each turn ("Pass the device to
   Nova").
 - **Two devices:** the Astronaut creates a room and reads out the code; Mission Control joins with it.

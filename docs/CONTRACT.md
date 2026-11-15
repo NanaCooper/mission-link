@@ -54,21 +54,24 @@ All engine functions are pure: same input gives same output. No randomness.
 They never change the input state.
 
 ```js
-createGame({ mode, world, stormId, moonStars, storm })
+createGame({ mode, world, stormId, moonStars, storm, solo })
   // world: 'moon' | 'mars'. moonStars: 0-3, only used on Mars.
   // storm: optional ready-made storm object (Level 3: Live Sun). Kept in state.storm
   //   if isValidStorm(storm); otherwise ignored and the saved storm plays.
+  // solo: optional, default false. Play alone: Commander Sola sends the warnings herself
+  //   (autoWarning) at the start of every wave, and there is no signal clock. Kept in state.solo.
   // Returns a new state with status 'playing'.
+autoWarning(state)            // Play alone: the warning Sola sends now, or null (see below)
 sendWarning(state, warning)   // returns new state
 applyMove(state, move)        // resolves the whole turn, returns new state (the clock starts again)
 tick(state, seconds)          // the signal clock: `seconds` passed. Returns new state. At 0: lost 'time'.
 getAstronautView(state)
   // { status, turn, maxTurns, world, meters, radiationLimit, science, inbox, log,
-  //   lastMove, lastFact, lostReason, stars, signalSecondsLeft, signalLimit, clockRunning }
+  //   lastMove, lastFact, lostReason, stars, solo, signalSecondsLeft, signalLimit, clockRunning }
 getMissionControlView(state)
   // { status, turn, maxTurns, world, delayTurns,
   //   stage: { label, missionControlSees, dust, blackout }, forecast,
-  //   lastMove, lastFact, crewHealth, warningThisTurn, lostReason, stars,
+  //   lastMove, lastFact, crewHealth, warningThisTurn, lostReason, stars, solo,
   //   signalSecondsLeft, signalLimit, clockRunning }
 getStorm(id)
   // { id, title, realDates, savedOn, source, stages, whatReallyHappened, scalingNote }
@@ -98,6 +101,12 @@ isValidStorm(storm)   // true if a ready-made storm is safe to play (see STORM_L
 - The engine never reads the time. Whoever runs the engine calls `tick(state, 1)` once a
   second: the split-mode hook, or the online host while Mission Control is in the room.
   Mission Control's device never runs the clock; it sees it through `stateUpdate`.
+- Play alone (`solo`): Sola warns about the wave her message arrives in (this wave on the
+  Moon, the next one on Mars): radiation of `SOLO_WARNING.shelterAt` (30) or more is
+  "Shelter now", any radiation "Storm coming", none with power under `SOLO_WARNING.lowPower`
+  (30) "Save power", otherwise "All clear". Nothing during the blackout. Her warning goes
+  through `sendWarning`, so the Mars delay and the blackout work as for a human.
+  `clockRunning` is always false in solo mode, and `tick` does nothing.
 - Screens import the engine view functions through `src/realtime/engineAdapter.js`,
   never from `src/engine/` directly.
 
@@ -115,8 +124,10 @@ The engine tests check every corner of that range stays winnable on both levels.
 
 ```js
 makeRoomCode()  // 'MOON-4821'
-useGameSession({ mode, role, code, world, moonStars })
+useGameSession({ mode, role, code, world, moonStars, paused, solo })
   // { state, sendMove, sendWarning, restart, connected, partnerConnected, error }
+  // paused: true while the Menu is open on one device (the signal clock does not move on).
+  // solo: Play alone, one device only (online ignores it). restart() keeps it, also to Mars.
   // restart() replays the same level.
   // restart({ world: 'mars', moonStars }) starts the next level in the same room.
   // restart({ world, moonStars, storm }) starts a level with a ready-made storm (Level 3).
