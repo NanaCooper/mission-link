@@ -27,7 +27,7 @@ A level is one storm in **3 waves**: the flare, the peak, and the fading storm. 
 
 1. **Mission Control** reads the storm on the big screen and sends one warning (Storm coming, Shelter
    now, Save power or All clear) before the 60-second signal clock runs out.
-2. **The Astronaut** walks Nova to a place on the base and picks one move. The game asks first and
+2. **The Astronaut** waits for that warning, then walks Nova to a place on the base and picks one move. The game asks first and
    shows the cost: "Raise shield? Costs 20 power. Blocks most radiation."
 3. The storm hits. BLIP, the base robot, tells the Astronaut what the move cost and what got
    through, tells Mission Control how good the warning was, then shares a real NASA fun fact.

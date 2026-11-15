@@ -69,7 +69,9 @@ applyMove(state, move)        // resolves the whole turn, returns new state (the
 tick(state, seconds)          // the signal clock: `seconds` passed. Returns new state. At 0: lost 'time'.
 getAstronautView(state)
   // { status, turn, maxTurns, world, meters, radiationLimit, science, inbox, log,
-  //   lastMove, lastResult, lastFact, lostReason, stars, solo, signalSecondsLeft, signalLimit, clockRunning }
+  //   lastMove, lastResult, lastFact, lostReason, stars, solo, waitingForMissionControl,
+  //   signalSecondsLeft, signalLimit, clockRunning }
+waitingForMissionControl(state)  // true while the Astronaut must wait for this wave's warning (see below)
 getMissionControlView(state)
   // { status, turn, maxTurns, world, delayTurns,
   //   stage: { label, missionControlSees, dust, blackout }, forecast,
@@ -90,7 +92,7 @@ isValidStorm(storm)   // true if a ready-made storm is safe to play (see STORM_L
 - `lastFact` is the fact from the stage just played, `{ text, source: { name, url } }`,
   or `null` before the first move.
 - `delayTurns` is 0 on the Moon and 1 on Mars. Mission Control uses it to say
-  "Your message arrives next turn".
+  "Your message arrives next wave".
 - `stage.dust` is true on the Mars dust stage (Save power gives less).
 - `stage.blackout` is true on the Mars signal blackout stage (no warning gets through).
 - The Astronaut view never includes storm data, `dust` or `blackout`.
@@ -116,6 +118,12 @@ isValidStorm(storm)   // true if a ready-made storm is safe to play (see STORM_L
   warning Mission Control sent for that wave (or null), `best` is `autoWarning` at the start
   of the wave (the Play alone rules, so on Mars it is about the next wave). It is null in
   Play alone and on the blackout wave. Only the Mission Control view has it.
+- One warning, then one move: `waitingForMissionControl` is true while the game is on and
+  Mission Control has not yet sent this wave's warning (on Mars a sent warning counts, even
+  though it arrives next wave). It is false on the blackout wave and always false in Play
+  alone. The session (split reducer and online host) ignores a move while it is true, so the
+  Astronaut cannot play on into the next waves alone. `applyMove` itself does not check it,
+  so tests and balance checks can still play any plan.
 - Screens import the engine view functions through `src/realtime/engineAdapter.js`,
   never from `src/engine/` directly.
 
@@ -135,7 +143,8 @@ The engine tests check every corner of that range stays winnable on both levels.
 makeRoomCode()  // 'MOON-4821'
 useGameSession({ mode, role, code, world, moonStars, paused, solo })
   // { state, sendMove, sendWarning, restart, connected, partnerConnected, error }
-  // paused: true while the Menu is open on one device (the signal clock does not move on).
+  // paused: true while the signal clock must not move on. One device: a Menu is open, or Mission
+  //   Control does not hold the device (the Astronaut's screen or the hand-over card shows).
   // solo: Play alone, one device only (online ignores it). restart() keeps it, also to Mars.
   // restart() replays the same level.
   // restart({ world: 'mars', moonStars }) starts the next level in the same room.
