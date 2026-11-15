@@ -6,7 +6,7 @@ import GameHud from './hud/GameHud.jsx';
 import Vitals from './hud/Vitals.jsx';
 import OptionsPanel from './hud/OptionsPanel.jsx';
 import { useGameMenu } from './hud/useGameMenu.js';
-import { usePopup } from './hud/usePopup.js';
+import { usePopup, POPUP_LONG_MS } from './hud/usePopup.js';
 import { stormLook, solaMoodForLook } from './scenes/stormLook.js';
 import { useMeterDeltas } from './useMeterDeltas.js';
 import { useGameSounds } from './sound.js';
@@ -24,6 +24,8 @@ import {
   LEVEL_END_TEXT,
   newStageText,
   sentText,
+  warningCoachText,
+  FUN_FACT_TITLE,
   novaMood,
   turnText,
 } from './labels.js';
@@ -69,9 +71,26 @@ export default function MissionControlScreen({
   const showStage = usePopup(playing ? `stage:${view.turn}:${stage.label}` : null, active);
   const showSent = usePopup(sent ? `sent:${view.turn}:${view.warningThisTurn}` : null, active);
   const showEnd = usePopup(ended ? `end:${view.status}` : null, active);
+  // BLIP coaches after each wave (how the warning compares with the best one), then shares the fun fact.
+  const coach = view.lastWarningCheck?.turn === view.turn ? warningCoachText(view.lastWarningCheck) : null;
+  const coachKey = coach ? `coach:${view.turn}` : null;
+  const showCoach = usePopup(coachKey, active, POPUP_LONG_MS);
+  const factKey = view.lastFact?.text && (coachKey == null || !showCoach) && view.turn > 0 ? `fact:${view.turn}` : null;
+  const showFact = usePopup(playing ? factKey : null, active, POPUP_LONG_MS);
+  const robot = CHARACTERS.robot;
 
   const popups = (
     <>
+      {showCoach && (
+        <div className="hud-popup hud-popup--blip">
+          <SpeechBox who={robot.who} name={robot.name} size={32} text={coach} />
+        </div>
+      )}
+      {showFact && (
+        <div className="hud-popup hud-popup--blip">
+          <SpeechBox who={robot.who} name={robot.name} title={FUN_FACT_TITLE} size={32} text={view.lastFact.text} />
+        </div>
+      )}
       {showStage && (
         <div className="hud-popup">
           <SpeechBox
@@ -155,7 +174,8 @@ export default function MissionControlScreen({
               {view.forecast ? `Coming next: ${view.forecast}` : 'This is the last turn'}
             </p>
           </SpeechBox>
-          <WhyCard fact={view.lastFact} name={CHARACTERS.robot.name} />
+          {coach && <SpeechBox className="mc-coach" who={robot.who} name={robot.name} size={48} text={coach} />}
+          <WhyCard fact={view.lastFact} name={robot.name} title={FUN_FACT_TITLE} />
         </>
       ),
     },

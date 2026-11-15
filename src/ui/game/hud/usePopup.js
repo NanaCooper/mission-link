@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 
 // How long a pop-up stays before it folds away.
 export const POPUP_MS = 4500;
+// BLIP's coaching lines and fun facts are longer to read, so they stay longer.
+export const POPUP_LONG_MS = 9000;
 
 /**
  * A pop-up that shows itself for a few seconds, then folds away.

@@ -184,7 +184,8 @@ describe('the "Turn your phone sideways" card', () => {
 
 describe('pop-ups over the map', () => {
   it('a new warning from Commander Sola pops up by itself, outside the menu', () => {
-    const shown = popups(astronaut(fakeAstronautView)); // shelterNow arrived this turn
+    // No BLIP line this turn, so Sola's message shows big
+    const shown = popups(astronaut({ ...fakeAstronautView, log: [] })); // shelterNow arrived this turn
     expect(shown).toContain('hud-popup--message is-fresh');
     expect(shown).toContain('Commander Sola');
     expect(shown).toContain('<span class="visually-hidden">Shelter now!</span>');
@@ -197,9 +198,26 @@ describe('pop-ups over the map', () => {
     expect(shown).not.toContain('hud-popup--message');
   });
 
-  it("BLIP's line about the last turn pops up too", () => {
+  it("BLIP's line about the last turn pops up too, and Sola's message folds to one line meanwhile", () => {
     const view = fakeAstronautView;
-    expect(popups(astronaut(view))).toContain(view.log[view.log.length - 1].text);
+    const shown = popups(astronaut(view));
+    expect(shown).toContain(view.log[view.log.length - 1].text);
+    expect(shown).toContain('hud-popup--message is-folded');
+    expect(shown).toContain('<span class="visually-hidden">Shelter now!</span>');
+  });
+
+  it('after a move, BLIP says what it cost instead of the plain log line', () => {
+    const view = { ...fakeAstronautView, lastResult: { turn: fakeAstronautView.turn, move: 'raiseShield', radiation: 12, shieldFailed: false, dust: false, powerOut: false } };
+    const shown = popups(astronaut(view));
+    expect(shown).toContain('Shield up! Only 12 radiation got through, but it cost 20 power.');
+    expect(shown).not.toContain(view.log[view.log.length - 1].text);
+  });
+
+  it("Mission Control: BLIP coaches on the last warning", () => {
+    const view = { ...fakeMissionControlView, lastWarningCheck: { turn: fakeMissionControlView.turn, sent: 'allClear', best: 'shelterNow', delayTurns: 0 } };
+    const shown = popups(missionControl(view));
+    expect(shown).toContain('Not quite. You sent &quot;All clear&quot;');
+    expect(popups(missionControl(fakeMissionControlView))).not.toContain('Not quite');
   });
 
   it('the level end pops up', () => {

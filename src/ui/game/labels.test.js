@@ -169,7 +169,7 @@ describe('read-aloud text and the prediction prompt', () => {
     const text = missionControlReadText(fakeMissionControlView);
     expect(text).toContain(`Commander Sola says: ${fakeMissionControlView.stage.missionControlSees}`);
     expect(text).toContain(`Coming next: ${fakeMissionControlView.forecast}.`);
-    expect(text).toContain(`BLIP says: ${fakeMissionControlView.lastFact.text}`);
+    expect(text).toContain(`BLIP's fun fact: ${fakeMissionControlView.lastFact.text}`);
   });
 
   it('Mission Control: mentions the blackout and the last turn', () => {
@@ -182,6 +182,10 @@ describe('read-aloud text and the prediction prompt', () => {
   it('prediction prompt: asked on wave 2 (the peak, view.turn 1) with three answers', () => {
     expect(PREDICTION.turn).toBe(1);
     expect(PREDICTION.answers).toEqual(['Nothing much', 'The crew takes a lot of radiation', 'Not sure']);
-    expect(predictionResultText('Not sure')).toBe('You guessed "Not sure". Here is what happened.');
+    expect(PREDICTION.answers).toContain(PREDICTION.correct);
+    expect(predictionResultText('Not sure')).toBe(
+      'You guessed "Not sure". The answer: the crew takes a lot of radiation. Science gives no protection, and this was the strongest wave.'
+    );
+    expect(predictionResultText(PREDICTION.correct)).toMatch(/Right!/);
   });
 });

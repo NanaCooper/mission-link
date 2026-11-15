@@ -10,7 +10,7 @@ describe('WhyCard', () => {
   it('shows the fact and links the source', () => {
     const fact = { text: 'Radiation adds up.', source: { name: 'NASA', url: 'https://www.nasa.gov' } };
     const html = renderToStaticMarkup(<WhyCard fact={fact} />);
-    expect(html).toContain('Why?');
+    expect(html).toContain('Fun fact');
     expect(html).toContain('Radiation adds up.');
     expect(html).toContain('href="https://www.nasa.gov"');
   });

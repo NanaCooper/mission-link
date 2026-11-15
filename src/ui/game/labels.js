@@ -65,16 +65,78 @@ export const READ_ALOUD_STOP_LABEL = 'Stop reading';
 
 // ---------- Prediction prompt (Astronaut only, never sent anywhere) ----------
 // Asked on the wave where the storm peaks. "Wave 2 of 3" on screen is view.turn 1.
-// It only asks. It changes no rules and no score.
+// It only asks. It changes no rules and no score. BLIP asks it in a pop-up with the answers.
 export const PREDICTION = {
   turn: 1, // wave 2: the peak (particles arrive)
   question: 'The storm may be about to peak. What do you think will happen if you do science now?',
-  answers: ['Nothing much', 'The crew takes a lot of radiation', 'Not sure']
+  answers: ['Nothing much', 'The crew takes a lot of radiation', 'Not sure'],
+  correct: 'The crew takes a lot of radiation'
 };
+export const PREDICTION_THANKS = "Let's find out! Pick your move.";
 
+// After the peak wave. Always true: every storm's peak sends at least 30 radiation (STORM_LIMITS),
+// and science gives no protection.
 export function predictionResultText(answer) {
-  return `You guessed "${answer}". Here is what happened.`;
+  const why = 'Science gives no protection, and this was the strongest wave.';
+  if (answer === PREDICTION.correct) return `You guessed "${answer}". Right! ${why}`;
+  return `You guessed "${answer}". The answer: the crew takes a lot of radiation. ${why}`;
 }
+
+// ---------- BLIP's coaching ----------
+// The numbers mirror src/engine/balance.js (MOVE_EFFECTS), like the move hints above.
+
+// BLIP's line after the Astronaut's move: what it cost and what it blocked.
+//   result = view.lastResult { move, radiation, shieldFailed, dust, powerOut }
+export function moveReactionText(result) {
+  if (!result) return null;
+  const r = result.radiation;
+  let line;
+  if (result.move === 'raiseShield') {
+    line = result.shieldFailed
+      ? `No power, no shield! All ${r} radiation got through. Save power before a storm.`
+      : `Shield up! Only ${r} radiation got through, but it cost 20 power. Safety costs energy.`;
+  } else if (result.move === 'shelter') {
+    line = `Safe in the shelter! Only ${r} radiation got in. But the crew lost 15 health from being cramped.`;
+  } else if (result.move === 'savePower') {
+    const gain = result.dust ? 'Dust on the panels, so only a little power came back.' : 'The batteries filled up.';
+    line = r > 0 ? `${gain} But nothing blocked the storm: ${r} radiation hit the crew.` : `${gain} A quiet wave is a good time to save power.`;
+  } else {
+    line = r > 0
+      ? `Science points! But nobody was protected: ${r} radiation hit the crew. Was it worth it?`
+      : 'Science points! A quiet Sun is the safest time for science.';
+  }
+  if (result.powerOut) line += ' The power ran out, so oxygen dropped!';
+  return line;
+}
+
+// BLIP's line for Mission Control after a wave: their warning next to the best one (the engine's
+// autoWarning, the same rules Commander Sola uses in Play alone).
+//   check = view.lastWarningCheck { sent, best, delayTurns }
+// Kind, never scolding: "close" when both said danger but not how strong.
+export function warningCoachText(check) {
+  if (!check?.best) return null;
+  const best = WARNING_INFO[check.best]?.label;
+  const sent = check.sent ? WARNING_INFO[check.sent]?.label : null;
+  const when = check.delayTurns > 0 ? 'the next wave' : 'this wave';
+  const danger = ['stormComing', 'shelterNow'];
+  if (!sent) return `No warning this time, so Nova had to guess. "${best}" was right for ${when}.`;
+  if (check.sent === check.best) {
+    return check.delayTurns > 0
+      ? `Great call! "${sent}" was right for the next wave. You planned ahead!`
+      : `Great call! "${sent}" was just right.`;
+  }
+  if (danger.includes(check.sent) && danger.includes(check.best)) {
+    return check.best === 'shelterNow'
+      ? `Close! "${sent}" helps, but very strong radiation was on its way. "${best}" was safer for ${when}.`
+      : `Close! A smaller storm was on its way, so "${best}" was enough for ${when}.`;
+  }
+  const tip = check.delayTurns > 0 ? ' On Mars, warn about what comes next.' : '';
+  return danger.includes(check.best)
+    ? `Not quite. You sent "${sent}", but radiation was on its way. The best warning was "${best}".${tip}`
+    : `Not quite. You sent "${sent}". The best warning was "${best}".${tip}`;
+}
+
+export const FUN_FACT_TITLE = 'Fun fact';
 
 // ---------- What "Read to me" says ----------
 // Built only from what the screen already shows.
@@ -92,7 +154,9 @@ export function astronautReadText(view) {
   else sola = `${director.name} says: ${NO_MESSAGE_TEXT}. ${NO_MESSAGE_HINT}`;
 
   const parts = [sola, clockSentence(view, 'astronaut')];
-  if (lastLog) parts.push(`${robot.name} says: ${lastLog.text}`);
+  const reaction = view.lastResult?.turn === view.turn ? moveReactionText(view.lastResult) : null;
+  if (reaction) parts.push(`${robot.name} says: ${reaction}`);
+  else if (lastLog) parts.push(`${robot.name} says: ${lastLog.text}`);
   return joinSentences(parts);
 }
 
@@ -103,7 +167,9 @@ export function missionControlReadText(view) {
   parts.push(view.forecast ? `Coming next: ${view.forecast}` : 'This is the last turn');
   if (view.stage.blackout) parts.push(BLACKOUT_NOTE);
   else parts.push(clockSentence(view, 'missionControl'));
-  if (view.lastFact?.text) parts.push(`${robot.name} says: ${view.lastFact.text}`);
+  const coach = view.lastWarningCheck?.turn === view.turn ? warningCoachText(view.lastWarningCheck) : null;
+  if (coach) parts.push(`${robot.name} says: ${coach}`);
+  if (view.lastFact?.text) parts.push(`${robot.name}'s fun fact: ${view.lastFact.text}`);
   return joinSentences(parts);
 }
 
@@ -192,7 +258,6 @@ export const ROTATE_TEXT = 'This game needs a wide screen. Your game is safe. It
 // Pop-ups: they show up on their own for a few seconds, then fold away.
 export const MESSAGE_TITLE = 'Mission Control says:';
 export const OPEN_MENU_HINT = 'Tap Menu to see more.';
-export const BLIP_QUESTION_TEXT = 'I have a question for you! Tap Menu, then Messages.';
 export const LEVEL_END_TEXT = {
   won: 'Level complete! The crew is safe.',
   lost: 'Oh no! The mission is over.'
