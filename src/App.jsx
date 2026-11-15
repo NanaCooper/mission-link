@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ROLES } from './shared/contract.js';
 import { useGameSession } from './realtime/useGameSession.js';
 import {
@@ -19,7 +19,9 @@ import HowToPlayScreen from './ui/flow/HowToPlayScreen.jsx';
 import DataSourcesScreen from './ui/flow/DataSourcesScreen.jsx';
 import TeacherScreen from './ui/flow/TeacherScreen.jsx';
 import MissionBriefing from './ui/game/intro/MissionBriefing.jsx';
-import { gameBanner, loadProgress, pickGameScreen, pickStorm, progressAfter, saveProgress } from './ui/flow/appFlow.js';
+import {
+  gameBanner, loadProgress, newGameStarted, pickGameScreen, pickStorm, progressAfter, saveProgress
+} from './ui/flow/appFlow.js';
 
 // Screen switching with React state, no router.
 //   home -> play on one device -> game -> end
@@ -43,6 +45,8 @@ export default function App() {
   const [progress, setProgress] = useState(() => loadProgress());
   // The mission waiting behind the briefing, or null when it was opened from home.
   const [afterBriefing, setAfterBriefing] = useState(null);
+  // Online Mission Control: the storm of the new game the Astronaut started (for the briefing's text)
+  const [briefingStormId, setBriefingStormId] = useState(null);
 
   useEffect(scrollToTop, [page]);
 
@@ -63,13 +67,28 @@ export default function App() {
   // briefing can name it). Mission Control joining a room never picks: it follows the Astronaut.
   const start = (options) => {
     const game = options.role === ROLES.MISSION_CONTROL ? options : { ...options, stormId: pickStorm(REAL_STORM_IDS) };
+    setBriefingStormId(null);
     setAfterBriefing(game);
+    setPage('briefing');
+  };
+  // Online Mission Control, when the Astronaut starts a new game (Play again or the next level):
+  // the briefing opens here too. Leaving the game for it also leaves the room for a moment, so the
+  // Astronaut's device shows "Waiting for your partner..." and the signal clock stops (it only
+  // runs while Mission Control is in the room). Starting or skipping the briefing joins again.
+  const briefingForNewGame = (stormId) => {
+    if (!session) return;
+    const game = { ...session };
+    delete game.id; // joining again gets a new session id
+    setBriefingStormId(stormId ?? null);
+    setAfterBriefing(game);
+    setSession(null);
     setPage('briefing');
   };
   const briefingDone = () => {
     if (afterBriefing) startNow(afterBriefing);
     else setPage('home');
     setAfterBriefing(null);
+    setBriefingStormId(null);
   };
   const goHome = () => {
     setSession(null); // unmounting the game closes the room
@@ -84,13 +103,14 @@ export default function App() {
         session={session}
         onLevelEnd={(result) => updateProgress((old) => progressAfter(old, result))}
         onHome={goHome}
+        onNewGame={briefingForNewGame}
       />
     );
   }
   if (page === 'briefing') {
     return (
       <MissionBriefing
-        storm={getStorm(afterBriefing?.stormId ?? null)}
+        storm={getStorm(briefingStormId ?? afterBriefing?.stormId ?? null)}
         onDone={briefingDone}
         startLabel={afterBriefing ? undefined : 'Back to home'}
       />
@@ -123,7 +143,7 @@ export default function App() {
 
 // One running session. Lives as long as the room, so Data sources opens inside it
 // (leaving would close an online room).
-function Game({ session, onLevelEnd, onHome }) {
+function Game({ session, onLevelEnd, onHome, onNewGame }) {
   const { mode, role, code, world, moonStars, stormId = null, solo = false } = session;
   // One device: a player opened the Menu, so the game (the signal clock) is paused.
   const [paused, setPaused] = useState(false);
@@ -158,6 +178,15 @@ function Game({ session, onLevelEnd, onHome }) {
   }, [ended, state.world, state.status]);
 
   useEffect(scrollToTop, [screen, state.world, showSources]);
+
+  // Online Mission Control: the Astronaut started a new game (Play again or the next level).
+  // Open the briefing here too, like every new game (App leaves the room while it shows).
+  const lastStatus = useRef(state.status);
+  useEffect(() => {
+    const before = lastStatus.current;
+    lastStatus.current = state.status;
+    if (isMissionControl && newGameStarted(before, state.status)) onNewGame?.(state.stormId);
+  }, [isMissionControl, state.status, state.stormId, onNewGame]);
 
   if (showSources) {
     return <DataSourcesScreen storm={getGameStorm(state)} onBack={() => setShowSources(false)} />;

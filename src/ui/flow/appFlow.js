@@ -22,6 +22,15 @@ export function pickGameScreen({ mode, role, state, partnerConnected, briefing =
   return waitingForFirstPartner ? 'lobby' : 'game';
 }
 
+/**
+ * True when a new game has just started on top of a finished one (Play again or the next level):
+ * the state goes from won or lost back to playing. Online, only the Astronaut can start it, so
+ * Mission Control's device uses this to open the mission briefing too, like every new game.
+ */
+export function newGameStarted(before, after) {
+  return (before === 'won' || before === 'lost') && after === 'playing';
+}
+
 /** The banner shown on top of an online game, or null. Kid words. */
 export function gameBanner({ mode, screen, partnerConnected, error }) {
   if (mode !== 'online' || screen === 'lobby') return null;
