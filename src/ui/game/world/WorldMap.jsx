@@ -34,7 +34,8 @@ import './world.css';
 //   placeNames    place id -> name ("Solar panel")
 //   describeUse   (place) -> { label, hint, icon } what the action button does there
 //   onUse         (place) -> called when the character uses a place
-//   canUse        false when the game is over: walking still works, using does not
+//   canUse        false when the game is over, or while waiting: walking still works, using does not
+//   blockedText   optional: why using is off (default "the game is over.")
 //   active        true (default) if this map listens to the keyboard. In one-device mode only
 //                 the map on show is active, so only that character moves.
 //   ground        colour of the bars around the map when the box has another shape
@@ -80,6 +81,7 @@ export default function WorldMap({
   describeUse,
   onUse,
   canUse = true,
+  blockedText = 'the game is over.',
   active = true,
   ground = PALETTE.K,
   dialog = null,
@@ -209,7 +211,7 @@ export default function WorldMap({
     bubble = `${hero.name} is inside. Take a step to go back out.`;
     bubbleKind = 'inside';
   } else if (near && !canUse) {
-    bubble = `${nearName}: the game is over.`;
+    bubble = `${nearName}: ${blockedText}`;
     bubbleKind = 'over';
   } else if (near && use) {
     bubble = (

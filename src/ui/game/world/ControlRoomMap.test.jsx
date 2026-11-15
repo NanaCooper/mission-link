@@ -60,7 +60,7 @@ describe('ControlRoomMap', () => {
   });
 
   it('says in words when a warning was sent this turn', () => {
-    expect(render({ ...fakeMissionControlView, warningThisTurn: 'shelterNow' })).toContain('A warning was sent this turn.');
+    expect(render({ ...fakeMissionControlView, warningThisTurn: 'shelterNow' })).toContain('A warning was sent this wave.');
     expect(render({ ...fakeMissionControlView, warningThisTurn: null })).not.toContain('A warning was sent');
   });
 });

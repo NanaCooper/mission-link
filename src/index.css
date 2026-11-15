@@ -15,6 +15,19 @@
   font-display: swap;
 }
 
+/* Numbers: Pixelify Sans draws a "2" that looks like an "8" at small sizes ("Wave 2 of 3" read as
+   "Wave 8 of 3"). So the digits 0-9 come from Press Start 2P, shrunk to sit next to Pixelify letters.
+   Only the digits use it (unicode-range), every letter stays Pixelify Sans. */
+@font-face {
+  font-family: 'Mission Digits';
+  src: url('./ui/components/fonts/PressStart2P-latin.woff2') format('woff2');
+  unicode-range: U+0030-0039;
+  size-adjust: 66%;
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @font-face {
   font-family: 'Pixelify Sans';
   src: url('./ui/components/fonts/PixelifySans-latin.woff2') format('woff2');
@@ -68,7 +81,7 @@
   );
 
   --font-pixel: 'Press Start 2P', ui-monospace, 'Courier New', monospace; /* titles, tags, numbers */
-  --font: 'Pixelify Sans', system-ui, 'Segoe UI', Roboto, sans-serif;      /* everything you read */
+  --font: 'Mission Digits', 'Pixelify Sans', system-ui, 'Segoe UI', Roboto, sans-serif;      /* everything you read */
 
   color-scheme: dark;
   font-family: var(--font);

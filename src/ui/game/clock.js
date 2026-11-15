@@ -43,8 +43,8 @@ export function clockSentence(view, who) {
   const face = clockFace(view, who);
   if (!face) return '';
   if (face.mode === 'sent') return 'The signal is sent. The clock has stopped.';
-  if (face.mode === 'blocked') return 'The signal is blocked this turn, so the clock waits.';
-  if (face.mode === 'stopped') return 'The clock has stopped for this turn.';
+  if (face.mode === 'blocked') return 'The signal is blocked this wave, so the clock waits.';
+  if (face.mode === 'stopped') return 'The clock has stopped for this wave.';
   const seconds = Math.ceil(view.signalSecondsLeft);
   return who === 'missionControl'
     ? `You have ${seconds} seconds to send a signal.`

@@ -49,7 +49,7 @@ export function roomDialog(placeId, view, { onWarn, close }) {
       body: (
         <SpeechBox who={director.who} mood="alert" name={director.name} size={40} text={view.stage.missionControlSees}>
           <p>
-            <PixelIcon name="next" size={16} /> {view.forecast ? `Coming next: ${view.forecast}` : 'This is the last turn'}
+            <PixelIcon name="next" size={16} /> {view.forecast ? `Coming next: ${view.forecast}` : 'This is the last wave'}
           </p>
         </SpeechBox>
       ),

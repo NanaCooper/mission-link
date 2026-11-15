@@ -7,14 +7,17 @@ import Vitals from './hud/Vitals.jsx';
 import OptionsPanel from './hud/OptionsPanel.jsx';
 import ScreenTools from './hud/ScreenTools.jsx';
 import { useGameMenu } from './hud/useGameMenu.js';
-import { usePopup } from './hud/usePopup.js';
+import { usePopup, POPUP_LONG_MS } from './hud/usePopup.js';
 import { useMeterDeltas } from './useMeterDeltas.js';
 import { useGameSounds } from './sound.js';
 import {
   CHARACTERS,
   ASTRONAUT_TABS,
   PREDICTION,
+  PREDICTION_THANKS,
   predictionResultText,
+  moveReactionText,
+  FUN_FACT_TITLE,
   astronautReadText,
   MOVE_INFO,
   MOVE_SCENE_TAG,
@@ -23,10 +26,11 @@ import {
   NO_MESSAGE_TEXT,
   NO_MESSAGE_HINT,
   NO_NEW_MESSAGE_TEXT,
+  WAITING_TEXT,
+  PASS_BACK_TEXT,
   MESSAGE_TITLE,
   NEW_TAG,
   SOLO_TAG,
-  BLIP_QUESTION_TEXT,
   LEVEL_END_TEXT,
   radiationHitText,
   solaMoodForWarning,
@@ -37,7 +41,7 @@ import './AstronautScreen.css';
 // The Astronaut's screen, full screen and held sideways (see hud/GameHud.jsx):
 //   the map of the base fills the screen (Nova walks to a place and uses it to make her move),
 //   a slim bar on top with the four meters (always in view), pop-ups for what is new (Sola's
-//   message, a radiation hit, BLIP's line), and a Menu with three tabs: Options (sound, read-aloud,
+//   message, a radiation hit, BLIP's coaching line, question and fun fact), and a Menu with three tabs: Options (sound, read-aloud,
 //   what the bars mean), Messages, Moves (the quick move buttons).
 // It only shows the view it is given. The engine decides everything.
 //
@@ -57,6 +61,10 @@ export default function AstronautScreen({
   onMenuChange,
 }) {
   const isPlaying = view.status === 'playing';
+  // Two players: no move until Mission Control has sent this wave's warning (the engine decides).
+  const waiting = isPlaying && Boolean(view.waitingForMissionControl);
+  // One device, right after a move: the device goes back to Mission Control.
+  const waitText = switchButton && view.lastResult?.turn === view.turn ? PASS_BACK_TEXT : WAITING_TEXT;
   const ended = view.status === 'won' || view.status === 'lost';
   const lastLog = view.log.length > 0 ? view.log[view.log.length - 1] : null;
   const moveTag = MOVE_SCENE_TAG[view.lastMove];
@@ -73,9 +81,27 @@ export default function AstronautScreen({
   // this screen can be seen, so on one device nothing is missed while the other player looks.
   const messageFresh = usePopup(message?.isNew ? `message:${message.turn}:${message.warning}` : null, active);
   const showHit = usePopup(hit > 0 ? `hit:${view.turn}` : null, active);
-  const showLog = usePopup(lastLog ? `log:${view.log.length}:${lastLog.text}` : null, active);
-  const showQuestion = usePopup(guess.asking ? `question:${view.turn}` : null, active);
+  // BLIP talks in turns: first what the move did (or the newest log line), then the question on the
+  // peak wave, or else the fun fact. One BLIP pop-up at a time, so nothing is pushed off a phone screen.
+  const reaction = view.lastResult?.turn === view.turn ? moveReactionText(view.lastResult) : null;
+  const blipText = reaction ?? lastLog?.text ?? null;
+  const blipKey = blipText ? `blip:${view.turn}:${reaction ? 'move' : view.log.length}` : null;
+  const showBlip = usePopup(blipKey, active, POPUP_LONG_MS);
+  const blipDone = blipKey == null || !showBlip;
+  const showQuestion = guess.asking && blipDone && active;
+  const showThanks = usePopup(guess.answeredNow ? `thanks:${view.turn}` : null, active);
+  // After the peak wave: the answer to BLIP's question, then the fun fact.
+  const answerKey = guess.result && blipDone ? `answer:${view.turn}` : null;
+  const showAnswer = usePopup(answerKey, active, POPUP_LONG_MS);
+  const answerDone = !guess.result || (answerKey != null && !showAnswer);
+  const factKey = view.lastFact?.text && reaction && blipDone && answerDone && !guess.asking ? `fact:${view.turn}` : null;
+  const showFact = usePopup(factKey, active, POPUP_LONG_MS) && !showThanks;
   const showEnd = usePopup(ended ? `end:${view.status}` : null, active);
+  // Commander Sola's new message folds to one line while BLIP coaches (a move reaction, the answer
+  // to the question, a fun fact). A plain line such as the welcome, or the question (it stays until
+  // it is answered), never pushes her aside.
+  const blipCoaching = (showBlip && Boolean(reaction)) || showThanks || showAnswer || showFact;
+  const solaBig = messageFresh && !blipCoaching;
 
   // A quick move closes the menu, so the player sees what happens on the map.
   const moveFromMenu = (move) => {
@@ -87,18 +113,24 @@ export default function AstronautScreen({
 
   const popups = (
     <>
+      {waiting && (
+        <p className="hud-popup hud-popup--line hud-popup--wait" role="status">
+          <PixelIcon name="signal" size={24} />
+          <span>{waitText}</span>
+        </p>
+      )}
       {message?.isNew && (
-        <div className={`hud-popup hud-popup--message ${messageFresh ? 'is-fresh' : 'is-folded'}`}>
+        <div className={`hud-popup hud-popup--message ${solaBig ? 'is-fresh' : 'is-folded'}`}>
           <SpeechBox
             who={director.who}
             mood={solaMoodForWarning(message.warning)}
             name={director.name}
-            title={messageFresh ? MESSAGE_TITLE : undefined}
+            title={solaBig ? MESSAGE_TITLE : undefined}
             tag={view.solo ? SOLO_TAG : NEW_TAG}
             tone="alert"
-            size={messageFresh ? 48 : 32}
-            big={messageFresh}
-            icon={<PixelIcon name={message.info.sprite} size={messageFresh ? 28 : 20} />}
+            size={solaBig ? 48 : 32}
+            big={solaBig}
+            icon={<PixelIcon name={message.info.sprite} size={solaBig ? 28 : 20} />}
             text={`${message.info.label}!`}
           />
         </div>
@@ -109,16 +141,29 @@ export default function AstronautScreen({
           <span>{radiationHitText(hit)}</span>
         </p>
       )}
-      {showLog && (
-        <div className="hud-popup">
-          <SpeechBox who={robot.who} name={robot.name} size={32} text={lastLog.text}>
-            {guess.result && <p>{guess.result}</p>}
-          </SpeechBox>
+      {showBlip && (
+        <div className="hud-popup hud-popup--blip">
+          <SpeechBox who={robot.who} name={robot.name} size={32} text={blipText} />
+        </div>
+      )}
+      {showAnswer && (
+        <div className="hud-popup hud-popup--blip">
+          <SpeechBox who={robot.who} name={robot.name} size={32} text={guess.result} />
         </div>
       )}
       {showQuestion && (
-        <div className="hud-popup">
-          <SpeechBox who={robot.who} name={robot.name} size={32} text={BLIP_QUESTION_TEXT} />
+        <div className="hud-popup hud-popup--blip hud-popup--ask">
+          <PredictionQuestion onAnswer={guess.answer} size={32} />
+        </div>
+      )}
+      {showThanks && (
+        <div className="hud-popup hud-popup--blip">
+          <SpeechBox who={robot.who} name={robot.name} size={32} text={PREDICTION_THANKS} />
+        </div>
+      )}
+      {showFact && (
+        <div className="hud-popup hud-popup--blip">
+          <SpeechBox who={robot.who} name={robot.name} title={FUN_FACT_TITLE} size={32} text={view.lastFact.text} />
         </div>
       )}
       {showEnd && (
@@ -155,16 +200,16 @@ export default function AstronautScreen({
                 {guess.result}
               </p>
             )}
-            {lastLog && (
+            {blipText && (
               <SpeechBox
                 className="astronaut-screen__log"
                 who={robot.who}
                 name={robot.name}
-                text={lastLog.text}
+                text={blipText}
                 size={48}
               />
             )}
-            <WhyCard fact={view.lastFact} name={robot.name} />
+            <WhyCard fact={view.lastFact} name={robot.name} title={FUN_FACT_TITLE} />
           </div>
         </div>
       ),
@@ -172,7 +217,7 @@ export default function AstronautScreen({
     {
       id: 'moves',
       ...ASTRONAUT_TABS.moves,
-      content: <MoveButtons disabled={!isPlaying} onMove={moveFromMenu} />,
+      content: <MoveButtons disabled={!isPlaying || waiting} note={waiting ? waitText : null} onMove={moveFromMenu} />,
     },
   ];
 
@@ -224,11 +269,16 @@ function newestMessage(view) {
 }
 
 // The four move buttons: a quick way to move without walking on the map.
-export function MoveButtons({ disabled, onMove }) {
+export function MoveButtons({ disabled, onMove, note = null }) {
   return (
     <section className="astronaut-screen__moves" aria-label="Quick moves">
       <h2 className="astronaut-screen__moves-title pixel-title">Quick moves</h2>
       <p className="astronaut-screen__moves-hint">No time to walk? Tap a move here.</p>
+      {note && (
+        <p className="astronaut-screen__moves-wait" role="status">
+          <PixelIcon name="signal" size={20} /> {note}
+        </p>
+      )}
       <div className="astronaut-screen__buttons">
         {Object.entries(MOVE_INFO).map(([moveKey, info]) => (
           <BigButton
@@ -256,15 +306,16 @@ function usePrediction(view) {
 
   const asking = view.status !== 'lost' && view.status !== 'won' && view.turn === PREDICTION.turn && !guess;
   const result = guess && view.turn === guess.turn + 1 ? predictionResultText(guess.answer) : null;
+  const answeredNow = Boolean(guess && view.turn === guess.turn);
 
-  return { asking, result, answer: (answer) => setGuess({ turn: view.turn, answer }) };
+  return { asking, result, answeredNow, answer: (answer) => setGuess({ turn: view.turn, answer }) };
 }
 
-function PredictionQuestion({ onAnswer }) {
+function PredictionQuestion({ onAnswer, size = 48 }) {
   const robot = CHARACTERS.robot;
   return (
     <section className="astronaut-screen__predict" aria-label="Make a guess">
-      <SpeechBox who={robot.who} name={robot.name} size={48} text={PREDICTION.question}>
+      <SpeechBox who={robot.who} name={robot.name} size={size} text={PREDICTION.question}>
         <div className="astronaut-screen__predict-answers">
           {PREDICTION.answers.map((answer) => (
             <button key={answer} type="button" className="screen-tools__button" onClick={() => onAnswer(answer)}>

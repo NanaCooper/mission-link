@@ -309,15 +309,19 @@ describe('restart (replay, and "Fly to Mars")', () => {
     const guest = createGuestSession({ room: net.guestRoom, resyncEveryMs: 0 });
     return { net, host, guest };
   };
-  const playOut = (host) => {
-    for (let i = 0; i < 6 && host.getState().status === 'playing'; i++) host.sendMove('shelter');
+  // One warning, then one move (the Astronaut waits for Mission Control)
+  const playOut = (host, guest) => {
+    for (let i = 0; i < 6 && host.getState().status === 'playing'; i++) {
+      guest.sendWarning('shelterNow');
+      host.sendMove('shelter');
+    }
   };
 
   it('online: after the Moon, the host flies to Mars in the same room and Mission Control follows', () => {
     const { net, host, guest } = online();
     net.join(net.host);
     net.join(net.guest);
-    playOut(host);
+    playOut(host, guest);
     const moonEnd = host.getState();
     expect(['won', 'lost']).toContain(moonEnd.status);
 
@@ -415,7 +419,10 @@ describe('restart (replay, and "Fly to Mars")', () => {
   it('split: restart works after the game ends, and can switch to Mars', () => {
     const reduce = splitReducer(realEngine);
     let s = realEngine.createGame({ mode: 'split' });
-    for (let i = 0; i < 6 && s.status === 'playing'; i++) s = reduce(s, { type: 'move', move: 'shelter' });
+    for (let i = 0; i < 6 && s.status === 'playing'; i++) {
+      s = reduce(s, { type: 'warning', warning: 'shelterNow' });
+      s = reduce(s, { type: 'move', move: 'shelter' });
+    }
     expect(['won', 'lost']).toContain(s.status);
 
     const again = reduce(s, { type: 'restart' });
@@ -515,6 +522,7 @@ describe('ready-made storm (Level 3: Live Sun)', () => {
     // Labels count from 1, so wave n shows 'Live stage <WAVES[n] + 1>'.
     expect(realEngine.getMissionControlView(guest.getState()).stage.label).toBe(`Live stage ${WAVES[0] + 1}`);
 
+    guest.sendWarning('stormComing');
     host.sendMove('shelter');
     expect(realEngine.getMissionControlView(guest.getState()).stage.label).toBe(`Live stage ${WAVES[1] + 1}`);
     expect(guest.getState()).toEqual(host.getState());
@@ -543,9 +551,11 @@ describe('ready-made storm (Level 3: Live Sun)', () => {
     const live = makeStorm();
     const first = memoryRooms();
     const host = createHostSession({ room: first.hostRoom, engine: realEngine, world: 'mars', moonStars: 1, storm: live });
+    const firstGuest = createGuestSession({ room: first.guestRoom, resyncEveryMs: 0 });
     first.join(first.host);
     first.join(first.guest);
     expect(host.getState().storm).toEqual(live);
+    firstGuest.sendWarning('stormComing');
     host.sendMove('shelter');
 
     const again = memoryRooms();
@@ -645,6 +655,7 @@ describe('the signal clock (Mission Control must send a warning in time)', () =>
   it('split: a new turn starts the clock again', () => {
     const reduce = splitReducer(realEngine);
     let s = reduce(realEngine.createGame({ mode: 'split' }), { type: 'tick', seconds: 30 });
+    s = reduce(s, { type: 'warning', warning: 'stormComing' });
     s = reduce(s, { type: 'move', move: 'doScience' });
     expect(s.signalSecondsLeft).toBe(realEngine.createGame({ mode: 'split' }).signalSecondsLeft);
   });

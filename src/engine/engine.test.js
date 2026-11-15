@@ -321,8 +321,8 @@ describe('views', () => {
     expect(v.radiationLimit).toBe(RADIATION_LIMIT);
     expect(Object.keys(v).sort()).toEqual(
       ['status', 'turn', 'maxTurns', 'world', 'meters', 'radiationLimit', 'science', 'inbox',
-        'log', 'lastMove', 'lastFact', 'lostReason', 'stars', 'solo',
-        'signalSecondsLeft', 'signalLimit', 'clockRunning'].sort()
+        'log', 'lastMove', 'lastResult', 'lastFact', 'lostReason', 'stars', 'solo',
+        'waitingForMissionControl', 'signalSecondsLeft', 'signalLimit', 'clockRunning'].sort()
     );
   });
 

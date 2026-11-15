@@ -14,7 +14,7 @@ const STEPS = [
   {
     icon: '👩‍🚀',
     title: 'Astronaut',
-    text: 'You are at the base. You pick one move each turn, but you cannot see the storm.'
+    text: 'You are at the base. You pick one move each wave, after Mission Control\'s warning. You cannot see the storm.'
   },
   {
     icon: '🗣️',

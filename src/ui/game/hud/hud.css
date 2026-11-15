@@ -366,6 +366,16 @@
   background: rgba(26, 28, 44, 0.96);
 }
 
+/* BLIP's question has answer buttons, so it takes taps (the other pop-ups let taps through) */
+.hud-popup--ask {
+  pointer-events: auto;
+}
+
+.hud-popup--ask .astronaut-screen__predict-answers {
+  display: grid;
+  gap: 6px;
+}
+
 /* Narrow boxes: the "New" tag sits after the name instead of on top of it */
 .hud-popup .speech__tag,
 .game-menu__panel .speech__tag {
@@ -1029,6 +1039,33 @@
 
   .hud-popup .portrait {
     display: none;
+  }
+
+  /* BLIP's coaching line, question and fun fact are longer. On a short screen they use the wide
+     space across the top of the map (left of the side strip), one at a time, so they are never
+     pushed off the bottom of the screen. */
+  .hud-popup--blip {
+    position: fixed;
+    top: calc(var(--hud-top) + 6px);
+    left: max(8px, env(safe-area-inset-left));
+    right: calc(clamp(210px, var(--hud-side), 300px) + max(8px, env(safe-area-inset-right)) + 8px);
+    transform-origin: top left;
+  }
+
+  .hud-popup--blip .speech {
+    padding: 6px 12px;
+    background: var(--bg-2); /* solid: the map must not show through over the wide top band */
+  }
+
+  .hud-popup--ask .astronaut-screen__predict-answers {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 4px;
+  }
+
+  .hud-popup--ask .screen-tools__button {
+    min-height: 44px;
+    padding: 4px 8px;
+    line-height: 1.1;
   }
 }
 

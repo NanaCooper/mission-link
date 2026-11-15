@@ -170,7 +170,8 @@ export default function BaseMap({ view, onMove, hit = 0, overlay, active = true 
       dialog={dialog}
       onDialogClose={close}
       onStep={close}
-      canUse={view.status === 'playing'}
+      canUse={view.status === 'playing' && !view.waitingForMissionControl}
+      blockedText={view.status === 'playing' ? "wait for Mission Control's warning first." : undefined}
       active={active}
       ground={look.ground}
       stepPuff={look.light}

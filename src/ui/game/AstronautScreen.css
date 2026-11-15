@@ -129,6 +129,17 @@
 }
 
 /* ---------- Prediction prompt (peak turn) ---------- */
+/* Two players: the moves wait for Mission Control's warning */
+.astronaut-screen__moves-wait {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  background: var(--bg-2);
+  border-left: var(--px) solid var(--focus);
+}
+
 .astronaut-screen__predict-answers {
   display: grid;
   gap: 8px;

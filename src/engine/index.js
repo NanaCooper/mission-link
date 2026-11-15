@@ -79,6 +79,14 @@ function isClockRunning(state) {
   return state.status === 'playing' && !isBlackoutStage(state) && !warningSentThisTurn(state);
 }
 
+// Two players: the Astronaut moves once Mission Control has had its say this wave: a warning
+// sent (on Mars it is on its way), or the Sun blocking the signal. Never in Play alone (Sola warns
+// at the start of every wave). The session refuses moves while this is true, so each wave is one
+// warning, then one move (applyMove itself stays usable on its own, for tests and balance checks).
+export function waitingForMissionControl(state) {
+  return state.status === 'playing' && !state.solo && !isBlackoutStage(state) && !warningSentThisTurn(state);
+}
+
 // Play alone: the warning Commander Sola sends now, or null. Pure: it only reads the state.
 // She warns about the wave her message arrives in: this wave on the Moon, the next one on Mars.
 // Nothing during a blackout (the signal cannot get through) or when no wave is left to warn about.
@@ -185,6 +193,11 @@ export function sendWarning(state, warning) {
 export function applyMove(state, move) {
   if (state.status !== 'playing' || !MOVES.includes(move)) return state;
 
+  // How Mission Control's warning for this wave compares with Commander Sola's pick (autoWarning),
+  // so BLIP can coach. Not in Play alone (Sola sent it) or when the signal could not get through.
+  const best = state.solo ? null : autoWarning(state);
+  const sentNow = warningSentThisTurn(state);
+
   const stage = currentStage(state);
   const effect = MOVE_EFFECTS[move];
   let { power, oxygen, radiationDose, crewHealth } = state.meters;
@@ -238,9 +251,21 @@ export function applyMove(state, move) {
   crewHealth = clamp(crewHealth);
 
   // 6. Log line and fact
-  let text = `${moveText} Radiation this turn: ${radiationThisTurn}.`;
+  let text = `${moveText} Radiation this wave: ${radiationThisTurn}.`;
   if (powerOut) text += ' Power ran out, so oxygen went down!';
   const log = [...state.log, { turn: state.turn + 1, text }];
+
+  const lastResult = {
+    turn: state.turn + 1,
+    move,
+    radiation: radiationThisTurn,
+    shieldFailed: move === 'raiseShield' && multiplier === effect.failedMultiplier,
+    dust: move === 'savePower' && isDustStage(state),
+    powerOut
+  };
+  const lastWarningCheck = best
+    ? { turn: state.turn + 1, sent: sentNow ? sentNow.warning : null, best, delayTurns: levelOf(state).delayTurns }
+    : null;
 
   // 7. Next turn: the next wave's storm stage (after the last wave it stays on the last one)
   const turn = state.turn + 1;
@@ -283,6 +308,8 @@ export function applyMove(state, move) {
     inbox,
     outbox,
     lastMove: move,
+    lastResult,
+    lastWarningCheck,
     lastFact: stage.fact ?? null,
     signalSecondsLeft: SIGNAL_SECONDS, // a new turn: the clock starts again
     log,
@@ -303,10 +330,12 @@ export function getAstronautView(state) {
     inbox: state.inbox,
     log: state.log,
     lastMove: state.lastMove,
+    lastResult: state.lastResult ?? null,
     lastFact: state.lastFact ?? null,
     lostReason: state.lostReason,
     stars: state.stars,
     solo: Boolean(state.solo),
+    waitingForMissionControl: waitingForMissionControl(state),
     ...clockView(state)
   };
 }
@@ -345,6 +374,7 @@ export function getMissionControlView(state) {
     lastFact: state.lastFact ?? null,
     crewHealth: state.meters.crewHealth,
     warningThisTurn: sentNow ? sentNow.warning : null,
+    lastWarningCheck: state.lastWarningCheck ?? null,
     lostReason: state.lostReason,
     stars: state.stars,
     solo: Boolean(state.solo),
