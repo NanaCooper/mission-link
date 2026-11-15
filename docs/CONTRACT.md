@@ -23,6 +23,8 @@ export const initialState = {
   inbox: [],           // warnings delivered to the Astronaut: { turn, warning }
   outbox: [],          // warnings not yet delivered (Mars delay): { turnSent, warning }
   lastMove: null,
+  lastResult: null,    // what the last move did (Astronaut only): { turn, move, radiation, shieldFailed, dust, powerOut }
+  lastWarningCheck: null, // Mission Control's last warning next to the best one: { turn, sent, best, delayTurns }
   log: [],             // { turn, text } short kid-friendly lines
   lostReason: null,    // 'oxygen' | 'health' | 'radiation' | 'time'
   signalSecondsLeft: 0, // the signal clock: seconds left for Mission Control to send a warning this turn
@@ -67,11 +69,11 @@ applyMove(state, move)        // resolves the whole turn, returns new state (the
 tick(state, seconds)          // the signal clock: `seconds` passed. Returns new state. At 0: lost 'time'.
 getAstronautView(state)
   // { status, turn, maxTurns, world, meters, radiationLimit, science, inbox, log,
-  //   lastMove, lastFact, lostReason, stars, solo, signalSecondsLeft, signalLimit, clockRunning }
+  //   lastMove, lastResult, lastFact, lostReason, stars, solo, signalSecondsLeft, signalLimit, clockRunning }
 getMissionControlView(state)
   // { status, turn, maxTurns, world, delayTurns,
   //   stage: { label, missionControlSees, dust, blackout }, forecast,
-  //   lastMove, lastFact, crewHealth, warningThisTurn, lostReason, stars, solo,
+  //   lastMove, lastFact, crewHealth, warningThisTurn, lastWarningCheck, lostReason, stars, solo,
   //   signalSecondsLeft, signalLimit, clockRunning }
 getStorm(id)
   // { id, title, realDates, savedOn, source, stages, whatReallyHappened, scalingNote }
@@ -107,6 +109,13 @@ isValidStorm(storm)   // true if a ready-made storm is safe to play (see STORM_L
   (30) "Save power", otherwise "All clear". Nothing during the blackout. Her warning goes
   through `sendWarning`, so the Mars delay and the blackout work as for a human.
   `clockRunning` is always false in solo mode, and `tick` does nothing.
+- BLIP's coaching (read only by the screens, no rule depends on it):
+  `lastResult` says what the last move did: the radiation that got through, `shieldFailed`
+  (no power for the shield), `dust` (Save power on the Mars dust wave) and `powerOut`.
+  Only the Astronaut view has it. `lastWarningCheck` is set by `applyMove`: `sent` is the
+  warning Mission Control sent for that wave (or null), `best` is `autoWarning` at the start
+  of the wave (the Play alone rules, so on Mars it is about the next wave). It is null in
+  Play alone and on the blackout wave. Only the Mission Control view has it.
 - Screens import the engine view functions through `src/realtime/engineAdapter.js`,
   never from `src/engine/` directly.
 
