@@ -8,9 +8,10 @@ import {
   getStorm,
   getGameStorm,
   isValidStorm,
-  tick
+  tick,
+  autoWarning
 } from './index.js';
-import { RADIATION_LIMIT, LEVELS, STORM_LIMITS, SIGNAL_SECONDS } from './balance.js';
+import { RADIATION_LIMIT, LEVELS, STORM_LIMITS, SIGNAL_SECONDS, SOLO_WARNING } from './balance.js';
 import { MOVES, WAVES, initialState } from '../shared/contract.js';
 
 const moon = () => createGame({ mode: 'split', world: 'moon' });
@@ -320,7 +321,7 @@ describe('views', () => {
     expect(v.radiationLimit).toBe(RADIATION_LIMIT);
     expect(Object.keys(v).sort()).toEqual(
       ['status', 'turn', 'maxTurns', 'world', 'meters', 'radiationLimit', 'science', 'inbox',
-        'log', 'lastMove', 'lastFact', 'lostReason', 'stars',
+        'log', 'lastMove', 'lastFact', 'lostReason', 'stars', 'solo',
         'signalSecondsLeft', 'signalLimit', 'clockRunning'].sort()
     );
   });
@@ -593,5 +594,73 @@ describe('balance: full Mars games (0 Moon stars)', () => {
         `Mars ${r.won}/64 win (${r.threeStars} with 3 stars).`
     );
     expect(r.threeStars).toBeGreaterThan(0);
+  });
+});
+
+describe('Play alone (solo): Commander Sola warns by herself', () => {
+  const soloMoon = () => createGame({ mode: 'split', world: 'moon', solo: true });
+  const soloMars = (moonStars = 0) => createGame({ mode: 'split', world: 'mars', moonStars, solo: true });
+  const latest = (s) => s.inbox.at(-1);
+  // A copy of the real storm where the first wave has no radiation, for the quiet-Sun warnings
+  const quietStorm = () => {
+    const real = getStorm();
+    return { ...real, id: 'quiet-test', stages: real.stages.map((st, i) => (i === WAVES[0] ? { ...st, incoming: 0 } : st)) };
+  };
+
+  it('changes nothing when solo is off', () => {
+    const s = moon();
+    expect(s.solo).toBe(false);
+    expect(s.inbox).toEqual([]);
+    expect(getAstronautView(s).solo).toBe(false);
+    expect(getMissionControlView(s).solo).toBe(false);
+  });
+
+  it('on the Moon, a warning for this wave is waiting at the start of every wave', () => {
+    let s = soloMoon();
+    expect(s.solo).toBe(true);
+    expect(latest(s)).toEqual({ turn: 0, warning: 'stormComing' }); // wave 1: the flare
+    s = applyMove(s, 'raiseShield');
+    expect(latest(s)).toEqual({ turn: 1, warning: 'shelterNow' }); // wave 2: the peak
+    s = applyMove(s, 'shelter');
+    expect(latest(s)).toEqual({ turn: 2, warning: 'stormComing' }); // wave 3: the storm fading
+  });
+
+  it('on Mars, her warning arrives one wave late, and nothing gets through the blackout', () => {
+    let s = soloMars();
+    expect(s.inbox).toEqual([]); // nothing has arrived yet on wave 1
+    expect(s.outbox).toEqual([{ turnSent: 0, warning: 'shelterNow' }]); // about wave 2, the peak
+    s = applyMove(s, 'raiseShield');
+    expect(latest(s)).toEqual({ turn: 1, turnSent: 0, warning: 'shelterNow' });
+    s = applyMove(s, 'shelter');
+    expect(latest(s).warning).toBe('stormComing'); // sent on wave 2, before the blackout
+    expect(autoWarning(s)).toBeNull(); // wave 3 is the blackout stage
+    expect(s.outbox).toEqual([]);
+  });
+
+  it('has no signal clock', () => {
+    const s = soloMoon();
+    expect(tick(s, SIGNAL_SECONDS * 5)).toBe(s);
+    expect(getAstronautView(s).clockRunning).toBe(false);
+    expect(getMissionControlView(s).clockRunning).toBe(false);
+  });
+
+  it('picks each warning from the radiation of the wave it warns about, and the power', () => {
+    const quiet = createGame({ mode: 'split', world: 'moon', storm: quietStorm() });
+    expect(autoWarning(quiet)).toBe('allClear');
+    expect(autoWarning({ ...quiet, meters: { ...quiet.meters, power: SOLO_WARNING.lowPower - 1 } })).toBe('savePower');
+    expect(autoWarning(moon())).toBe('stormComing');
+    expect(autoWarning(applyMove(moon(), 'raiseShield'))).toBe('shelterNow');
+  });
+
+  it('stays on after the game ends: no warning once the level is won or lost', () => {
+    const s = play(soloMoon(), ['raiseShield', 'shelter', 'raiseShield']);
+    expect(s.status).toBe('won');
+    expect(autoWarning(s)).toBeNull();
+  });
+
+  it('following Sola wins the Moon: shield when a storm comes, shelter when she says so', () => {
+    let s = soloMoon();
+    while (s.status === 'playing') s = applyMove(s, latest(s).warning === 'shelterNow' ? 'shelter' : 'raiseShield');
+    expect(s.status).toBe('won');
   });
 });

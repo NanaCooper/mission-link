@@ -16,6 +16,7 @@ export const initialState = {
   science: 0,
   stormId: null,
   storm: null,         // ready-made storm object (Level 3: Live Sun), or null to use stormId
+  solo: false,         // Play alone: Commander Sola sends the warnings herself, no signal clock
   stormStage: 0,      // which of the storm's 6 stages is playing now (WAVES[turn] during a game)
   inbox: [],           // warnings delivered to the Astronaut: { turn, warning }
   outbox: [],          // warnings not yet delivered (Mars delay): { turnSent, warning }

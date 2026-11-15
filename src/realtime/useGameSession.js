@@ -72,6 +72,7 @@ export function useGameSession({
   storm = null,
   stormId = null,
   paused = false,
+  solo = false,
 }) {
   const online = mode === 'online';
   const isHost = role === ROLES.ASTRONAUT;
@@ -81,7 +82,8 @@ export function useGameSession({
   const [splitState, dispatch] = useReducer(reduceSplit, null, () =>
     engine.createGame({
       mode: 'split',
-      ...nextLevel({ world: 'moon', stormId, moonStars: 0 }, { world, moonStars, ...(storm ? { storm } : {}) }),
+      // solo (Play alone) is for one device only; online games ignore it.
+      ...nextLevel({ world: 'moon', stormId, moonStars: 0, solo: !online && solo }, { world, moonStars, ...(storm ? { storm } : {}) }),
     }),
   );
   const [net, setNet] = useState(null);

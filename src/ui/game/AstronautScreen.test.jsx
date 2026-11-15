@@ -206,3 +206,17 @@ describe('AstronautScreen: sound, read-aloud and the prediction prompt', () => {
     expect(render({ ...fakeWonAstronautView, turn: 3 })).not.toContain('about to peak');
   });
 });
+
+describe('AstronautScreen, Play alone', () => {
+  it('tags Commander Sola\'s message "Automatic" and shows no signal clock', () => {
+    const solo = render({ ...fakeAstronautView, solo: true, clockRunning: false });
+    expect(solo).toContain('Automatic');
+    expect(solo).not.toContain('role="timer"'); // the clock itself (the empty slot in the bar stays)
+  });
+
+  it('keeps the "New" tag and the clock when two people play', () => {
+    const pair = render({ ...fakeAstronautView, solo: false });
+    expect(pair).not.toContain('Automatic');
+    expect(pair).toContain('role="timer"');
+  });
+});

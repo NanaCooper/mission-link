@@ -95,6 +95,7 @@ export default function App() {
     <HomeScreen
       marsUnlocked={progress.marsUnlocked}
       moonStars={progress.moonStars}
+      onPlayAlone={(world) => start({ mode: 'split', role: ROLES.ASTRONAUT, world, moonStars: starsFor(world), solo: true })}
       onPlaySplit={(world) => start({ mode: 'split', role: ROLES.ASTRONAUT, world, moonStars: starsFor(world) })}
       onCreateRoom={(world) =>
         start({ mode: 'online', role: ROLES.ASTRONAUT, code: makeRoomCode(), world, moonStars: starsFor(world) })
@@ -111,7 +112,7 @@ export default function App() {
 // One running session. Lives as long as the room, so Data sources opens inside it
 // (leaving would close an online room).
 function Game({ session, onLevelEnd, onHome }) {
-  const { mode, role, code, world, moonStars } = session;
+  const { mode, role, code, world, moonStars, solo = false } = session;
   // One device: a player opened the Menu, so the game (the signal clock) is paused.
   const [paused, setPaused] = useState(false);
   const { state, sendMove, sendWarning, restart, partnerConnected, error } = useGameSession({
@@ -121,6 +122,8 @@ function Game({ session, onLevelEnd, onHome }) {
     world,
     moonStars,
     paused: mode === 'split' && paused,
+    // Play alone: Commander Sola sends the warnings (one device only)
+    solo,
   });
   const [showSources, setShowSources] = useState(false);
 
@@ -162,6 +165,9 @@ function Game({ session, onLevelEnd, onHome }) {
         onDataSources={() => setShowSources(true)}
       />
     );
+  } else if (mode === 'split' && state.solo) {
+    // Play alone: only the Astronaut's screen. Commander Sola's warnings arrive by themselves.
+    body = <AstronautScreen view={getAstronautView(state)} onMove={sendMove} pauses onMenuChange={setPaused} />;
   } else if (mode === 'split') {
     body = (
       <SplitScreen

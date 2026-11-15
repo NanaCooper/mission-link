@@ -12,6 +12,7 @@ const TAPS_TO_UNLOCK = 5;
 // Props:
 //   marsUnlocked, moonStars          from App state (Mars opens after winning the Moon)
 //   onPlaySplit(world)               play on one device
+//   onPlayAlone(world)               play alone: Commander Sola sends the warnings
 //   onCreateRoom(world)              I'm the Astronaut
 //   onJoinRoom(code)                 I'm Mission Control; code is already cleaned, e.g. 'MOON-4821'
 //   onHowToPlay(), onDataSources()   small links
@@ -21,6 +22,7 @@ export default function HomeScreen({
   marsUnlocked = false,
   moonStars = 0,
   onPlaySplit,
+  onPlayAlone,
   onCreateRoom,
   onJoinRoom,
   onHowToPlay,
@@ -57,7 +59,8 @@ export default function HomeScreen({
         </h1>
         <p className="flow-lead">
           Two players, one solar storm. Mission Control on Earth can see the storm coming. The
-          Astronaut can protect the base. Talk to each other to survive!
+          Astronaut can protect the base. Talk to each other to survive! No partner? Play alone, and
+          Commander Sola will warn you.
         </p>
       </header>
 
@@ -89,6 +92,14 @@ export default function HomeScreen({
             hint="Sit together and share the screen."
             onClick={() => onPlaySplit?.(world)}
           />
+          {onPlayAlone && (
+            <BigButton
+              icon="🎧"
+              label="Play alone"
+              hint="You are the Astronaut. Commander Sola sends the warnings for you."
+              onClick={() => onPlayAlone(world)}
+            />
+          )}
           <BigButton
             icon="👩‍🚀"
             label="Create a room (I'm the Astronaut)"

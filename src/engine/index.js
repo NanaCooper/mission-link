@@ -11,7 +11,8 @@ import {
   STARS,
   LEVELS,
   STORM_LIMITS,
-  SIGNAL_SECONDS
+  SIGNAL_SECONDS,
+  SOLO_WARNING
 } from './balance.js';
 import { getStorm, DEFAULT_STORM_ID } from './storms/index.js';
 
@@ -73,17 +74,44 @@ function warningSentThisTurn(state) {
 // The signal clock runs while the game is on, no warning has been sent this turn,
 // and the Sun is not blocking the signal (nobody can send one then).
 function isClockRunning(state) {
+  // Play alone: Commander Sola warns by herself, so there is no clock to beat.
+  if (state.solo) return false;
   return state.status === 'playing' && !isBlackoutStage(state) && !warningSentThisTurn(state);
+}
+
+// Play alone: the warning Commander Sola sends now, or null. Pure: it only reads the state.
+// She warns about the wave her message arrives in: this wave on the Moon, the next one on Mars.
+// Nothing during a blackout (the signal cannot get through) or when no wave is left to warn about.
+export function autoWarning(state) {
+  if (state.status !== 'playing' || isBlackoutStage(state)) return null;
+  const delay = levelOf(state).delayTurns;
+  const target = delay === 0 ? state.stormStage : WAVES[state.turn + delay];
+  if (target === undefined) return null;
+  const incoming = getGameStorm(state).stages[target]?.incoming ?? 0;
+  if (incoming >= SOLO_WARNING.shelterAt) return 'shelterNow';
+  if (incoming > 0) return 'stormComing';
+  if (state.meters.power < SOLO_WARNING.lowPower) return 'savePower';
+  return 'allClear';
+}
+
+// In solo mode, Sola's warning goes out at the start of every wave, through the same
+// sendWarning as a human Mission Control (so the Mars delay and the blackout work the same).
+function withAutoWarning(state) {
+  if (!state.solo) return state;
+  const warning = autoWarning(state);
+  return warning ? sendWarning(state, warning) : state;
 }
 
 // storm: an optional ready-made storm object (Level 3: Live Sun). If it is not valid,
 // the game plays the saved storm from stormId instead, so a bad storm never breaks the game.
+// solo: Play alone. Commander Sola sends the warnings herself (autoWarning) and there is no clock.
 export function createGame({
   mode = 'split',
   world = 'moon',
   stormId = DEFAULT_STORM_ID,
   moonStars = 0,
-  storm = null
+  storm = null,
+  solo = false
 } = {}) {
   const liveStorm = isValidStorm(storm) ? storm : null;
   const level = LEVELS[world] ?? LEVELS.moon;
@@ -95,9 +123,10 @@ export function createGame({
       ? `Welcome to the Mars base! ${stars} supply ${stars === 1 ? 'crate' : 'crates'} from the Moon ${stars === 1 ? 'was' : 'were'} waiting.`
       : 'Welcome to the Moon base! Listen to Mission Control to stay safe.';
 
-  return {
+  return withAutoWarning({
     ...initialState,
     status: 'playing',
+    solo: Boolean(solo),
     maxTurns: WAVES.length,
     stormStage: WAVES[0], // wave 1
     mode,
@@ -111,7 +140,7 @@ export function createGame({
     lastFact: null,
     signalSecondsLeft: SIGNAL_SECONDS,
     log: [{ turn: 0, text: firstLine }]
-  };
+  });
 }
 
 // The signal clock. The caller says how many seconds passed (the engine never reads the time),
@@ -243,7 +272,8 @@ export function applyMove(state, move) {
     }
   }
 
-  return {
+  // Play alone: Commander Sola sends the next wave's warning straight away.
+  return withAutoWarning({
     ...state,
     status,
     turn,
@@ -258,7 +288,7 @@ export function applyMove(state, move) {
     log,
     lostReason,
     stars
-  };
+  });
 }
 
 export function getAstronautView(state) {
@@ -276,6 +306,7 @@ export function getAstronautView(state) {
     lastFact: state.lastFact ?? null,
     lostReason: state.lostReason,
     stars: state.stars,
+    solo: Boolean(state.solo),
     ...clockView(state)
   };
 }
@@ -316,6 +347,7 @@ export function getMissionControlView(state) {
     warningThisTurn: sentNow ? sentNow.warning : null,
     lostReason: state.lostReason,
     stars: state.stars,
+    solo: Boolean(state.solo),
     ...clockView(state)
   };
 }

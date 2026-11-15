@@ -120,6 +120,8 @@ export const MISSION_CONTROL_TITLE = 'Mission Control, Earth';
 export const MENU_LABEL = 'Menu';
 export const CLOSE_LABEL = 'Close';
 export const NEW_TAG = 'New';
+// Play alone: Commander Sola's messages are sent by the game, so they say so
+export const SOLO_TAG = 'Automatic';
 
 // The tabs of each player's menu, like the pause menu of a game.
 //   sprite = pixel icon name (see ui/components/pixel/sprites.js)
