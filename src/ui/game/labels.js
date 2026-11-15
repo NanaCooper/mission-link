@@ -65,6 +65,9 @@ export const PASS_BACK_TEXT = 'Your move is done! Pass the device to Mission Con
 // ---------- Sound and read-aloud buttons ----------
 export const SOUND_ON_LABEL = 'Sound on';
 export const SOUND_OFF_LABEL = 'Sound off';
+export const MUSIC_ON_LABEL = 'Music on';
+export const MUSIC_OFF_LABEL = 'Music off';
+export const MUSIC_NEEDS_SOUND = 'Turn the sound on to hear the music.';
 export const READ_ALOUD_LABEL = 'Read to me';
 export const READ_ALOUD_STOP_LABEL = 'Stop reading';
 
