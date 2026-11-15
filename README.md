@@ -128,7 +128,7 @@ React, Vite, Vitest, Supabase Realtime and Vercel. No other libraries; the pixel
 
 ## Team and tools
 
-- **Team:** [names and roles]
+- **Team:** Normally: Cooper, Maurus, Bryan and Patrick
 - **Tools:** React, Vite, Vitest, oxlint, Supabase Realtime, Vercel, GitHub, the Web Audio and Web
   Speech browser features, and the Pixelify Sans and Press Start 2P fonts (SIL Open Font License).
 - **Super Intelligence (SI) use:** see the section below.
