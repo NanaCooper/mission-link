@@ -201,16 +201,30 @@ export default function WorldMap({
   const arrowAt = near ? placeTop(near) : null;
   const nearName = near ? placeNames[near.id] ?? near.id : null;
 
+  // What the bubble says, and which kind it is (world.css hides some kinds on short phone screens:
+  // there the action button already names the place and the Yes / No box shows the cost).
   let bubble;
-  if (hidden) bubble = `${hero.name} is inside. Take a step to go back out.`;
-  else if (near && !canUse) bubble = `${nearName}: the game is over.`;
-  else if (near && use) {
+  let bubbleKind;
+  if (hidden) {
+    bubble = `${hero.name} is inside. Take a step to go back out.`;
+    bubbleKind = 'inside';
+  } else if (near && !canUse) {
+    bubble = `${nearName}: the game is over.`;
+    bubbleKind = 'over';
+  } else if (near && use) {
     bubble = (
       <>
         <strong>{nearName}:</strong> {use.hint}
       </>
     );
-  } else bubble = `Walk ${hero.name} to a place, then press USE.`;
+    bubbleKind = 'place';
+  } else {
+    bubble = `Walk ${hero.name} to a place, then press USE.`;
+    bubbleKind = 'walk';
+  }
+  const bubbleClass = `world__bubble world__bubble--${position.x < map.width / 3 ? 'right' : 'left'} world__bubble--${bubbleKind}${
+    steps > 0 ? ' is-started' : ''
+  }`;
 
   return (
     <div className={`world${talking ? ' world--talking' : ''}`}>
@@ -295,7 +309,7 @@ export default function WorldMap({
         {!talking && (
           // Top left of the map, or top right when the character is in the left third, so it
           // never covers them. (Top right is where the screen's pop-ups appear, so only then.)
-          <p className={`world__bubble world__bubble--${position.x < map.width / 3 ? 'right' : 'left'}`} aria-live="polite">
+          <p className={bubbleClass} aria-live="polite">
             {bubble}
           </p>
         )}

@@ -1,6 +1,7 @@
 import { BigButton, Panel, Stars } from '../components/index.js';
 import { MARS_FACT } from './facts.js';
 import { LOST_REASON_TEXT, WORLD_NAMES, archivedLabel, crates } from './text.js';
+import { debriefLines } from './debrief.js';
 import './flow.css';
 
 // The end of a level: win or lose, stars, what really happened, and what to do next.
@@ -9,9 +10,11 @@ import './flow.css';
 //   view          an engine view (Astronaut or Mission Control): needs status, world, lostReason, stars
 //   storm         getStorm(state.stormId): title, whatReallyHappened, scalingNote, savedOn, source
 //   canContinue   true for the player who chooses next (the Astronaut online, anyone in split mode)
+//   crew          optional: getAstronautView(state), for "What your choices meant" (both players
+//                 get it, so Mission Control also sees what the Astronaut's choices did)
 //   onNextLevel(stars)   Fly to Mars, passing the Moon stars won
 //   onPlayAgain(), onHome(), onDataSources()
-export default function EndScreen({ view, storm, canContinue = true, onNextLevel, onPlayAgain, onHome, onDataSources }) {
+export default function EndScreen({ view, storm, canContinue = true, crew, onNextLevel, onPlayAgain, onHome, onDataSources }) {
   const won = view.status === 'won';
   const onMars = view.world === 'mars';
   const world = WORLD_NAMES[view.world] ?? WORLD_NAMES.moon;
@@ -23,6 +26,7 @@ export default function EndScreen({ view, storm, canContinue = true, onNextLevel
 
   const reason = !won ? LOST_REASON_TEXT[view.lostReason] : null;
   const flyToMars = won && !onMars && canContinue;
+  const debrief = debriefLines(crew);
 
   return (
     <main className={`flow-screen world-${view.world ?? 'moon'}`}>
@@ -46,7 +50,7 @@ export default function EndScreen({ view, storm, canContinue = true, onNextLevel
               <BigButton
                 icon="🔴"
                 label="Fly to Mars"
-                hint="Level 2: messages from Earth arrive one turn late."
+                hint="Level 2: messages from Earth arrive one wave late."
                 onClick={() => onNextLevel?.(view.stars)}
               />
             )}
@@ -64,6 +68,16 @@ export default function EndScreen({ view, storm, canContinue = true, onNextLevel
         )}
         <BigButton icon="🏠" label="Back to home" onClick={onHome} />
       </div>
+
+      {debrief.length > 0 && (
+        <Panel title="What your choices meant">
+          <ul className="flow-list">
+            {debrief.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </Panel>
+      )}
 
       {storm && (
         <Panel title="What really happened">

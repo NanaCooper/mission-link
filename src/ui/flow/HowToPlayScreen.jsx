@@ -1,5 +1,5 @@
 import { BigButton, Panel } from '../components/index.js';
-import { BLACKOUT_FACT } from './facts.js';
+import { ALERTS_FACT, BLACKOUT_FACT, MOON_DELAY_FACT } from './facts.js';
 import './flow.css';
 
 // Four short steps, one idea each, then why Mars is harder.
@@ -19,12 +19,14 @@ const STEPS = [
   {
     icon: '🗣️',
     title: 'Talk!',
-    text: 'Mission Control sends a warning. Say it out loud too. Then the Astronaut picks a move.'
+    text: 'Mission Control sends a warning. Say it out loud too. Then the Astronaut picks a move.',
+    fact: ALERTS_FACT
   },
   {
     icon: '🌕',
     title: 'Moon, then Mars',
-    text: 'The Moon is your practice. On Mars, messages take longer, so Mission Control must warn early.'
+    text: 'The Moon is your practice. On Mars, messages take longer, so Mission Control must warn early.',
+    fact: MOON_DELAY_FACT
   }
 ];
 
@@ -40,6 +42,14 @@ export default function HowToPlayScreen({ onBack }) {
             <span>
               <strong className="flow-step__title">{step.title}</strong>
               <span className="flow-step__text">{step.text}</span>
+              {step.fact && (
+                <span className="flow-step__fact flow-small">
+                  Real fact: {step.fact.text}{' '}
+                  <a href={step.fact.source.url} target="_blank" rel="noopener noreferrer">
+                    {step.fact.source.name}
+                  </a>
+                </span>
+              )}
             </span>
           </li>
         ))}

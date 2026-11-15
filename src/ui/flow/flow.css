@@ -254,6 +254,12 @@
   display: block;
 }
 
+/* "Real fact: ..." under a step, with its source link */
+.flow-step__fact {
+  display: block;
+  margin-top: 4px;
+}
+
 /* Data sources */
 .flow-sources {
   margin: 0;

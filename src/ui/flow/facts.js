@@ -15,5 +15,19 @@ export const BLACKOUT_FACT = {
   source: { name: 'NASA JPL: Mars in a Minute, when the Sun blocks our signal', url: 'https://www.jpl.nasa.gov/edu/resources/video/mars-in-a-minute-what-happens-when-the-sun-blocks-our-signal/' }
 };
 
-// Every fact this folder shows, for the Data sources screen.
+// Two of the storm's stage facts that a 3-wave level never reaches (stages 0 and 2 are
+// skipped, see WAVES in the contract). How to play shows them instead. Same words and
+// sources as in storm-2024-05-11.json; flow.test.jsx checks they stay the same.
+export const ALERTS_FACT = {
+  text: 'NASA says warning the crew in time, so they can take shelter, is essential for keeping them safe.',
+  source: { name: 'NASA radiation protection standard', url: 'https://www.nasa.gov/sites/default/files/atoms/files/radiation_protection_technical_brief_ochmo.pdf' }
+};
+
+export const MOON_DELAY_FACT = {
+  text: 'A message from Earth reaches the Moon in just 3 to 14 seconds.',
+  source: { name: 'NASA communication delay research', url: 'https://ntrs.nasa.gov/citations/20250000703' }
+};
+
+// Every fact this folder shows that is not already a storm stage fact, for the Data sources
+// screen (it lists the storm's stage facts itself, so ALERTS_FACT and MOON_DELAY_FACT are there).
 export const FLOW_FACTS = [MARS_FACT, BLACKOUT_FACT];
