@@ -11,8 +11,12 @@
   inset: 0;
   z-index: 5; /* under the online banner (src/ui/flow/flow.css), so "Waiting for your partner" still shows */
   width: 100vw;
+  width: var(--app-width, 100vw);
   height: 100vh;
   height: 100dvh;
+  /* What the player can really see, measured in JavaScript (viewport.js): some phone browsers
+     count their toolbars in 100dvh, and the bottom of the game would sit under them. */
+  height: var(--app-height, 100dvh);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr);
@@ -989,7 +993,7 @@
   .game-hud {
     --hud-top: 54px;
     /* how wide the strip beside the map is: the map is 10 x 7 squares */
-    --hud-side: calc((100vw - (100dvh - var(--hud-top)) * 10 / 7) / 2 - 12px);
+    --hud-side: calc((var(--app-width, 100vw) - (var(--app-height, 100dvh) - var(--hud-top)) * 10 / 7) / 2 - 12px);
   }
 
   .hud-top {
@@ -1097,5 +1101,14 @@
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+}
+
+/* Very short screens (a phone held sideways with its browser toolbars showing, e.g. a Galaxy S21
+   in Samsung Internet): BLIP's box starts right of the joystick (128 px, bottom left), so it never
+   covers it. Its question takes taps and would otherwise block the joystick's up arrow. */
+@media (orientation: landscape) and (max-height: 300px) and (pointer: coarse) {
+  .hud-popup--blip {
+    left: calc(max(8px, env(safe-area-inset-left)) + 140px);
   }
 }
