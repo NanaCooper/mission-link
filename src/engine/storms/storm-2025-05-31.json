@@ -1,0 +1,77 @@
+{
+  "id": "storm-2025-05-31",
+  "title": "The May 2025 Storm",
+  "realDates": "30 to 31 May 2025",
+  "savedOn": "2026-11-15",
+  "source": { "name": "NASA DONKI", "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/SEP/39201/-1" },
+  "scalingNote": "The storm's times, flare class and cloud speed are real NASA DONKI data. The radiation numbers in the game are simplified game points, not real doses. The Mars level replays the same real storm as a what-if.",
+  "stages": [
+    {
+      "label": "Quiet Sun",
+      "incoming": 0,
+      "missionControlSees": "The Sun looks calm. But a busy patch of sunspots, number 14100, is facing the base.",
+      "realData": { "activeRegionNum": 14100 },
+      "fact": {
+        "text": "NASA says warning the crew in time, so they can take shelter, is essential for keeping them safe.",
+        "source": { "name": "NASA radiation protection standard", "url": "https://www.nasa.gov/sites/default/files/atoms/files/radiation_protection_technical_brief_ochmo.pdf" }
+      }
+    },
+    {
+      "label": "Flare spotted",
+      "incoming": 5,
+      "missionControlSees": "A bright flash on the Sun! A flare is a burst of light and energy. This one is class M8.1.",
+      "realData": { "flareClass": "M8.1", "flareBegin": "2025-05-30T23:31Z", "flarePeak": "2025-05-31T00:05Z", "flareEnd": "2025-05-31T01:32Z" },
+      "fact": {
+        "text": "NASA scientists record big solar flares in a space weather database called DONKI. This real flare is in it.",
+        "source": { "name": "NASA DONKI flare record", "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/FLR/39182/-1" }
+      }
+    },
+    {
+      "label": "Cloud launched",
+      "incoming": 10,
+      "missionControlSees": "The Sun threw a giant cloud of gas into space. It is moving at about 1,300 km every second!",
+      "realData": { "cmeStart": "2025-05-31T00:15Z", "cmeSpeedKmPerSec": 1302 },
+      "fact": {
+        "text": "A message from Earth reaches the Moon in just 3 to 14 seconds.",
+        "source": { "name": "NASA communication delay research", "url": "https://ntrs.nasa.gov/citations/20250000703" }
+      }
+    },
+    {
+      "label": "Particles arrive",
+      "incoming": 30,
+      "missionControlSees": "A space weather satellite is picking up fast particles from the Sun right now. Take cover!",
+      "realData": { "particlesDetected": "2025-05-31T17:10Z", "instrument": "GOES-P: SEISS >10 MeV" },
+      "fact": {
+        "text": "NASA has a special limit on how much radiation an astronaut may get from one solar particle storm like this.",
+        "source": { "name": "NASA radiation protection standard", "url": "https://www.nasa.gov/sites/default/files/atoms/files/radiation_protection_technical_brief_ochmo.pdf" }
+      }
+    },
+    {
+      "label": "Storm fading",
+      "incoming": 20,
+      "missionControlSees": "The storm is getting weaker, but more particles were spotted the next morning at 06:51. It is not over yet.",
+      "realData": { "secondParticleAlert": "2025-06-01T06:51Z" },
+      "fact": {
+        "text": "On Mars, a message from Earth can take up to 22 minutes to arrive.",
+        "source": { "name": "NASA: communication delays for crewed Mars missions", "url": "https://ntrs.nasa.gov/api/citations/20220013418/downloads/ASCEND-Communication%20Delays%2C%20Disruptions%2C%20and%20Blackouts%20for%20Crewed%20Mars%20Missions.pdf" }
+      }
+    },
+    {
+      "label": "All clear",
+      "incoming": 0,
+      "missionControlSees": "The storm has passed. NASA's computer model said the gas cloud would reach Mars on 4 June.",
+      "realData": { "modelMarsArrival": "2025-06-04T12:00Z" },
+      "fact": {
+        "text": "NASA keeps all the radiation an astronaut gets in their whole career under a set limit.",
+        "source": { "name": "NASA radiation protection standard", "url": "https://www.nasa.gov/sites/default/files/atoms/files/radiation_protection_technical_brief_ochmo.pdf" }
+      }
+    }
+  ],
+  "whatReallyHappened": [
+    "On 30 May 2025 at 23:31 (UTC), a flare called M8.1 burst out of the Sun.",
+    "It came from sunspot patch number 14100.",
+    "44 minutes later, a giant cloud of gas left the Sun at about 1,302 km every second.",
+    "At 17:10 the next day, a space weather satellite called GOES measured fast particles from the Sun.",
+    "NASA's computer model predicted the cloud would reach Mars on 4 June 2025."
+  ]
+}

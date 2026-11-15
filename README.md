@@ -6,7 +6,7 @@ A two-player browser game for kids aged 7-12 (one player can play alone too), bu
 ("Build a Junior Astronaut Mission Trainer"). Mission Control on Earth guides an Astronaut through a
 real solar storm recorded by NASA, first on a Moon base, then on a Mars base.
 
-**Play it: [LIVE LINK]** · no download, no account · best on a phone held sideways, a tablet or a laptop
+**Play it: [mission-link-beta.vercel.app](https://mission-link-beta.vercel.app/)** · no download, no account · best on a phone held sideways, a tablet or a laptop
 
 ## The idea
 
@@ -49,24 +49,30 @@ waiting on Mars.
 
 ## The NASA data, and why we used it
 
-The storm is the real solar storm of **11 May 2024**, from NASA's Space Weather Database (**DONKI**):
+Each game plays one of two real solar storms from NASA's Space Weather Database (**DONKI**), picked at
+random. "Play again" picks the other one.
 
-| DONKI record | What it drives in the game |
-| --- | --- |
-| Solar flare, class **X5.8**, sunspot region **13664**, 01:10 UTC | Wave 1: what Mission Control sees |
-| Coronal mass ejection (a cloud of gas) at **1,263 km/s** | "What really happened" on the end screen |
-| Solar energetic particles detected by the GOES satellite at **02:10 UTC** | Wave 2, the peak |
-| More particles at **04:07 UTC** | Wave 3, the fading storm |
-| NASA's model of the cloud reaching Mars on **13 May 2024** | "What really happened" on the end screen |
+| DONKI record | 11 May 2024 storm | 30 to 31 May 2025 storm | What it drives in the game |
+| --- | --- | --- | --- |
+| Solar flare | class **X5.8**, sunspot region **13664**, 01:10 UTC | class **M8.1**, sunspot region **14100**, 23:31 UTC | Wave 1: what Mission Control sees. **The flare class sets how hard wave 2 hits.** |
+| Coronal mass ejection (a cloud of gas) | **1,263 km/s** | **1,302 km/s** | "What really happened"; the speed sets how hard wave 3 hits |
+| Particles detected by a GOES satellite | **02:10 UTC** | **17:10 UTC** the next day | Wave 2, the peak |
+| More particles | **04:07 UTC** | **06:51 UTC** on 1 June | Wave 3, the fading storm |
+| NASA's model of the cloud reaching Mars | **13 May 2024** | **4 June 2025** | "What really happened" on the end screen |
+
+So the real data changes the numbers, not just the story: the X5.8 storm's peak hits harder than the
+M8.1 storm's, and a strategy that wins one storm may not win the other.
 
 DONKI is the database NASA uses to track the flares, CMEs and particle events that drive radiation risk
 for astronauts, which is exactly the trade-off the game teaches.
 
 **Honest by design:**
 
-- We saved the DONKI records once (`docs/data/donki-2024-05-11.json`) and the game labels them
-  "Archived NASA data, saved on 14 Nov 2026". It never presents them as live.
-- An automated test checks the storm file against the saved records.
+- We saved the DONKI records once (`docs/data/donki-2024-05-11.json`, `docs/data/donki-2025-05-31.json`)
+  and the game labels them "Archived NASA data, saved on" the day we saved them. It never presents
+  them as live.
+- Automated tests check each storm file against its saved records, and check that each storm's waves
+  follow its real flare class and cloud speed.
 - The radiation meter counts game points, not real doses, and the game says so in plain words.
 - Every fact shown to players links to the NASA page it came from. The full list, with the file each
   fact lives in, is in [`docs/SOURCES.md`](docs/SOURCES.md), and the in-game "Data sources" screen

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { NO_PROGRESS, gameBanner, loadProgress, pickGameScreen, progressAfter, saveProgress } from './appFlow.js';
+import { NO_PROGRESS, gameBanner, loadProgress, pickGameScreen, pickStorm, progressAfter, saveProgress } from './appFlow.js';
 
 const playing = { status: 'playing', lastMove: null };
 
@@ -62,5 +62,23 @@ describe('progress', () => {
     expect(progressAfter(after, { status: 'won', world: 'moon', stars: 1 })).toBe(after);
     expect(progressAfter(after, { status: 'lost', world: 'moon', stars: 0 })).toBe(after);
     expect(progressAfter(after, { status: 'won', world: 'mars', stars: 3 })).toBe(after);
+  });
+});
+
+describe('pickStorm', () => {
+  const ids = ['storm-a', 'storm-b', 'storm-c'];
+
+  it('picks any real storm for a new game, using the random number it is given', () => {
+    expect(pickStorm(ids, null, () => 0)).toBe('storm-a');
+    expect(pickStorm(ids, null, () => 0.99)).toBe('storm-c');
+  });
+
+  it('never repeats the storm just played when there is another one', () => {
+    for (const r of [0, 0.5, 0.99]) expect(pickStorm(ids, 'storm-b', () => r)).not.toBe('storm-b');
+    expect(pickStorm(['only'], 'only', () => 0.5)).toBe('only');
+  });
+
+  it('copes with no storms', () => {
+    expect(pickStorm([], null)).toBeNull();
   });
 });
