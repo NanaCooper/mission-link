@@ -174,3 +174,74 @@ export const ENGINEER = [
   'KKLLLLLLKK',
   'KLLLLLLLLK'
 ];
+
+// ---------- Places you use (moved here from BaseMap.jsx and ControlRoomMap.jsx so the 3D view can use them too) ----------
+
+// A tall tower with a dish on top: it switches the shield on (6 x 18)
+export const SHIELD_TOWER = [
+  '..rr..',
+  '..KK..',
+  '.KCCK.',
+  '.KCCK.',
+  '..KK..',
+  '..KK..',
+  '..KK..',
+  '.KGgK.',
+  '.KGgK.',
+  '.KGgK.',
+  '.KGgK.',
+  '.KGgK.',
+  'KKGgKK',
+  'KGGggK',
+  'KGGggK',
+  'KGGggK',
+  'KGGggK',
+  'KKKKKK'
+];
+
+// The telescope in the control room (10 x 12)
+export const TELESCOPE = [
+  '.......KK.',
+  '......KWWK',
+  '.....KWGWK',
+  '....KWGKK.',
+  '...KWGK...',
+  '..KWGK....',
+  '..KKK.....',
+  '...KK.....',
+  '..KgKg....',
+  '..Kg.Kg...',
+  '.Kg...Kg..',
+  '.KK...KK..'
+];
+
+// The crew monitor (12 x 10)
+export const MONITOR = [
+  'KKKKKKKKKKKK',
+  'KDDDDDDDDDDK',
+  'KDDDDDDDDDDK',
+  'KDLDDDLDDDDK',
+  'KDDLDLDLDDDK',
+  'KDDDLDDDLDLK',
+  'KDDDDDDDDLDK',
+  'KKKKKKKKKKKK',
+  '....KggK....',
+  '..KKKKKKKK..'
+];
+
+// The radio desk, two squares wide (24 x 10)
+export const RADIO_DESK = [
+  '..............K.........',
+  '..............K.....KK..',
+  '...........KKKKKKK..KK..',
+  '...........KgggggK...K..',
+  '...........KgCgYgK...K..',
+  'KKKKKKKKKKKKKKKKKKKKKKKK',
+  'KOOOOOOOOOOOOOOOOOOOOOOK',
+  'KssssssssssssssssssssssK',
+  'KsK..................KsK',
+  'KKK..................KKK'
+];
+
+// A pot plant (8 x 10)
+export const PLANT = ['..N..N..', '.NLN.N..', '..NLNLN.', '.NLNNLN.', '..NNLN..', '...NN...', '.KKKKKK.', '.KOOOOK.', '.KOOOOK.', '..KKKK..'];

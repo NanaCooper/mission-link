@@ -96,3 +96,12 @@ describe('WorldMap', () => {
     expect(render({ active: false })).toBe(render({ active: true }));
   });
 });
+
+describe('the 3D picture', () => {
+  it('with scene3d, the map still draws the 2D picture where 3D cannot run (tests, old devices)', () => {
+    const html = render({ scene3d: { kind: 'base', world: 'moon' } });
+    expect(html).toContain('<svg');
+    expect(html).toContain('aria-label="Test map"');
+    expect(html).not.toContain('world3d');
+  });
+});

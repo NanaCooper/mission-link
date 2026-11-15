@@ -9,7 +9,7 @@ import { spriteRects } from '../../components/pixel/spriteRects.jsx';
 import { PIECES, PALETTE } from '../../components/pixel/sprites.js';
 import { PixelIcon } from '../../components/index.js';
 import { MOVE_INFO } from '../labels.js';
-import { ANTENNA, FLAG_A, FLAG_B, LANDER, CRATES, BLIP_BOT_A, BLIP_BOT_B, SATELLITE } from './props.js';
+import { ANTENNA, FLAG_A, FLAG_B, LANDER, CRATES, BLIP_BOT_A, BLIP_BOT_B, SATELLITE, SHIELD_TOWER } from './props.js';
 
 // Where each letter of the map first appears, in squares of the drawing: { x, y } or null
 function corner(letter) {
@@ -59,28 +59,6 @@ const WHAT_HAPPENED = {
   savePower: 'The lights are off to save power.',
   doScience: 'Nova is doing science outside.'
 };
-
-// A tall tower with a dish on top: it switches the shield on (6 x 18)
-const SHIELD_TOWER = [
-  '..rr..',
-  '..KK..',
-  '.KCCK.',
-  '.KCCK.',
-  '..KK..',
-  '..KK..',
-  '..KK..',
-  '.KGgK.',
-  '.KGgK.',
-  '.KGgK.',
-  '.KGgK.',
-  '.KGgK.',
-  'KKGgKK',
-  'KGGggK',
-  'KGGggK',
-  'KGGggK',
-  'KGGggK',
-  'KKKKKK'
-];
 
 const STARS = [
   [4, 3], [15, 8], [27, 2], [38, 6], [52, 3], [63, 9], [71, 2], [84, 7], [104, 9], [110, 3], [116, 7]
@@ -175,6 +153,8 @@ export default function BaseMap({ view, onMove, hit = 0, overlay, active = true 
       active={active}
       ground={look.ground}
       stepPuff={look.light}
+      // The 3D picture shows the same things as the 2D one below (world3d/scene.js)
+      scene3d={{ kind: 'base', world: view.world, turn, shielded, saving, sheltering, science, lowPower, hit, bigHit: hit >= BIG_HIT }}
       foreground={
         <>
           {/* The shield: a glowing dome over the base */}

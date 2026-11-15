@@ -1,0 +1,29 @@
+/* The 3D map (World3D.jsx). It fills the same box as the 2D picture, under the speech bubble,
+   the tags and the old-screen lines (.scene::after), which all stay on top as before. */
+
+.world3d {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.world3d__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* A radiation hit: a purple flash, the same as the 2D map's (keyframes in scenes.css) */
+.world3d__hit {
+  position: absolute;
+  inset: 0;
+  background: #b57bff;
+  opacity: 0;
+  pointer-events: none;
+  animation: px-hit-small 0.4s steps(1) 1;
+}
+
+.world3d__hit--big {
+  animation-name: px-hit-big;
+  animation-duration: 1.5s;
+}

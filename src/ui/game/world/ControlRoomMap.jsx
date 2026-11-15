@@ -8,7 +8,7 @@ import { roomDialog } from './dialogs.jsx';
 import { spriteRects, diskRects } from '../../components/pixel/spriteRects.jsx';
 import { PALETTE } from '../../components/pixel/sprites.js';
 import { PixelIcon } from '../../components/index.js';
-import { COOLER, SERVER, DESK, SCREEN_BACK, ENGINEER } from './props.js';
+import { COOLER, SERVER, DESK, SCREEN_BACK, ENGINEER, TELESCOPE, MONITOR, RADIO_DESK, PLANT } from './props.js';
 
 // Mission Control's map: the control room on Earth, seen from above like an old role-playing game.
 // Commander Sola walks to a place and uses it:
@@ -18,49 +18,6 @@ import { COOLER, SERVER, DESK, SCREEN_BACK, ENGINEER } from './props.js';
 // Props:
 //   view    the Mission Control view (getMissionControlView)
 //   onWarn  called with a warning key, e.g. onWarn('shelterNow')
-
-const TELESCOPE = [
-  '.......KK.',
-  '......KWWK',
-  '.....KWGWK',
-  '....KWGKK.',
-  '...KWGK...',
-  '..KWGK....',
-  '..KKK.....',
-  '...KK.....',
-  '..KgKg....',
-  '..Kg.Kg...',
-  '.Kg...Kg..',
-  '.KK...KK..'
-];
-
-const MONITOR = [
-  'KKKKKKKKKKKK',
-  'KDDDDDDDDDDK',
-  'KDDDDDDDDDDK',
-  'KDLDDDLDDDDK',
-  'KDDLDLDLDDDK',
-  'KDDDLDDDLDLK',
-  'KDDDDDDDDLDK',
-  'KKKKKKKKKKKK',
-  '....KggK....',
-  '..KKKKKKKK..'
-];
-
-const RADIO_DESK = [
-  '..............K.........',
-  '..............K.....KK..',
-  '...........KKKKKKK..KK..',
-  '...........KgggggK...K..',
-  '...........KgCgYgK...K..',
-  'KKKKKKKKKKKKKKKKKKKKKKKK',
-  'KOOOOOOOOOOOOOOOOOOOOOOK',
-  'KssssssssssssssssssssssK',
-  'KsK..................KsK',
-  'KKK..................KKK'
-];
-
-const PLANT = ['..N..N..', '.NLN.N..', '..NLNLN.', '.NLNNLN.', '..NNLN..', '...NN...', '.KKKKKK.', '.KOOOOK.', '.KOOOOK.', '..KKKK..'];
 
 const place = (id) => placeCorner(ROOM_MAP.places.find((p) => p.id === id));
 
@@ -137,6 +94,9 @@ export default function ControlRoomMap({ view, onWarn, active = true }) {
       onStep={close}
       onDialogClose={close}
       dialog={dialog || null}
+      // The 3D picture shows the same things as the 2D one below (world3d/scene.js).
+      // radio: the light on the radio desk (red in the blackout, cyan once a warning is sent)
+      scene3d={{ kind: 'room', radio: blackout ? 'blackout' : view.warningThisTurn ? 'sent' : 'idle' }}
     >
       {/* Floor tiles */}
       <rect width={width} height={ROOM_MAP.height * TILE} fill={PALETTE.k} />
