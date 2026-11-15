@@ -16,6 +16,7 @@ const TAPS_TO_UNLOCK = 5;
 //   onCreateRoom(world)              I'm the Astronaut
 //   onJoinRoom(code)                 I'm Mission Control; code is already cleaned, e.g. 'MOON-4821'
 //   onHowToPlay(), onDataSources()   small links
+//   onTeachers()                     small link: For teachers (optional)
 //   onBriefing()                     small link: the mission briefing (the game's introduction)
 //   onUnlockMars()                   called after 5 taps on the title
 export default function HomeScreen({
@@ -28,6 +29,7 @@ export default function HomeScreen({
   onHowToPlay,
   onBriefing,
   onDataSources,
+  onTeachers,
   onUnlockMars
 }) {
   const [picked, setPicked] = useState('moon');
@@ -156,6 +158,11 @@ export default function HomeScreen({
         <button type="button" className="flow-link" onClick={onDataSources}>
           <span aria-hidden="true">🛰️</span> Data sources
         </button>
+        {onTeachers && (
+          <button type="button" className="flow-link" onClick={onTeachers}>
+            <span aria-hidden="true">🍎</span> For teachers
+          </button>
+        )}
       </nav>
     </main>
   );

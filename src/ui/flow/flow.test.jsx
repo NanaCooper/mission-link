@@ -7,6 +7,7 @@ import LobbyScreen from './LobbyScreen.jsx';
 import EndScreen from './EndScreen.jsx';
 import HowToPlayScreen from './HowToPlayScreen.jsx';
 import DataSourcesScreen from './DataSourcesScreen.jsx';
+import TeacherScreen, { HOW_TO_RUN, QUESTIONS, TEACHES } from './TeacherScreen.jsx';
 import { ALERTS_FACT, BLACKOUT_FACT, MARS_FACT, MOON_DELAY_FACT } from './facts.js';
 import { LEARNED, TRY_NEXT, missionControlScore, missionDebrief } from './debrief.js';
 import { fakeMarsWin, fakeMoonLost, fakeMoonWin } from './fakeFlow.js';
@@ -263,5 +264,22 @@ describe('DataSourcesScreen', () => {
     for (const s of storms) expect(out).toContain(s.title);
     const alerts = out.split(ALERTS_FACT.text).length - 1;
     expect(alerts).toBe(1);
+  });
+});
+
+describe('TeacherScreen', () => {
+  it('says what the game teaches, how to run it, and what to talk about, in short lines', () => {
+    const out = html(<TeacherScreen onBack={() => {}} onDataSources={() => {}} />);
+    for (const line of [...TEACHES, ...HOW_TO_RUN, ...QUESTIONS]) {
+      expect(out).toContain(line.replace(/'/g, '&#x27;'));
+      expect(line.split(/\s+/).length).toBeLessThanOrEqual(25);
+    }
+    expect(QUESTIONS.length).toBeGreaterThanOrEqual(4);
+    expect(out).toContain('See every source');
+  });
+
+  it('is linked from Home only when the app passes the link', () => {
+    expect(html(<HomeScreen onTeachers={() => {}} />)).toContain('For teachers');
+    expect(html(<HomeScreen />)).not.toContain('For teachers');
   });
 });
