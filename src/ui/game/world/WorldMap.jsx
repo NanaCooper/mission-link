@@ -1,11 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { spriteRects } from '../../components/pixel/spriteRects.jsx';
 import { PALETTE } from '../../components/pixel/sprites.js';
-import { TILE, WALK_REPEAT_MS, stepHero, placeNearHero, placeTop, nextChoice, facingToward } from './worldMap.js';
+import {
+  TILE, WALK_REPEAT_MS, stepHero, stepWait, celebrationFor, placeNearHero, placeTop, nextChoice, facingToward
+} from './worldMap.js';
 import { bindMapKeys } from './mapKeys.js';
 import Joystick from './Joystick.jsx';
+import { canUse3D } from '../world3d/support.js';
+import Boundary3D from '../world3d/Boundary3D.jsx';
 import '../scenes/scenes.css';
 import './world.css';
+
+// The 3D picture (and three.js with it) only loads on devices that show it
+const World3D = lazy(() => import('../world3d/World3D.jsx'));
 
 // A walkable pixel map, like an old role-playing game.
 // It fills the box it is put in and keeps the whole map in view (bars of ground colour at the
@@ -52,6 +59,16 @@ import './world.css';
 //                 In an info box Space / E / Enter closes it, and an arrow closes it and walks.
 //   onDialogClose optional: called to close the box (Escape, or the info box's keys)
 //   onStep        optional: called after every step (the screen can close its text box)
+//   scene3d       optional: { kind: 'base' | 'room', ... } turns on the 3D picture (world3d/) on
+//                 devices that can show it. Everything else (walking, the text boxes, the
+//                 controls) stays the same. Without it, or if 3D cannot run, the 2D picture shows.
+//   stepMs        optional: milliseconds per step (default WALK_REPEAT_MS, the pace on Earth).
+//                 The Moon and Mars pass a slower pace (low gravity). Steps are never closer than
+//                 this, even when the player taps fast.
+//   celebrate     optional, default true: using a place makes the character hop and the place
+//                 sparkle. The Moon and Mars bases turn it off.
+//   walkText      optional: what the speech bubble says when nothing is near
+//                 (default "Walk <name> to a place, then press USE.")
 
 const HERO_W = 10;
 const HERO_H = 14;
@@ -87,9 +104,15 @@ export default function WorldMap({
   dialog = null,
   onDialogClose,
   onStep,
-  stepPuff = null
+  stepPuff = null,
+  scene3d = null,
+  stepMs = WALK_REPEAT_MS,
+  celebrate = true,
+  walkText = null
 }) {
   const [position, setPosition] = useState(start);
+  // Set if the 3D picture broke: this map then stays 2D
+  const [failed3d, setFailed3d] = useState(false);
   const [steps, setSteps] = useState(0);
   // Each USE: the character hops and the place sparkles. { count, place }
   const [used, setUsed] = useState({ count: 0, place: null });
@@ -129,7 +152,7 @@ export default function WorldMap({
   };
   const act = () => {
     if (!usable) return;
-    // Turn to face the place, hop, and make it sparkle, then let the screen do the rest.
+    // Turn to face the place, hop and sparkle (if this map celebrates), then let the screen do the rest.
     const facing = facingToward(position, near);
     if (facing && facing !== position.facing) setPosition((current) => ({ ...current, facing }));
     setUsed((now) => ({ count: now.count + 1, place: near }));
@@ -143,24 +166,54 @@ export default function WorldMap({
     move: (step) => dialog && setHighlight({ id: dialogId, index: nextChoice(dialog.choices, chosen, step) }),
     close: () => onDialogClose?.()
   };
-  const latest = useRef({ walk, act, box });
+  const latest = useRef({ walk, act, box, stepMs });
   useEffect(() => {
-    latest.current = { walk, act, box };
+    latest.current = { walk, act, box, stepMs };
   });
 
   // Walking while a key, an arrow button or the joystick is held: one step now, then one
-  // step every WALK_REPEAT_MS. The same pace for all three.
+  // step every stepMs. The same pace for all three. Steps are never closer than stepMs: a tap
+  // during the wait still makes one step, as soon as the wait is over, so tapping fast cannot
+  // beat the slow walk on the Moon and Mars.
   const timer = useRef(null);
+  const waiting = useRef(null);
+  const holding = useRef(false);
+  const lastStepAt = useRef(-Infinity);
+  const stepOnce = (direction) => {
+    lastStepAt.current = Date.now();
+    latest.current.walk(direction);
+  };
   const stopWalking = () => {
+    holding.current = false;
     clearInterval(timer.current);
     timer.current = null;
   };
   const startWalking = (direction) => {
-    stopWalking();
-    latest.current.walk(direction);
-    timer.current = setInterval(() => latest.current.walk(direction), WALK_REPEAT_MS);
+    clearInterval(timer.current);
+    clearTimeout(waiting.current);
+    timer.current = null;
+    waiting.current = null;
+    holding.current = true;
+    const pace = latest.current.stepMs;
+    const go = () => {
+      waiting.current = null;
+      stepOnce(direction);
+      // Still held (key, arrow button or joystick): keep walking at the same pace
+      if (holding.current) timer.current = setInterval(() => stepOnce(direction), pace);
+    };
+    const wait = stepWait(lastStepAt.current, Date.now(), pace);
+    if (wait > 0) waiting.current = setTimeout(go, wait);
+    else go();
   };
-  useEffect(() => stopWalking, []);
+  useEffect(
+    () => () => {
+      stopWalking();
+      clearTimeout(waiting.current);
+    },
+    // stopWalking only reads refs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   // The keyboard, on the whole page, but only while this map is active (see mapKeys.js).
   // The text box keeps its highlight itself, so the keys never get lost in the browser's focus.
@@ -199,7 +252,11 @@ export default function WorldMap({
   const legs = sideways && hero.sprites.sideLegs ? hero.sprites.sideLegs : hero.sprites.legs;
   const mirror = sideways && position.facing === 'left' ? `translate(${HERO_W} 0) scale(-1 1)` : undefined;
   const legsY = body.length;
-  const sparkleAt = used.place ? placeTop(used.place) : null;
+  // Using a place: a hop and sparkles, unless this map turns them off (the Moon and Mars bases)
+  const effects = celebrationFor(used, celebrate);
+  const sparkleAt = effects.sparkle ? placeTop(effects.sparkle) : null;
+  // A slower pace (low gravity) slides the 2D character more slowly too
+  const slide = stepMs !== WALK_REPEAT_MS ? { transitionDuration: `${Math.round(stepMs * 0.9)}ms` } : null;
   const arrowAt = near ? placeTop(near) : null;
   const nearName = near ? placeNames[near.id] ?? near.id : null;
 
@@ -221,12 +278,86 @@ export default function WorldMap({
     );
     bubbleKind = 'place';
   } else {
-    bubble = `Walk ${hero.name} to a place, then press USE.`;
+    bubble = walkText ?? `Walk ${hero.name} to a place, then press USE.`;
     bubbleKind = 'walk';
   }
   const bubbleClass = `world__bubble world__bubble--${position.x < map.width / 3 ? 'right' : 'left'} world__bubble--${bubbleKind}${
     steps > 0 ? ' is-started' : ''
   }`;
+
+  // The picture: 3D on devices that can show it (scene3d given), otherwise the 2D pixel drawing.
+  const show3d = Boolean(scene3d) && !failed3d && canUse3D();
+  const picture2d = (
+    <svg
+      className="scene__art"
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="xMidYMid meet"
+      shapeRendering="crispEdges"
+      role="img"
+      aria-label={label}
+      focusable="false"
+    >
+      {children}
+
+      {/* A small puff where the character lands after a step */}
+      {stepPuff && steps > 0 && !hidden && (
+        <g key={`puff-${steps}`} className="world__puff" aria-hidden="true">
+          <rect x={heroX + 1} y={heroY + HERO_H - 1} width={2} height={1} fill={stepPuff} />
+          <rect x={heroX + HERO_W - 3} y={heroY + HERO_H - 1} width={2} height={1} fill={stepPuff} />
+          <rect x={heroX - 1} y={heroY + HERO_H - 2} width={1} height={1} fill={stepPuff} />
+          <rect x={heroX + HERO_W} y={heroY + HERO_H - 2} width={1} height={1} fill={stepPuff} />
+        </g>
+      )}
+
+      {/* The character: slides one square per step; bobs while walking, breathes while standing,
+          hops when using a place (unless celebrate is off). Walking left shows the side view mirrored. */}
+      {!hidden && (
+        <g className="world__hero" style={{ transform: `translate(${heroX}px, ${heroY}px)`, ...slide }}>
+          <g key={`use-${used.count}`} className={effects.hop ? 'world__hop' : undefined}>
+            <g transform={mirror}>
+              <g key={`step-${steps}`} className={steps > 0 ? 'world__bob' : undefined}>
+                <g className="world__breathe">{spriteRects(body, { id: 'hero' })}</g>
+              </g>
+              {steps === 0 ? (
+                <g>{spriteRects(legs.stand, { y: legsY, id: 'legs' })}</g>
+              ) : (
+                <g key={steps}>
+                  <g className="world__legs-moving">
+                    {spriteRects(steps % 2 ? legs.stepLeft : legs.stepRight, { y: legsY, id: 'step' })}
+                  </g>
+                  <g className="world__legs-still">{spriteRects(legs.stand, { y: legsY, id: 'legs' })}</g>
+                </g>
+              )}
+            </g>
+          </g>
+        </g>
+      )}
+
+      {/* Using a place: a burst of sparkles over it */}
+      {sparkleAt && (
+        <g key={`sparkle-${used.count}`} className="world__sparkle" aria-hidden="true">
+          <rect x={sparkleAt.x - 1} y={sparkleAt.y - 4} width={2} height={2} fill={PALETTE.Y} />
+          <rect x={sparkleAt.x - 6} y={sparkleAt.y - 1} width={1} height={1} fill={PALETTE.W} />
+          <rect x={sparkleAt.x + 5} y={sparkleAt.y - 1} width={1} height={1} fill={PALETTE.W} />
+          <rect x={sparkleAt.x - 4} y={sparkleAt.y - 6} width={1} height={1} fill={PALETTE.C} />
+          <rect x={sparkleAt.x + 3} y={sparkleAt.y - 6} width={1} height={1} fill={PALETTE.C} />
+          <rect x={sparkleAt.x} y={sparkleAt.y - 9} width={1} height={1} fill={PALETTE.W} />
+        </g>
+      )}
+
+      {foreground}
+
+      {/* "You can use this": a bouncing arrow over the place */}
+      {arrowAt && !hidden && (
+        <g className="px-bob" aria-hidden="true">
+          <rect x={arrowAt.x - 3} y={arrowAt.y - 7} width={7} height={5} fill={PALETTE.K} />
+          <rect x={arrowAt.x - 2} y={arrowAt.y - 6} width={5} height={1} fill={PALETTE.Y} />
+          <rect x={arrowAt.x - 1} y={arrowAt.y - 5} width={3} height={1} fill={PALETTE.Y} />
+          <rect x={arrowAt.x} y={arrowAt.y - 4} width={1} height={1} fill={PALETTE.Y} />
+        </g>
+      )}
+    </svg>
+  );
 
   return (
     <div className={`world${talking ? ' world--talking' : ''}`}>
@@ -237,75 +368,29 @@ export default function WorldMap({
         role="group"
         aria-label={`Map. Walk with the arrow keys. Press Space to use the place in front of ${hero.name}.`}
       >
-        <svg
-          className="scene__art"
-          viewBox={`0 0 ${width} ${height}`}
-          preserveAspectRatio="xMidYMid meet"
-          shapeRendering="crispEdges"
-          role="img"
-          aria-label={label}
-          focusable="false"
-        >
-          {children}
-
-          {/* A small puff where the character lands after a step */}
-          {stepPuff && steps > 0 && !hidden && (
-            <g key={`puff-${steps}`} className="world__puff" aria-hidden="true">
-              <rect x={heroX + 1} y={heroY + HERO_H - 1} width={2} height={1} fill={stepPuff} />
-              <rect x={heroX + HERO_W - 3} y={heroY + HERO_H - 1} width={2} height={1} fill={stepPuff} />
-              <rect x={heroX - 1} y={heroY + HERO_H - 2} width={1} height={1} fill={stepPuff} />
-              <rect x={heroX + HERO_W} y={heroY + HERO_H - 2} width={1} height={1} fill={stepPuff} />
-            </g>
-          )}
-
-          {/* The character: slides one square per step; bobs while walking, breathes while standing,
-              hops when using a place. Walking left shows the side view mirrored. */}
-          {!hidden && (
-            <g className="world__hero" style={{ transform: `translate(${heroX}px, ${heroY}px)` }}>
-              <g key={`use-${used.count}`} className={used.count > 0 ? 'world__hop' : undefined}>
-                <g transform={mirror}>
-                  <g key={`step-${steps}`} className={steps > 0 ? 'world__bob' : undefined}>
-                    <g className="world__breathe">{spriteRects(body, { id: 'hero' })}</g>
-                  </g>
-                  {steps === 0 ? (
-                    <g>{spriteRects(legs.stand, { y: legsY, id: 'legs' })}</g>
-                  ) : (
-                    <g key={steps}>
-                      <g className="world__legs-moving">
-                        {spriteRects(steps % 2 ? legs.stepLeft : legs.stepRight, { y: legsY, id: 'step' })}
-                      </g>
-                      <g className="world__legs-still">{spriteRects(legs.stand, { y: legsY, id: 'legs' })}</g>
-                    </g>
-                  )}
-                </g>
-              </g>
-            </g>
-          )}
-
-          {/* Using a place: a burst of sparkles over it */}
-          {sparkleAt && (
-            <g key={`sparkle-${used.count}`} className="world__sparkle" aria-hidden="true">
-              <rect x={sparkleAt.x - 1} y={sparkleAt.y - 4} width={2} height={2} fill={PALETTE.Y} />
-              <rect x={sparkleAt.x - 6} y={sparkleAt.y - 1} width={1} height={1} fill={PALETTE.W} />
-              <rect x={sparkleAt.x + 5} y={sparkleAt.y - 1} width={1} height={1} fill={PALETTE.W} />
-              <rect x={sparkleAt.x - 4} y={sparkleAt.y - 6} width={1} height={1} fill={PALETTE.C} />
-              <rect x={sparkleAt.x + 3} y={sparkleAt.y - 6} width={1} height={1} fill={PALETTE.C} />
-              <rect x={sparkleAt.x} y={sparkleAt.y - 9} width={1} height={1} fill={PALETTE.W} />
-            </g>
-          )}
-
-          {foreground}
-
-          {/* "You can use this": a bouncing arrow over the place */}
-          {arrowAt && !hidden && (
-            <g className="px-bob" aria-hidden="true">
-              <rect x={arrowAt.x - 3} y={arrowAt.y - 7} width={7} height={5} fill={PALETTE.K} />
-              <rect x={arrowAt.x - 2} y={arrowAt.y - 6} width={5} height={1} fill={PALETTE.Y} />
-              <rect x={arrowAt.x - 1} y={arrowAt.y - 5} width={3} height={1} fill={PALETTE.Y} />
-              <rect x={arrowAt.x} y={arrowAt.y - 4} width={1} height={1} fill={PALETTE.Y} />
-            </g>
-          )}
-        </svg>
+        {show3d ? (
+          <Boundary3D fallback={picture2d} onError={() => setFailed3d(true)}>
+            <Suspense fallback={picture2d}>
+              <World3D
+                map={map}
+                hero={hero}
+                position={position}
+                steps={steps}
+                hidden={hidden}
+                used={used}
+                near={near}
+                scene={scene3d}
+                label={label}
+                puff={stepPuff}
+                stepMs={stepMs}
+                celebrate={celebrate}
+                onFail={() => setFailed3d(true)}
+              />
+            </Suspense>
+          </Boundary3D>
+        ) : (
+          picture2d
+        )}
         {overlay && <div className="scene__overlay">{overlay}</div>}
 
         {!talking && (

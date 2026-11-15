@@ -96,3 +96,31 @@ describe('WorldMap', () => {
     expect(render({ active: false })).toBe(render({ active: true }));
   });
 });
+
+describe('the 3D picture', () => {
+  it('with scene3d, the map still draws the 2D picture where 3D cannot run (tests, old devices)', () => {
+    const html = render({ scene3d: { kind: 'base', world: 'moon' } });
+    expect(html).toContain('<svg');
+    expect(html).toContain('aria-label="Test map"');
+    expect(html).not.toContain('world3d');
+  });
+});
+
+describe('pace, celebration and the walk hint', () => {
+  it('keeps the Earth pace by default: no slower slide', () => {
+    expect(render()).not.toContain('transition-duration');
+  });
+
+  it('a slower pace slides the character more slowly', () => {
+    expect(render({ stepMs: 400 })).toContain('transition-duration:360ms');
+  });
+
+  it('can say something else when nothing is near', () => {
+    expect(render({ walkText: 'Low gravity here.' })).toContain('Low gravity here.');
+    expect(render()).toContain('Walk Nova to a place, then press USE.');
+  });
+
+  it('draws the same before anything is used, celebrating or not', () => {
+    expect(render({ celebrate: false })).toBe(render({ celebrate: true }));
+  });
+});

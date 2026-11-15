@@ -37,5 +37,11 @@ export const PLACE_NAMES = {
 
 export const BASE_START = { x: 5, y: 4, facing: 'down' };
 
+// Low gravity: Nova cannot walk fast on the Moon or Mars. Milliseconds per step (Sola on Earth
+// takes WALK_REPEAT_MS, 170). The Moon pulls about 1/6 as hard as Earth and Mars about 3/8, so
+// the Moon is the slowest. These are not real speeds, just the feel. The farthest place is
+// still about 2 seconds of walking away (lowGravity.test.js checks it).
+export const BASE_STEP_MS = { moon: 420, mars: 300 };
+
 // A radiation hit this big or bigger flashes the picture three times. Smaller hits flash once, faintly.
 export const BIG_HIT = 10;

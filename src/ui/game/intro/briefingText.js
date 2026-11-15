@@ -76,22 +76,3 @@ export function fillStorm(text, storm) {
     .replace('{storm}', storm?.title || 'a real solar storm')
     .replace('{date}', storm?.realDates || 'NASA records');
 }
-
-// Remember that this device has seen the briefing, so it only opens on its own the first time.
-const SEEN_KEY = 'missionlink:briefing-seen';
-
-export function hasSeenBriefing(storage = globalThis.localStorage) {
-  try {
-    return storage?.getItem(SEEN_KEY) === 'yes';
-  } catch {
-    return false;
-  }
-}
-
-export function markBriefingSeen(storage = globalThis.localStorage) {
-  try {
-    storage?.setItem(SEEN_KEY, 'yes');
-  } catch {
-    // Storage blocked (private mode): the briefing may show again next time. Play still works.
-  }
-}

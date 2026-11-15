@@ -17,8 +17,10 @@ import './SplitScreen.css';
 //   The Astronaut moves once Mission Control has sent this wave's warning (the engine's
 //   waitingForMissionControl), so the device goes back and forth: one warning, one move.
 //
-// Props: { astronautView, missionControlView, onMove, onWarn, onPauseChange }
-export default function SplitScreen({ astronautView, missionControlView, onMove, onWarn, onPauseChange }) {
+// Props: { astronautView, missionControlView, onMove, onWarn, onPauseChange, onShowingChange }
+//   onShowingChange(player)  whose screen shows now ('missionControl' | 'astronaut'), for the music.
+//                            It changes when the next player takes the device, not at the hand-over card.
+export default function SplitScreen({ astronautView, missionControlView, onMove, onWarn, onPauseChange, onShowingChange }) {
   // Whose menu is open. Only the screen that shows can have one open (GameHud reports a hidden
   // screen as closed), so handing the device over always un-pauses.
   const [menuOpen, setMenuOpen] = useState({ missionControl: false, astronaut: false });
@@ -41,6 +43,13 @@ export default function SplitScreen({ astronautView, missionControlView, onMove,
     setMenuOpen((now) => (now[player] === open ? now : { ...now, [player]: open }));
 
   const { tab } = showing;
+  const reportShowing = useRef(onShowingChange);
+  useEffect(() => {
+    reportShowing.current = onShowingChange;
+  });
+  useEffect(() => {
+    reportShowing.current?.(tab);
+  }, [tab]);
 
   const takeOver = () => {
     setShowing({ tab: passingTo, sinceTurn: astronautView.turn });

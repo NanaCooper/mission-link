@@ -5,18 +5,30 @@ import { ROLES } from '../../shared/contract.js';
 
 /**
  * Which screen a running session should show.
- *   'lobby'  waiting for the game (or, for the online Astronaut, for Mission Control to join)
- *   'end'    the level is won or lost
- *   'game'   playing
+ *   'briefing'  the mission briefing, before Play again or the next level (briefing: true).
+ *               Every new game starts with it; the level waits behind it.
+ *   'lobby'     waiting for the game (or, for the online Astronaut, for Mission Control to join)
+ *   'end'       the level is won or lost
+ *   'game'      playing
  * Once the first move is made, a partner who drops out gets a banner, not the lobby.
  */
-export function pickGameScreen({ mode, role, state, partnerConnected }) {
+export function pickGameScreen({ mode, role, state, partnerConnected, briefing = false }) {
+  if (briefing) return 'briefing';
   const status = state?.status ?? 'lobby';
   if (status === 'won' || status === 'lost') return 'end';
   if (status === 'lobby') return 'lobby';
   const waitingForFirstPartner =
     mode === 'online' && role === ROLES.ASTRONAUT && !partnerConnected && !state.lastMove;
   return waitingForFirstPartner ? 'lobby' : 'game';
+}
+
+/**
+ * True when a new game has just started on top of a finished one (Play again or the next level):
+ * the state goes from won or lost back to playing. Online, only the Astronaut can start it, so
+ * Mission Control's device uses this to open the mission briefing too, like every new game.
+ */
+export function newGameStarted(before, after) {
+  return (before === 'won' || before === 'lost') && after === 'playing';
 }
 
 /** The banner shown on top of an online game, or null. Kid words. */

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { NO_PROGRESS, gameBanner, loadProgress, pickGameScreen, pickStorm, progressAfter, saveProgress } from './appFlow.js';
+import { NO_PROGRESS, gameBanner, loadProgress, newGameStarted, pickGameScreen, pickStorm, progressAfter, saveProgress } from './appFlow.js';
 
 const playing = { status: 'playing', lastMove: null };
 
@@ -16,6 +16,13 @@ describe('pickGameScreen', () => {
   it('does not send the Astronaut back to the lobby mid-game', () => {
     const midGame = { status: 'playing', lastMove: 'shelter' };
     expect(pickGameScreen({ mode: 'online', role: 'astronaut', state: midGame, partnerConnected: false })).toBe('game');
+  });
+
+  it('shows the mission briefing before Play again or the next level, in every mode', () => {
+    // The finished level waits behind the briefing: it restarts when the player starts or skips
+    expect(pickGameScreen({ mode: 'split', state: { status: 'won' }, briefing: true })).toBe('briefing');
+    expect(pickGameScreen({ mode: 'online', role: 'astronaut', state: { status: 'lost' }, partnerConnected: true, briefing: true })).toBe('briefing');
+    expect(pickGameScreen({ mode: 'split', state: { status: 'won' }, briefing: false })).toBe('end');
   });
 
   it('plays split mode straight away and ends on won or lost', () => {
@@ -80,5 +87,19 @@ describe('pickStorm', () => {
 
   it('copes with no storms', () => {
     expect(pickStorm([], null)).toBeNull();
+  });
+});
+
+describe('newGameStarted (online Mission Control opens the briefing for a new game)', () => {
+  it('is true when a finished level starts again: Play again or the next level', () => {
+    expect(newGameStarted('won', 'playing')).toBe(true);
+    expect(newGameStarted('lost', 'playing')).toBe(true);
+  });
+
+  it('is false while playing, at the end, and when Mission Control first joins', () => {
+    expect(newGameStarted('playing', 'playing')).toBe(false);
+    expect(newGameStarted('playing', 'won')).toBe(false);
+    expect(newGameStarted('lobby', 'playing')).toBe(false); // the first game: the briefing already showed before joining
+    expect(newGameStarted(undefined, 'playing')).toBe(false);
   });
 });

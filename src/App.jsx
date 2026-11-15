@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ROLES } from './shared/contract.js';
 import { useGameSession } from './realtime/useGameSession.js';
 import {
@@ -19,15 +19,19 @@ import HowToPlayScreen from './ui/flow/HowToPlayScreen.jsx';
 import DataSourcesScreen from './ui/flow/DataSourcesScreen.jsx';
 import TeacherScreen from './ui/flow/TeacherScreen.jsx';
 import MissionBriefing from './ui/game/intro/MissionBriefing.jsx';
-import { hasSeenBriefing, markBriefingSeen } from './ui/game/intro/briefingText.js';
-import { gameBanner, loadProgress, pickGameScreen, pickStorm, progressAfter, saveProgress } from './ui/flow/appFlow.js';
+import { trackFor, useBackgroundMusic } from './ui/game/music.js';
+import { listenForFirstTap } from './ui/game/sound.js';
+import {
+  gameBanner, loadProgress, newGameStarted, pickGameScreen, pickStorm, progressAfter, saveProgress
+} from './ui/flow/appFlow.js';
 
 // Screen switching with React state, no router.
 //   home -> play on one device -> game -> end
 //   home -> create room -> lobby -> Astronaut game -> end
 //   home -> join room -> Mission Control game -> end
 //   home <-> How to play, home <-> For teachers, home/end <-> Data sources
-//   the first mission on this device starts with the mission briefing (also: home -> Mission briefing)
+//   every new game starts with the mission briefing, also Play again and the next level
+//   (also: home -> Mission briefing)
 
 const scrollToTop = () => {
   try {
@@ -41,10 +45,14 @@ export default function App() {
   const [page, setPage] = useState('home'); // 'home' | 'howTo' | 'sources' | 'teachers' | 'briefing' | 'game'
   const [session, setSession] = useState(null); // { id, mode, role, code, world, moonStars, stormId, solo }
   const [progress, setProgress] = useState(() => loadProgress());
-  // The mission waiting behind the briefing (the first time), or null when it was opened from home.
+  // The mission waiting behind the briefing, or null when it was opened from home.
   const [afterBriefing, setAfterBriefing] = useState(null);
+  // Online Mission Control: the storm of the new game the Astronaut started (for the briefing's text)
+  const [briefingStormId, setBriefingStormId] = useState(null);
 
   useEffect(scrollToTop, [page]);
+  // Sound and music need a first tap or key press (browser rule): listen for it from the start.
+  useEffect(listenForFirstTap, []);
 
   const updateProgress = (next) => {
     setProgress((old) => {
@@ -58,20 +66,33 @@ export default function App() {
     setSession({ id: Date.now(), ...options });
     setPage('game');
   };
-  // The first mission on this device opens the briefing first, so everyone knows the goal.
+  // Every new game opens the briefing first, so everyone knows the goal (Skip is always there).
   // Every new game plays one of the real NASA storms, picked at random (chosen here, so the
   // briefing can name it). Mission Control joining a room never picks: it follows the Astronaut.
   const start = (options) => {
     const game = options.role === ROLES.MISSION_CONTROL ? options : { ...options, stormId: pickStorm(REAL_STORM_IDS) };
-    if (hasSeenBriefing()) return startNow(game);
+    setBriefingStormId(null);
     setAfterBriefing(game);
     setPage('briefing');
   };
+  // Online Mission Control, when the Astronaut starts a new game (Play again or the next level):
+  // the briefing opens here too. Leaving the game for it also leaves the room for a moment, so the
+  // Astronaut's device shows "Waiting for your partner..." and the signal clock stops (it only
+  // runs while Mission Control is in the room). Starting or skipping the briefing joins again.
+  const briefingForNewGame = (stormId) => {
+    if (!session) return;
+    const game = { ...session };
+    delete game.id; // joining again gets a new session id
+    setBriefingStormId(stormId ?? null);
+    setAfterBriefing(game);
+    setSession(null);
+    setPage('briefing');
+  };
   const briefingDone = () => {
-    markBriefingSeen();
     if (afterBriefing) startNow(afterBriefing);
     else setPage('home');
     setAfterBriefing(null);
+    setBriefingStormId(null);
   };
   const goHome = () => {
     setSession(null); // unmounting the game closes the room
@@ -86,13 +107,14 @@ export default function App() {
         session={session}
         onLevelEnd={(result) => updateProgress((old) => progressAfter(old, result))}
         onHome={goHome}
+        onNewGame={briefingForNewGame}
       />
     );
   }
   if (page === 'briefing') {
     return (
       <MissionBriefing
-        storm={getStorm(afterBriefing?.stormId ?? null)}
+        storm={getStorm(briefingStormId ?? afterBriefing?.stormId ?? null)}
         onDone={briefingDone}
         startLabel={afterBriefing ? undefined : 'Back to home'}
       />
@@ -125,7 +147,7 @@ export default function App() {
 
 // One running session. Lives as long as the room, so Data sources opens inside it
 // (leaving would close an online room).
-function Game({ session, onLevelEnd, onHome }) {
+function Game({ session, onLevelEnd, onHome, onNewGame }) {
   const { mode, role, code, world, moonStars, stormId = null, solo = false } = session;
   // One device: a player opened the Menu, so the game (the signal clock) is paused.
   const [paused, setPaused] = useState(false);
@@ -142,8 +164,11 @@ function Game({ session, onLevelEnd, onHome }) {
     stormId,
   });
   const [showSources, setShowSources] = useState(false);
+  // Play again and the next level open the mission briefing first, like every new game. The game
+  // (and an online room) stays open behind it; the level restarts when the player starts or skips.
+  const [nextGame, setNextGame] = useState(null); // restart() options waiting behind the briefing
 
-  const screen = pickGameScreen({ mode, role, state, partnerConnected });
+  const screen = pickGameScreen({ mode, role, state, partnerConnected, briefing: Boolean(nextGame) });
   const banner = gameBanner({ mode, screen, partnerConnected, error });
   const isMissionControl = mode === 'online' && role === ROLES.MISSION_CONTROL;
 
@@ -158,8 +183,47 @@ function Game({ session, onLevelEnd, onHome }) {
 
   useEffect(scrollToTop, [screen, state.world, showSources]);
 
+  // Online Mission Control: the Astronaut started a new game (Play again or the next level).
+  // Open the briefing here too, like every new game (App leaves the room while it shows).
+  const lastStatus = useRef(state.status);
+  useEffect(() => {
+    const before = lastStatus.current;
+    lastStatus.current = state.status;
+    if (isMissionControl && newGameStarted(before, state.status)) onNewGame?.(state.stormId);
+  }, [isMissionControl, state.status, state.stormId, onNewGame]);
+
+  // The background music of the game screen on show (music.js). One device: whoever holds it.
+  // Online: each device plays its own player's music. Nothing on the end screen, lobby or briefing.
+  const [splitPlayer, setSplitPlayer] = useState(ROLES.MISSION_CONTROL);
+  let musicPlayer = null;
+  if (screen === 'game' && !showSources) {
+    if (mode === 'split') musicPlayer = solo ? ROLES.ASTRONAUT : splitPlayer;
+    else musicPlayer = isMissionControl ? ROLES.MISSION_CONTROL : ROLES.ASTRONAUT;
+  }
+  useBackgroundMusic(
+    trackFor({
+      player: musicPlayer,
+      world: state.world,
+      status: state.status,
+      // The Astronaut's own messages only (the base gets tenser after a danger warning)
+      inbox: musicPlayer === ROLES.ASTRONAUT ? getAstronautView(state).inbox : []
+    })
+  );
+
   if (showSources) {
     return <DataSourcesScreen storm={getGameStorm(state)} onBack={() => setShowSources(false)} />;
+  }
+
+  if (screen === 'briefing') {
+    return (
+      <MissionBriefing
+        storm={getStorm(nextGame.stormId ?? state.stormId ?? null)}
+        onDone={() => {
+          restart(nextGame);
+          setNextGame(null);
+        }}
+      />
+    );
   }
 
   if (screen === 'lobby') {
@@ -176,9 +240,9 @@ function Game({ session, onLevelEnd, onHome }) {
         crew={getAstronautView(state)}
         missionControl={getMissionControlView(state)}
         canContinue={!isMissionControl}
-        onNextLevel={(stars) => restart({ world: 'mars', moonStars: stars })}
+        onNextLevel={(stars) => setNextGame({ world: 'mars', moonStars: stars })}
         // Play again: the same level with another real storm, so it plays differently
-        onPlayAgain={() => restart({ stormId: pickStorm(REAL_STORM_IDS, state.stormId) })}
+        onPlayAgain={() => setNextGame({ stormId: pickStorm(REAL_STORM_IDS, state.stormId) })}
         onHome={onHome}
         onDataSources={() => setShowSources(true)}
       />
@@ -194,6 +258,7 @@ function Game({ session, onLevelEnd, onHome }) {
         onMove={sendMove}
         onWarn={sendWarning}
         onPauseChange={setPaused}
+        onShowingChange={setSplitPlayer}
       />
     );
   } else if (isMissionControl) {

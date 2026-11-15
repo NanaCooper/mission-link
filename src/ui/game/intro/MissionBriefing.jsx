@@ -15,7 +15,7 @@ import {
 } from './briefingText.js';
 import './briefing.css';
 
-// The mission briefing: a short introduction before the first mission, like the opening of a game.
+// The mission briefing: a short introduction before every new game, like the opening of a game.
 // Four pages: the danger (a real storm is coming), why it matters, the mission objective,
 // and the two jobs. Commander Sola, BLIP and Nova explain it. Skip at any time.
 //

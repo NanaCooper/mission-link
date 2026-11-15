@@ -7,6 +7,9 @@ import { CLOCK_URGENT } from './clock.js';
 // Radiation going up by at least this much in one turn plays the "hit" sound.
 export const HIT_SOUND_MIN = 10;
 
+// How loud a sound effect gets (0..1). The background music (music.js) stays below it.
+export const SOUND_VOLUME = 0.08;
+
 // Each sound is a list of tones: f = start pitch (Hz), to = end pitch, d = length (s),
 // at = start time (s), type = oscillator wave.
 export const SOUNDS = {
@@ -121,6 +124,10 @@ function subscribe(listener) {
   return () => listeners.delete(listener);
 }
 
+// For the background music (music.js): is sound on, and tell me when it changes.
+export const isSoundOn = () => !soundOff;
+export const onSoundChange = subscribe;
+
 // true when sound is on. Both player screens share it, so split-screen stays in sync.
 export function useSoundOn() {
   return useSyncExternalStore(subscribe, () => !soundOff, () => true);
@@ -129,23 +136,36 @@ export function useSoundOn() {
 // ---------- Playing ----------
 
 let audio = null;
+const unlockListeners = new Set();
+
+// The AudioContext, once a tap made it (null before). The music plays through it too.
+export const getAudio = () => audio;
+
+// Called once the first tap has made the AudioContext (the music waits for it).
+export function onAudioUnlock(listener) {
+  unlockListeners.add(listener);
+  return () => unlockListeners.delete(listener);
+}
 
 // Browsers only allow sound after a tap, so the AudioContext is made on the first tap.
 export function unlockAudio() {
   try {
+    const first = !audio;
     if (!audio) {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       if (!AudioContextClass) return;
       audio = new AudioContextClass();
     }
     if (audio.state === 'suspended') audio.resume();
+    if (first) unlockListeners.forEach((listener) => listener());
   } catch {
     audio = null;
   }
 }
 
 let listeningForTap = false;
-function listenForFirstTap() {
+// Waits for the first tap or key press anywhere on the page, then makes the AudioContext.
+export function listenForFirstTap() {
   if (listeningForTap || typeof window === 'undefined') return;
   listeningForTap = true;
   const onTap = () => {
@@ -181,7 +201,7 @@ export function playSound(name) {
       osc.frequency.setValueAtTime(tone.f, t0);
       if (tone.to) osc.frequency.exponentialRampToValueAtTime(tone.to, t1);
       gain.gain.setValueAtTime(0.0001, t0);
-      gain.gain.exponentialRampToValueAtTime(0.08, t0 + 0.01);
+      gain.gain.exponentialRampToValueAtTime(SOUND_VOLUME, t0 + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, t1);
       osc.connect(gain).connect(audio.destination);
       osc.start(t0);
