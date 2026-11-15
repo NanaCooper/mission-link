@@ -642,7 +642,8 @@ export function createWorld({ canvas, kind, map, hero, world = 'moon', reducedMo
     const inAir = hopK >= 0 && hopK < 1;
     if (feel.hopTime && !inAir && !landed) {
       landed = true;
-      if (!hidden) kickDust(t, character, puff, feel); // Moon and Mars: dust when Nova lands
+      // Moon and Mars: dust when Nova lands, light enough to show on the ground
+      if (!hidden && puff) kickDust(t, character, sc.world === 'mars' ? PALETTE.O : PALETTE.W, feel);
     }
     const walking = inAir || moved.distance > 0.3 || t - stepAt < 0.2;
     character.angle = turnToward(character.angle, FACING_ANGLE[position.facing] ?? 0, dt * 14);

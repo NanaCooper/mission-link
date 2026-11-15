@@ -78,7 +78,7 @@ export function walkFeel({ stepMs = 170, world } = {}) {
   return {
     speed: TILE3 / slideTime,
     hopTime: lowGravity ? slideTime : 0,
-    hopHeight: world === 'moon' ? 4.5 : world === 'mars' ? 2.5 : 0,
+    hopHeight: world === 'moon' ? 6 : world === 'mars' ? 3.5 : 0,
     dustTime: world === 'moon' ? 1.4 : world === 'mars' ? 0.9 : 0.35
   };
 }
