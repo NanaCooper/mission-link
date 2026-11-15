@@ -1,7 +1,7 @@
 # Sources
 
 Space Apps requires every resource to be cited, even open source ones.
-Last full check: 14 Nov 2026 (Dev 4). Every NASA fact or number a player sees is listed
+Last full check: 15 Nov 2026 (Dev 4). Every NASA fact or number a player sees is listed
 below with the file it comes from and the page it was checked against.
 
 ## NASA data
@@ -51,7 +51,7 @@ All checked against the linked page on 14 Nov 2026.
 | NASA keeps an astronaut's career dose under a set limit | Data sources. The 3-wave levels skip the All clear stage, so it is no longer a Why? card | `storm-2024-05-11.json` | [NASA-STD-3001 Technical Brief OCHMO-TB-020, Rev G (2025)](https://www.nasa.gov/sites/default/files/atoms/files/radiation_protection_technical_brief_ochmo.pdf) |
 | The storm's times, flare class, sunspot number, cloud speed and the model's Mars arrival date | Mission Control text on the 3 waves, and "What really happened" (cloud speed and Mars arrival only there) | `storm-2024-05-11.json` | The DONKI records in the table above |
 | About every two years Earth and Mars are on opposite sides of the Sun, and for a few weeks the Sun can block signals | How to play and Data sources | `src/ui/flow/facts.js` | [NASA JPL, Mars in a Minute: What Happens When the Sun Blocks Our Signal? (18 Sept 2024)](https://www.jpl.nasa.gov/edu/resources/video/mars-in-a-minute-what-happens-when-the-sun-blocks-our-signal/) |
-| An astronaut next to Curiosity in May 2024 would have received about 30 chest X-rays' worth of radiation | Mars end screen | `src/ui/flow/facts.js` | [NASA Watches Mars Light Up During Epic Solar Storm (10 Jun 2024)](https://www.nasa.gov/solar-system/planets/mars/nasa-watches-mars-light-up-during-epic-solar-storm/) |
+| In a different storm, on 20 May 2024 (an X12 flare, not the 11 May storm the game plays), an astronaut next to Curiosity would have got about 30 chest X-rays' worth of radiation (8,100 micrograys) | Mars end screen. The text says "a different solar storm" so players do not mix it up with the storm they just played | `src/ui/flow/facts.js` | [NASA Watches Mars Light Up During Epic Solar Storm (10 Jun 2024)](https://www.nasa.gov/solar-system/planets/mars/nasa-watches-mars-light-up-during-epic-solar-storm/) |
 
 ## Our own design, not NASA facts
 
@@ -60,10 +60,10 @@ These are game rules. The game never presents them as real numbers.
 | What | Where | How the game says so |
 |---|---|---|
 | Meter numbers and the storm radiation budget (40) | Astronaut screen | "This bar counts game points for one storm. It is not a real dose." and the end screen's scaling note |
-| Incoming radiation per turn (0, 5, 10, 40, 20, 0) | Engine | Scaling note on the end screen and Data sources |
+| Incoming radiation per stage (May 2024: 0, 5, 10, 40, 20, 0; May 2025: 0, 5, 10, 30, 20, 0; a level plays stages 1, 3 and 4) | Engine, set by the real flare class and cloud speed | Scaling note on the end screen and Data sources |
 | Mars starts with 15 less power | Engine | Not explained to players (no NASA source yet) |
 | Dust covers the solar panels on one Mars turn | Engine log, "Dust storm" badge | Shown as a game event only |
-| The signal blackout on Mars turn 5 | Mission Control | The real effect is sourced above; which turn it hits is ours |
+| The signal blackout on Mars wave 3 (stage 4) | Mission Control | The real effect is sourced above; which turn it hits is ours |
 | The 60-second signal clock | Both player screens | A game timer, not a real delay |
 | Nova, Commander Sola and BLIP | All screens | Made-up characters |
 

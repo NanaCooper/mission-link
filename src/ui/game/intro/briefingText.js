@@ -14,7 +14,7 @@ export const BRIEFING_LINK = 'Mission briefing';
 // The NASA fact on the "Why it matters" page, with its source (the same words and link as the
 // storm's quiet-Sun stage, which a 3-wave level no longer plays).
 export const WARNING_FACT = {
-  text: 'NASA says warning the crew in time, so they can take shelter, is essential for keeping them safe.',
+  text: 'NASA says a warning in time is a must. It lets the crew take shelter and stay safe.',
   source: {
     name: 'NASA radiation protection standard',
     url: 'https://www.nasa.gov/sites/default/files/atoms/files/radiation_protection_technical_brief_ochmo.pdf'

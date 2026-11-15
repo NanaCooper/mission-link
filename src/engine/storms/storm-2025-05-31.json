@@ -12,14 +12,14 @@
       "missionControlSees": "The Sun looks calm. But a busy patch of sunspots, number 14100, is facing the base.",
       "realData": { "activeRegionNum": 14100 },
       "fact": {
-        "text": "NASA says warning the crew in time, so they can take shelter, is essential for keeping them safe.",
+        "text": "NASA says a warning in time is a must. It lets the crew take shelter and stay safe.",
         "source": { "name": "NASA radiation protection standard", "url": "https://www.nasa.gov/sites/default/files/atoms/files/radiation_protection_technical_brief_ochmo.pdf" }
       }
     },
     {
       "label": "Flare spotted",
       "incoming": 5,
-      "missionControlSees": "A bright flash on the Sun! A flare is a burst of light and energy. This one is class M8.1.",
+      "missionControlSees": "A bright flash on the Sun! A flare is a burst of light and energy. This one is class M8.1: strong, but not the strongest.",
       "realData": { "flareClass": "M8.1", "flareBegin": "2025-05-30T23:31Z", "flarePeak": "2025-05-31T00:05Z", "flareEnd": "2025-05-31T01:32Z" },
       "fact": {
         "text": "NASA scientists record big solar flares in a space weather database called DONKI. This real flare is in it.",
@@ -42,7 +42,7 @@
       "missionControlSees": "A space weather satellite is picking up fast particles from the Sun right now. Take cover!",
       "realData": { "particlesDetected": "2025-05-31T17:10Z", "instrument": "GOES-P: SEISS >10 MeV" },
       "fact": {
-        "text": "NASA has a special limit on how much radiation an astronaut may get from one solar particle storm like this.",
+        "text": "NASA has a limit on how much radiation an astronaut may get in one solar storm.",
         "source": { "name": "NASA radiation protection standard", "url": "https://www.nasa.gov/sites/default/files/atoms/files/radiation_protection_technical_brief_ochmo.pdf" }
       }
     },
@@ -68,7 +68,7 @@
     }
   ],
   "whatReallyHappened": [
-    "On 30 May 2025 at 23:31 (UTC), a flare called M8.1 burst out of the Sun.",
+    "On 30 May 2025 at 23:31 world time, a flare called M8.1 burst out of the Sun.",
     "It came from sunspot patch number 14100.",
     "44 minutes later, a giant cloud of gas left the Sun at about 1,302 km every second.",
     "At 17:10 the next day, a space weather satellite called GOES measured fast particles from the Sun.",
