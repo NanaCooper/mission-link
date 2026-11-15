@@ -98,7 +98,9 @@ export default function App() {
     );
   }
   if (page === 'howTo') return <HowToPlayScreen onBack={() => setPage('home')} />;
-  if (page === 'sources') return <DataSourcesScreen storm={getStorm(null)} onBack={() => setPage('home')} />;
+  if (page === 'sources') {
+    return <DataSourcesScreen storms={REAL_STORM_IDS.map((id) => getStorm(id))} onBack={() => setPage('home')} />;
+  }
 
   return (
     <HomeScreen
@@ -169,6 +171,7 @@ function Game({ session, onLevelEnd, onHome }) {
         view={view}
         storm={getGameStorm(state)}
         crew={getAstronautView(state)}
+        missionControl={getMissionControlView(state)}
         canContinue={!isMissionControl}
         onNextLevel={(stars) => restart({ world: 'mars', moonStars: stars })}
         // Play again: the same level with another real storm, so it plays differently

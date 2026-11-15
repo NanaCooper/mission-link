@@ -285,3 +285,42 @@
 .flow-small a {
   overflow-wrap: anywhere;
 }
+
+/* The mission debrief on the end screen: why, Mission Control, what you learned, try this next time */
+.flow-debrief__title {
+  margin: 16px 0 4px;
+  font-size: 1.05rem;
+  color: var(--accent);
+}
+
+.flow-debrief__title:first-of-type {
+  margin-top: 4px;
+}
+
+.flow-debrief__try {
+  margin: 4px 0 0;
+  padding: 8px 12px;
+  background: var(--bg-2);
+  border-left: var(--px) solid var(--accent);
+}
+
+/* Data sources: how the real NASA numbers became game points */
+.flow-rules {
+  margin: 8px 0 0;
+}
+
+.flow-rules dt {
+  margin-top: 12px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.flow-rules dd {
+  margin: 4px 0 0;
+}
+
+.flow-rules__note {
+  padding-left: 10px;
+  font-size: 0.9rem;
+  border-left: var(--px) solid var(--accent);
+}

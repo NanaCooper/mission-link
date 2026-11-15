@@ -3,21 +3,15 @@ import { getStorm, REAL_STORM_IDS, STORMS } from '../../engine/storms/index.js';
 import { isValidStorm } from '../../engine/index.js';
 import raw2025 from '../../../docs/data/donki-2025-05-31.json';
 import raw2024 from '../../../docs/data/donki-2024-05-11.json';
+import { peakFor, fadeFor } from '../../engine/storms/fromData.js';
 
 // The second real storm must match the archived NASA DONKI records it was made from,
 // exactly like the May 2024 storm (storm.test.js).
 const storm = getStorm('storm-2025-05-31');
 const bestCme = raw2025.cme.cmeAnalyses.find((a) => a.isMostAccurate && a.featureCode === 'LE');
 
-// How a real storm's numbers are chosen (build guide, Dev 4 step 2): the strongest wave follows the
-// flare class, the fading wave follows the cloud's speed. Inside STORM_LIMITS.
-const peakFor = (flareClass) => {
-  const letter = flareClass[0];
-  const size = Number(flareClass.slice(1));
-  if (letter === 'X') return size >= 10 ? 50 : 40;
-  return 30; // M-class (or weaker)
-};
-const fadeFor = (kmPerSec) => (kmPerSec < 1000 ? 10 : kmPerSec < 2000 ? 20 : 24);
+// How a real storm's numbers are chosen (src/engine/storms/fromData.js): the strongest wave follows
+// the flare class, the fading wave follows the cloud's speed. Inside STORM_LIMITS.
 
 describe('the May 2025 storm', () => {
   it('is a real storm the game can pick, and a valid storm for the engine', () => {

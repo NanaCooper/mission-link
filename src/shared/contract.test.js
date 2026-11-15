@@ -30,7 +30,7 @@ describe('shared contract', () => {
     expect(Object.keys(initialState).sort()).toEqual(
       [
         'status', 'mode', 'world', 'turn', 'maxTurns', 'meters', 'science',
-        'stormId', 'storm', 'solo', 'stormStage', 'inbox', 'outbox', 'lastMove', 'lastResult', 'lastWarningCheck', 'log',
+        'stormId', 'storm', 'solo', 'stormStage', 'inbox', 'outbox', 'lastMove', 'lastResult', 'lastWarningCheck', 'moveResults', 'warningChecks', 'log',
         'lostReason', 'stars', 'moonStars', 'signalSecondsLeft'
       ].sort()
     );
