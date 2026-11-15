@@ -117,7 +117,7 @@ export default function ControlRoomMap({ view, onWarn, active = true }) {
 
   // No title on top of the map: the screen already says "Mission Control, Earth", and the wall's big screen shows.
   const label = `Picture: the control room on Earth. Commander Sola can use the telescope, the crew monitor and the radio desk.${
-    view.warningThisTurn ? ' A warning was sent this turn.' : ''
+    view.warningThisTurn ? ' A warning was sent this wave.' : ''
   }`;
 
   return (

@@ -110,7 +110,7 @@ describe('screen labels', () => {
   it('names both worlds and has the explainer texts', () => {
     expect(WORLD_NAMES).toEqual({ moon: 'Moon base', mars: 'Mars base' });
     expect(RADIATION_EXPLAINER).toMatch(/not a real dose/);
-    expect(MARS_DELAY_NOTE).toMatch(/next turn/);
+    expect(MARS_DELAY_NOTE).toMatch(/next wave/);
   });
 
   it('turnText says the wave, counts from 1 and never goes past maxTurns', () => {
@@ -146,7 +146,7 @@ describe('full-screen game words', () => {
     expect(radiationHitText(12)).toBe('Radiation hit the base! +12');
     expect(newStageText('Particles arrive')).toBe('New on the big screen: Particles arrive.');
     expect(sentText('Shelter now', 0)).toBe('Sent: Shelter now! Nova gets it now.');
-    expect(sentText('Shelter now', 1)).toBe('Sent: Shelter now! It reaches Nova next turn.');
+    expect(sentText('Shelter now', 1)).toBe('Sent: Shelter now! It reaches Nova next wave.');
     expect(Object.keys(LEVEL_END_TEXT).sort()).toEqual(['lost', 'won']);
   });
 });
@@ -159,7 +159,7 @@ describe('read-aloud text and the prediction prompt', () => {
   });
 
   it('Astronaut: says when there is no new message, or no message at all', () => {
-    expect(astronautReadText({ ...fakeAstronautView, turn: 4 })).toContain('No new message this turn. Last message: Shelter now.');
+    expect(astronautReadText({ ...fakeAstronautView, turn: 4 })).toContain('No new message this wave. Last message: Shelter now.');
     const none = astronautReadText({ ...fakeAstronautView, inbox: [], log: [] });
     expect(none).toContain('No message from Mission Control yet.');
     expect(none).not.toContain('BLIP');
@@ -175,7 +175,7 @@ describe('read-aloud text and the prediction prompt', () => {
   it('Mission Control: mentions the blackout and the last turn', () => {
     const view = { ...fakeMissionControlView, forecast: null, stage: { ...fakeMissionControlView.stage, blackout: true } };
     const text = missionControlReadText(view);
-    expect(text).toContain('This is the last turn.');
+    expect(text).toContain('This is the last wave.');
     expect(text).toContain('blocking the signal');
   });
 

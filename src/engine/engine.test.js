@@ -322,7 +322,7 @@ describe('views', () => {
     expect(Object.keys(v).sort()).toEqual(
       ['status', 'turn', 'maxTurns', 'world', 'meters', 'radiationLimit', 'science', 'inbox',
         'log', 'lastMove', 'lastResult', 'lastFact', 'lostReason', 'stars', 'solo',
-        'signalSecondsLeft', 'signalLimit', 'clockRunning'].sort()
+        'waitingForMissionControl', 'signalSecondsLeft', 'signalLimit', 'clockRunning'].sort()
     );
   });
 

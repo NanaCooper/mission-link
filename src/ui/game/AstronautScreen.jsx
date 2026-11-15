@@ -26,6 +26,8 @@ import {
   NO_MESSAGE_TEXT,
   NO_MESSAGE_HINT,
   NO_NEW_MESSAGE_TEXT,
+  WAITING_TEXT,
+  PASS_BACK_TEXT,
   MESSAGE_TITLE,
   NEW_TAG,
   SOLO_TAG,
@@ -59,6 +61,10 @@ export default function AstronautScreen({
   onMenuChange,
 }) {
   const isPlaying = view.status === 'playing';
+  // Two players: no move until Mission Control has sent this wave's warning (the engine decides).
+  const waiting = isPlaying && Boolean(view.waitingForMissionControl);
+  // One device, right after a move: the device goes back to Mission Control.
+  const waitText = switchButton && view.lastResult?.turn === view.turn ? PASS_BACK_TEXT : WAITING_TEXT;
   const ended = view.status === 'won' || view.status === 'lost';
   const lastLog = view.log.length > 0 ? view.log[view.log.length - 1] : null;
   const moveTag = MOVE_SCENE_TAG[view.lastMove];
@@ -91,8 +97,11 @@ export default function AstronautScreen({
   const factKey = view.lastFact?.text && reaction && blipDone && answerDone && !guess.asking ? `fact:${view.turn}` : null;
   const showFact = usePopup(factKey, active, POPUP_LONG_MS) && !showThanks;
   const showEnd = usePopup(ended ? `end:${view.status}` : null, active);
-  // Commander Sola's new message folds to one line while BLIP is talking.
-  const solaBig = messageFresh && !showBlip;
+  // Commander Sola's new message folds to one line while BLIP coaches (a move reaction, the answer
+  // to the question, a fun fact). A plain line such as the welcome, or the question (it stays until
+  // it is answered), never pushes her aside.
+  const blipCoaching = (showBlip && Boolean(reaction)) || showThanks || showAnswer || showFact;
+  const solaBig = messageFresh && !blipCoaching;
 
   // A quick move closes the menu, so the player sees what happens on the map.
   const moveFromMenu = (move) => {
@@ -104,6 +113,12 @@ export default function AstronautScreen({
 
   const popups = (
     <>
+      {waiting && (
+        <p className="hud-popup hud-popup--line hud-popup--wait" role="status">
+          <PixelIcon name="signal" size={24} />
+          <span>{waitText}</span>
+        </p>
+      )}
       {message?.isNew && (
         <div className={`hud-popup hud-popup--message ${solaBig ? 'is-fresh' : 'is-folded'}`}>
           <SpeechBox
@@ -202,7 +217,7 @@ export default function AstronautScreen({
     {
       id: 'moves',
       ...ASTRONAUT_TABS.moves,
-      content: <MoveButtons disabled={!isPlaying} onMove={moveFromMenu} />,
+      content: <MoveButtons disabled={!isPlaying || waiting} note={waiting ? waitText : null} onMove={moveFromMenu} />,
     },
   ];
 
@@ -254,11 +269,16 @@ function newestMessage(view) {
 }
 
 // The four move buttons: a quick way to move without walking on the map.
-export function MoveButtons({ disabled, onMove }) {
+export function MoveButtons({ disabled, onMove, note = null }) {
   return (
     <section className="astronaut-screen__moves" aria-label="Quick moves">
       <h2 className="astronaut-screen__moves-title pixel-title">Quick moves</h2>
       <p className="astronaut-screen__moves-hint">No time to walk? Tap a move here.</p>
+      {note && (
+        <p className="astronaut-screen__moves-wait" role="status">
+          <PixelIcon name="signal" size={20} /> {note}
+        </p>
+      )}
       <div className="astronaut-screen__buttons">
         {Object.entries(MOVE_INFO).map(([moveKey, info]) => (
           <BigButton

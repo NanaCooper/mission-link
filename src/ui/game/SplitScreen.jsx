@@ -12,15 +12,24 @@ import './SplitScreen.css';
 //   Both screens stay mounted (so things like where Nova stands are kept), but only the one that
 //   shows is `active`: it alone gets the keyboard, and its pop-ups wait until it shows.
 //
-//   Opening the Menu pauses the game: onPauseChange(true) while a menu is open on the screen
-//   that shows, onPauseChange(false) when it closes (the app then stops the signal clock).
+//   The signal clock is paused (onPauseChange(true)) while a menu is open, and whenever Mission
+//   Control does not hold the device: the Astronaut's screen or the hand-over card shows.
+//   The Astronaut moves once Mission Control has sent this wave's warning (the engine's
+//   waitingForMissionControl), so the device goes back and forth: one warning, one move.
 //
 // Props: { astronautView, missionControlView, onMove, onWarn, onPauseChange }
 export default function SplitScreen({ astronautView, missionControlView, onMove, onWarn, onPauseChange }) {
   // Whose menu is open. Only the screen that shows can have one open (GameHud reports a hidden
   // screen as closed), so handing the device over always un-pauses.
   const [menuOpen, setMenuOpen] = useState({ missionControl: false, astronaut: false });
-  const paused = menuOpen.missionControl || menuOpen.astronaut;
+  // Whose screen shows, and the turn number when it was opened. Mission Control plays first each turn.
+  const [showing, setShowing] = useState({ tab: 'missionControl', sinceTurn: astronautView.turn });
+  // While the "Pass the device" card shows: who gets the device next.
+  const [passingTo, setPassingTo] = useState(null);
+  // The signal clock is Mission Control's: it only runs while Mission Control holds the device
+  // (their screen shows, no hand-over card, no menu open). Handing over never costs them time.
+  const paused =
+    menuOpen.missionControl || menuOpen.astronaut || showing.tab !== 'missionControl' || passingTo !== null;
   const report = useRef(onPauseChange);
   useEffect(() => {
     report.current = onPauseChange; // always call the newest one
@@ -31,10 +40,6 @@ export default function SplitScreen({ astronautView, missionControlView, onMove,
   const menuChange = (player) => (open) =>
     setMenuOpen((now) => (now[player] === open ? now : { ...now, [player]: open }));
 
-  // Whose screen shows, and the turn number when it was opened. Mission Control plays first each turn.
-  const [showing, setShowing] = useState({ tab: 'missionControl', sinceTurn: astronautView.turn });
-  // While the "Pass the device" card shows: who gets the device next.
-  const [passingTo, setPassingTo] = useState(null);
   const { tab } = showing;
 
   const takeOver = () => {
@@ -47,7 +52,8 @@ export default function SplitScreen({ astronautView, missionControlView, onMove,
   const warningDone = Boolean(missionControlView.warningThisTurn) || Boolean(missionControlView.stage?.blackout);
   const moveDone = astronautView.turn !== showing.sinceTurn;
   const nudgeAstronaut = playing && tab === 'missionControl' && warningDone;
-  const nudgeMissionControl = playing && tab === 'astronaut' && moveDone;
+  // The Astronaut moved, or is waiting for the next warning: back to Mission Control.
+  const nudgeMissionControl = playing && tab === 'astronaut' && (moveDone || Boolean(astronautView.waitingForMissionControl));
 
   const shows = (player) => tab === player;
   const isActive = (player) => shows(player) && !passingTo;

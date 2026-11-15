@@ -22,7 +22,7 @@ describe('AstronautScreen: characters and the base picture', () => {
 
   it('shows an older message quietly, so it is not mistaken for a fresh warning', () => {
     const html = render({ ...fakeAstronautView, turn: 4 }); // the message is from turn 3
-    expect(html).toContain('No new message this turn.');
+    expect(html).toContain('No new message this wave.');
     expect(html).toContain('Last message: Shelter now');
     expect(html).not.toContain('Mission Control says:');
     expect(html).not.toContain('speech__tag');

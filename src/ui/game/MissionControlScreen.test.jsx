@@ -49,7 +49,7 @@ describe('MissionControlScreen: Mars signal blackout', () => {
   it('shows the "Signal blocked" badge and the blackout note', () => {
     const html = render(fakeMarsBlackoutMissionControlView);
     expect(html).toContain('Signal blocked');
-    expect(html).toContain("The Sun is blocking the signal. Your warning can&#x27;t get through this turn.");
+    expect(html).toContain("The Sun is blocking the signal. Your warning can&#x27;t get through this wave.");
   });
 
   it('disables all four warning buttons during a blackout', () => {
@@ -125,7 +125,7 @@ describe('MissionControlScreen', () => {
 
   it('says it is the last turn when there is no forecast', () => {
     const html = render({ ...fakeMissionControlView, forecast: null });
-    expect(html).toContain('This is the last turn');
+    expect(html).toContain('This is the last wave');
     expect(html).not.toContain('Coming next');
   });
 

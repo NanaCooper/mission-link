@@ -33,7 +33,7 @@ export default function Meter({ icon, label, value, max, tone, alertWhen = 'low'
           <span className={`meter__delta${deltaIsGood ? '' : ' is-bad'}`}>
             <span aria-hidden="true">{delta > 0 ? '▲' : '▼'}</span>
             {delta > 0 ? `+${delta}` : `-${Math.abs(delta)}`}
-            <span className="visually-hidden"> since last turn</span>
+            <span className="visually-hidden"> since last wave</span>
           </span>
         )}
         <span className="meter__value">

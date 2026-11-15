@@ -198,19 +198,26 @@ describe('pop-ups over the map', () => {
     expect(shown).not.toContain('hud-popup--message');
   });
 
-  it("BLIP's line about the last turn pops up too, and Sola's message folds to one line meanwhile", () => {
+  it("BLIP's plain line (like the welcome) pops up too, without pushing Sola's message aside", () => {
     const view = fakeAstronautView;
     const shown = popups(astronaut(view));
     expect(shown).toContain(view.log[view.log.length - 1].text);
-    expect(shown).toContain('hud-popup--message is-folded');
-    expect(shown).toContain('<span class="visually-hidden">Shelter now!</span>');
+    expect(shown).toContain('hud-popup--message is-fresh');
   });
 
-  it('after a move, BLIP says what it cost instead of the plain log line', () => {
+  it("after a move, BLIP says what it cost instead of the plain log line, and Sola's message folds meanwhile", () => {
     const view = { ...fakeAstronautView, lastResult: { turn: fakeAstronautView.turn, move: 'raiseShield', radiation: 12, shieldFailed: false, dust: false, powerOut: false } };
     const shown = popups(astronaut(view));
     expect(shown).toContain('Shield up! Only 12 radiation got through, but it cost 20 power.');
     expect(shown).not.toContain(view.log[view.log.length - 1].text);
+    expect(shown).toContain('hud-popup--message is-folded');
+    expect(shown).toContain('<span class="visually-hidden">Shelter now!</span>');
+  });
+
+  it('two players: while waiting for Mission Control, the Astronaut sees why the moves are off', () => {
+    const view = { ...fakeAstronautView, waitingForMissionControl: true };
+    expect(popups(astronaut(view))).toContain("Waiting for Mission Control&#x27;s warning...");
+    expect(popups(astronaut({ ...fakeAstronautView, waitingForMissionControl: false }))).not.toContain('Waiting for Mission Control');
   });
 
   it("Mission Control: BLIP coaches on the last warning", () => {

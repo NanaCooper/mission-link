@@ -79,6 +79,14 @@ function isClockRunning(state) {
   return state.status === 'playing' && !isBlackoutStage(state) && !warningSentThisTurn(state);
 }
 
+// Two players: the Astronaut moves once Mission Control has had its say this wave: a warning
+// sent (on Mars it is on its way), or the Sun blocking the signal. Never in Play alone (Sola warns
+// at the start of every wave). The session refuses moves while this is true, so each wave is one
+// warning, then one move (applyMove itself stays usable on its own, for tests and balance checks).
+export function waitingForMissionControl(state) {
+  return state.status === 'playing' && !state.solo && !isBlackoutStage(state) && !warningSentThisTurn(state);
+}
+
 // Play alone: the warning Commander Sola sends now, or null. Pure: it only reads the state.
 // She warns about the wave her message arrives in: this wave on the Moon, the next one on Mars.
 // Nothing during a blackout (the signal cannot get through) or when no wave is left to warn about.
@@ -243,7 +251,7 @@ export function applyMove(state, move) {
   crewHealth = clamp(crewHealth);
 
   // 6. Log line and fact
-  let text = `${moveText} Radiation this turn: ${radiationThisTurn}.`;
+  let text = `${moveText} Radiation this wave: ${radiationThisTurn}.`;
   if (powerOut) text += ' Power ran out, so oxygen went down!';
   const log = [...state.log, { turn: state.turn + 1, text }];
 
@@ -327,6 +335,7 @@ export function getAstronautView(state) {
     lostReason: state.lostReason,
     stars: state.stars,
     solo: Boolean(state.solo),
+    waitingForMissionControl: waitingForMissionControl(state),
     ...clockView(state)
   };
 }

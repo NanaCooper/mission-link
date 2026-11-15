@@ -5,10 +5,15 @@
 // Guest = Mission Control device. Never runs the engine. Shows what the host sends.
 //
 // `room` is anything shaped like openRoom() in room.js: { send, on, onPresence, onStatus }.
-// `engine` is { createGame, sendWarning, applyMove, tick } (see engineAdapter.js).
+// `engine` is { createGame, sendWarning, applyMove, tick, waitingForMissionControl } (see engineAdapter.js).
+// One warning, then one move: a move is ignored while the Astronaut is waiting for Mission Control
+// (engine.waitingForMissionControl). An engine without that function never makes anyone wait.
 // The signal clock: whoever runs the engine calls tick once a second (see useGameSession.js).
 
 import { initialState, MOVES, WARNINGS, WORLDS } from '../shared/contract.js';
+
+const mustWait = (engine, state) =>
+  typeof engine.waitingForMissionControl === 'function' && engine.waitingForMissionControl(state);
 
 /** What players see before a game starts. */
 export function lobbyState({ mode = 'online', world = 'moon', moonStars = 0, storm = null } = {}) {
@@ -130,7 +135,7 @@ export function createHostSession({
   return {
     getState: () => state,
     sendMove(move) {
-      if (state.status !== 'playing' || !MOVES.includes(move)) return;
+      if (state.status !== 'playing' || !MOVES.includes(move) || mustWait(engine, state)) return;
       update(engine.applyMove(state, move));
     },
     /** The signal clock: `seconds` passed. Mission Control sees it through the usual stateUpdate. */
@@ -210,7 +215,9 @@ export function splitReducer(engine) {
   return (state, action) => {
     if (action?.type === 'restart') return engine.createGame({ mode: 'split', ...nextLevel(state, action.options) });
     if (state.status !== 'playing') return state;
-    if (action?.type === 'move' && MOVES.includes(action.move)) return engine.applyMove(state, action.move);
+    if (action?.type === 'move' && MOVES.includes(action.move)) {
+      return mustWait(engine, state) ? state : engine.applyMove(state, action.move);
+    }
     if (action?.type === 'warning' && WARNINGS.includes(action.warning)) {
       return engine.sendWarning(state, action.warning);
     }

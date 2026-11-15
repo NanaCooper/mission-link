@@ -45,17 +45,22 @@ export const RADIATION_EXPLAINER =
   'Invisible energy from the Sun that can hurt astronauts. This bar counts game points for one storm. It is not a real dose.';
 
 export const MARS_DELAY_NOTE =
-  'Mars is far away. Your message arrives next turn, so warn about what is coming next.';
+  'Mars is far away. Your message arrives next wave, so warn about what is coming next.';
 
 // Mars signal blackout (stage.blackout): the Sun is between Earth and Mars
 export const BLACKOUT_BADGE = 'Signal blocked';
 export const BLACKOUT_NOTE =
-  "The Sun is blocking the signal. Your warning can't get through this turn.";
+  "The Sun is blocking the signal. Your warning can't get through this wave.";
 
 // The Astronaut cannot see the storm. Only Mission Control can.
 export const NO_MESSAGE_TEXT = 'No message from Mission Control yet';
 export const NO_MESSAGE_HINT = "You can't see the storm from here. Ask what the Sun is doing!";
-export const NO_NEW_MESSAGE_TEXT = 'No new message this turn.';
+export const NO_NEW_MESSAGE_TEXT = 'No new message this wave.';
+
+// Two players: the Astronaut waits for Mission Control's warning before moving (view.waitingForMissionControl).
+export const WAITING_TEXT = "Waiting for Mission Control's warning...";
+// One device: after the move, the device goes back to Mission Control for the next warning.
+export const PASS_BACK_TEXT = 'Your move is done! Pass the device to Mission Control.';
 
 // ---------- Sound and read-aloud buttons ----------
 export const SOUND_ON_LABEL = 'Sound on';
@@ -164,7 +169,7 @@ export function astronautReadText(view) {
 export function missionControlReadText(view) {
   const { director, robot } = CHARACTERS;
   const parts = [`${director.name} says: ${view.stage.missionControlSees}`];
-  parts.push(view.forecast ? `Coming next: ${view.forecast}` : 'This is the last turn');
+  parts.push(view.forecast ? `Coming next: ${view.forecast}` : 'This is the last wave');
   if (view.stage.blackout) parts.push(BLACKOUT_NOTE);
   else parts.push(clockSentence(view, 'missionControl'));
   const coach = view.lastWarningCheck?.turn === view.turn ? warningCoachText(view.lastWarningCheck) : null;
@@ -275,7 +280,7 @@ export function newStageText(stageLabel) {
 export function sentText(warningLabel, delayTurns) {
   const name = CHARACTERS.astronaut.name;
   return delayTurns > 0
-    ? `Sent: ${warningLabel}! It reaches ${name} next turn.`
+    ? `Sent: ${warningLabel}! It reaches ${name} next wave.`
     : `Sent: ${warningLabel}! ${name} gets it now.`;
 }
 

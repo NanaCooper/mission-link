@@ -171,7 +171,7 @@ export default function MissionControlScreen({
           >
             <p className="mc-brief__next">
               <PixelIcon name="next" size={16} />{' '}
-              {view.forecast ? `Coming next: ${view.forecast}` : 'This is the last turn'}
+              {view.forecast ? `Coming next: ${view.forecast}` : 'This is the last wave'}
             </p>
           </SpeechBox>
           {coach && <SpeechBox className="mc-coach" who={robot.who} name={robot.name} size={48} text={coach} />}
