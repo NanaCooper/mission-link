@@ -15,12 +15,16 @@ import './world3d.css';
 //   scene                  the map's scene3d prop: { kind: 'base' | 'room', ... } (see BaseMap, ControlRoomMap)
 //   label                  words for screen readers, saying what the picture shows
 //   puff                   colour of the little puff after each step, or null
+//   stepMs                 milliseconds per step (slow on the Moon and Mars: low gravity)
+//   celebrate              false: no hop or sparkles when a place is used (the Moon and Mars)
 //   onFail                 called if 3D cannot run here after all: WorldMap then shows 2D
-export default function World3D({ map, hero, position, steps, hidden, used, near, scene, label, puff, onFail }) {
+export default function World3D({
+  map, hero, position, steps, hidden, used, near, scene, label, puff, stepMs, celebrate = true, onFail
+}) {
   const boxRef = useRef(null);
-  const latest = useRef({ position, steps, hidden, used, near, scene, puff, onFail });
+  const latest = useRef({ position, steps, hidden, used, near, scene, puff, stepMs, celebrate, onFail });
   useEffect(() => {
-    latest.current = { position, steps, hidden, used, near, scene, puff, onFail };
+    latest.current = { position, steps, hidden, used, near, scene, puff, stepMs, celebrate, onFail };
   });
 
   const kind = scene.kind;

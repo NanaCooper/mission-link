@@ -30,7 +30,24 @@ export const KEY_TO_DIRECTION = {
 export const USE_KEYS = [' ', 'Enter', 'e', 'E'];
 
 // Holding a key, an arrow button or the joystick takes one step this often (milliseconds).
+// This is the pace on Earth (the control room). The Moon and Mars are slower (BASE_STEP_MS).
 export const WALK_REPEAT_MS = 170;
+
+// How long the next step must wait so steps are never closer together than `pace` (ms).
+// 0 means "step now". Tapping fast cannot beat the pace: a tap during the wait steps once,
+// as soon as the wait is over.
+export function stepWait(lastStepAt, now, pace) {
+  return Math.max(0, lastStepAt + pace - now);
+}
+
+// What using a place shows: the character hops and the place sparkles. On the Moon and Mars
+// bases this is turned off (celebrate = false), so using a machine does not look like a party.
+//   used  { count, place } from WorldMap
+// Returns { hop: true/false, sparkle: the place to sparkle over, or null }
+export function celebrationFor(used, celebrate = true) {
+  const on = Boolean(celebrate) && used.count > 0;
+  return { hop: on, sparkle: on ? used.place : null };
+}
 
 // The joystick: how far (in screen pixels) the thumb must move before Nova walks.
 export const JOYSTICK_DEAD_ZONE = 12;

@@ -122,3 +122,20 @@ describe('the characters', () => {
     }
   });
 });
+
+describe('low gravity on the base', () => {
+  it('says why Nova walks slowly, on the Moon and on Mars', () => {
+    const moon = render(moonAt(null));
+    expect(moon).toContain('Walk Nova to a place, then press USE.');
+    expect(moon).toContain('The Moon pulls less than Earth (low gravity), so Nova moves in slow hops.');
+    expect(render(fakeMarsAstronautView)).toContain('Mars pulls less than Earth (low gravity), so Nova moves in slow hops.');
+  });
+
+  it('slides the 2D character slowly, slower on the Moon than on Mars', () => {
+    const slide = (html) => Number(/transition-duration:(\d+)ms/.exec(html)?.[1]);
+    const moon = slide(render(moonAt(null)));
+    const mars = slide(render(fakeMarsAstronautView));
+    expect(moon).toBeGreaterThan(mars);
+    expect(mars).toBeGreaterThan(170);
+  });
+});

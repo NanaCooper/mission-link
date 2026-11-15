@@ -65,6 +65,24 @@ export function moveToward(from, to, step, snapBeyond = 30) {
   return { x: from.x + (dx / distance) * step, z: from.z + (dz / distance) * step, distance };
 }
 
+// How the character moves in 3D. On the Moon and Mars (low gravity) each step is a slow,
+// floaty hop, highest on the Moon where gravity is weakest, and the dust from a landing takes
+// a while to settle. On Earth (the control room): a quick walk with a small bob.
+//   stepMs  milliseconds per step (WorldMap's pace)
+//   world   'moon' | 'mars' | anything else = Earth
+// Returns { speed (units a second), hopTime (seconds in the air, 0 = no hop), hopHeight, dustTime }
+export function walkFeel({ stepMs = 170, world } = {}) {
+  const seconds = Math.max(0.05, stepMs / 1000);
+  const lowGravity = world === 'moon' || world === 'mars';
+  const slideTime = seconds / 1.1; // a little faster than the pace, so a held key never falls behind
+  return {
+    speed: TILE3 / slideTime,
+    hopTime: lowGravity ? slideTime : 0,
+    hopHeight: world === 'moon' ? 4.5 : world === 'mars' ? 2.5 : 0,
+    dustTime: world === 'moon' ? 1.4 : world === 'mars' ? 0.9 : 0.35
+  };
+}
+
 const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
 
 // The camera: above and in front of the map, like looking at a model base on a table.

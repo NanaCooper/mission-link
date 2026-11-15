@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  gridToWorld, placeCentre, letterCentre, letterSpots, drawingToWorld, FACING_ANGLE, turnToward, moveToward, frameCamera, TILE3
+  gridToWorld, placeCentre, letterCentre, letterSpots, drawingToWorld, FACING_ANGLE, turnToward, moveToward, frameCamera, walkFeel, TILE3
 } from './layout.js';
 import { BASE_MAP, BASE_START } from '../world/baseMapData.js';
 import { ROOM_MAP } from '../world/controlRoomData.js';
@@ -88,5 +88,30 @@ describe('the camera', () => {
       expect(distance).toBeGreaterThanOrEqual(99.9);
       expect(distance).toBeLessThanOrEqual(240.1);
     }
+  });
+});
+
+describe('how the character moves (walkFeel)', () => {
+  it('on Earth: a quick walk, no hop, about the old speed', () => {
+    const earth = walkFeel({ stepMs: 170 });
+    expect(earth.hopTime).toBe(0);
+    expect(earth.hopHeight).toBe(0);
+    expect(earth.speed).toBeGreaterThan(70);
+  });
+
+  it('on the Moon and Mars: slow hops, highest and slowest on the Moon', () => {
+    const moon = walkFeel({ stepMs: 420, world: 'moon' });
+    const mars = walkFeel({ stepMs: 300, world: 'mars' });
+    expect(moon.hopTime).toBeGreaterThan(mars.hopTime);
+    expect(moon.hopHeight).toBeGreaterThan(mars.hopHeight);
+    expect(moon.speed).toBeLessThan(mars.speed);
+    expect(moon.dustTime).toBeGreaterThan(mars.dustTime);
+  });
+
+  it('slides one square a little faster than the pace, so a held key never falls behind', () => {
+    const moon = walkFeel({ stepMs: 420, world: 'moon' });
+    const secondsPerSquare = TILE3 / moon.speed;
+    expect(secondsPerSquare).toBeLessThan(0.42);
+    expect(moon.hopTime).toBeCloseTo(secondsPerSquare); // in the air for the whole slide
   });
 });

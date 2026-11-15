@@ -1,7 +1,9 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { spriteRects } from '../../components/pixel/spriteRects.jsx';
 import { PALETTE } from '../../components/pixel/sprites.js';
-import { TILE, WALK_REPEAT_MS, stepHero, placeNearHero, placeTop, nextChoice, facingToward } from './worldMap.js';
+import {
+  TILE, WALK_REPEAT_MS, stepHero, stepWait, celebrationFor, placeNearHero, placeTop, nextChoice, facingToward
+} from './worldMap.js';
 import { bindMapKeys } from './mapKeys.js';
 import Joystick from './Joystick.jsx';
 import { canUse3D } from '../world3d/support.js';
@@ -60,6 +62,13 @@ const World3D = lazy(() => import('../world3d/World3D.jsx'));
 //   scene3d       optional: { kind: 'base' | 'room', ... } turns on the 3D picture (world3d/) on
 //                 devices that can show it. Everything else (walking, the text boxes, the
 //                 controls) stays the same. Without it, or if 3D cannot run, the 2D picture shows.
+//   stepMs        optional: milliseconds per step (default WALK_REPEAT_MS, the pace on Earth).
+//                 The Moon and Mars pass a slower pace (low gravity). Steps are never closer than
+//                 this, even when the player taps fast.
+//   celebrate     optional, default true: using a place makes the character hop and the place
+//                 sparkle. The Moon and Mars bases turn it off.
+//   walkText      optional: what the speech bubble says when nothing is near
+//                 (default "Walk <name> to a place, then press USE.")
 
 const HERO_W = 10;
 const HERO_H = 14;
@@ -96,7 +105,10 @@ export default function WorldMap({
   onDialogClose,
   onStep,
   stepPuff = null,
-  scene3d = null
+  scene3d = null,
+  stepMs = WALK_REPEAT_MS,
+  celebrate = true,
+  walkText = null
 }) {
   const [position, setPosition] = useState(start);
   // Set if the 3D picture broke: this map then stays 2D
@@ -140,7 +152,7 @@ export default function WorldMap({
   };
   const act = () => {
     if (!usable) return;
-    // Turn to face the place, hop, and make it sparkle, then let the screen do the rest.
+    // Turn to face the place, hop and sparkle (if this map celebrates), then let the screen do the rest.
     const facing = facingToward(position, near);
     if (facing && facing !== position.facing) setPosition((current) => ({ ...current, facing }));
     setUsed((now) => ({ count: now.count + 1, place: near }));
@@ -154,24 +166,54 @@ export default function WorldMap({
     move: (step) => dialog && setHighlight({ id: dialogId, index: nextChoice(dialog.choices, chosen, step) }),
     close: () => onDialogClose?.()
   };
-  const latest = useRef({ walk, act, box });
+  const latest = useRef({ walk, act, box, stepMs });
   useEffect(() => {
-    latest.current = { walk, act, box };
+    latest.current = { walk, act, box, stepMs };
   });
 
   // Walking while a key, an arrow button or the joystick is held: one step now, then one
-  // step every WALK_REPEAT_MS. The same pace for all three.
+  // step every stepMs. The same pace for all three. Steps are never closer than stepMs: a tap
+  // during the wait still makes one step, as soon as the wait is over, so tapping fast cannot
+  // beat the slow walk on the Moon and Mars.
   const timer = useRef(null);
+  const waiting = useRef(null);
+  const holding = useRef(false);
+  const lastStepAt = useRef(-Infinity);
+  const stepOnce = (direction) => {
+    lastStepAt.current = Date.now();
+    latest.current.walk(direction);
+  };
   const stopWalking = () => {
+    holding.current = false;
     clearInterval(timer.current);
     timer.current = null;
   };
   const startWalking = (direction) => {
-    stopWalking();
-    latest.current.walk(direction);
-    timer.current = setInterval(() => latest.current.walk(direction), WALK_REPEAT_MS);
+    clearInterval(timer.current);
+    clearTimeout(waiting.current);
+    timer.current = null;
+    waiting.current = null;
+    holding.current = true;
+    const pace = latest.current.stepMs;
+    const go = () => {
+      waiting.current = null;
+      stepOnce(direction);
+      // Still held (key, arrow button or joystick): keep walking at the same pace
+      if (holding.current) timer.current = setInterval(() => stepOnce(direction), pace);
+    };
+    const wait = stepWait(lastStepAt.current, Date.now(), pace);
+    if (wait > 0) waiting.current = setTimeout(go, wait);
+    else go();
   };
-  useEffect(() => stopWalking, []);
+  useEffect(
+    () => () => {
+      stopWalking();
+      clearTimeout(waiting.current);
+    },
+    // stopWalking only reads refs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   // The keyboard, on the whole page, but only while this map is active (see mapKeys.js).
   // The text box keeps its highlight itself, so the keys never get lost in the browser's focus.
@@ -210,7 +252,11 @@ export default function WorldMap({
   const legs = sideways && hero.sprites.sideLegs ? hero.sprites.sideLegs : hero.sprites.legs;
   const mirror = sideways && position.facing === 'left' ? `translate(${HERO_W} 0) scale(-1 1)` : undefined;
   const legsY = body.length;
-  const sparkleAt = used.place ? placeTop(used.place) : null;
+  // Using a place: a hop and sparkles, unless this map turns them off (the Moon and Mars bases)
+  const effects = celebrationFor(used, celebrate);
+  const sparkleAt = effects.sparkle ? placeTop(effects.sparkle) : null;
+  // A slower pace (low gravity) slides the 2D character more slowly too
+  const slide = stepMs !== WALK_REPEAT_MS ? { transitionDuration: `${Math.round(stepMs * 0.9)}ms` } : null;
   const arrowAt = near ? placeTop(near) : null;
   const nearName = near ? placeNames[near.id] ?? near.id : null;
 
@@ -232,7 +278,7 @@ export default function WorldMap({
     );
     bubbleKind = 'place';
   } else {
-    bubble = `Walk ${hero.name} to a place, then press USE.`;
+    bubble = walkText ?? `Walk ${hero.name} to a place, then press USE.`;
     bubbleKind = 'walk';
   }
   const bubbleClass = `world__bubble world__bubble--${position.x < map.width / 3 ? 'right' : 'left'} world__bubble--${bubbleKind}${
@@ -264,10 +310,10 @@ export default function WorldMap({
       )}
 
       {/* The character: slides one square per step; bobs while walking, breathes while standing,
-          hops when using a place. Walking left shows the side view mirrored. */}
+          hops when using a place (unless celebrate is off). Walking left shows the side view mirrored. */}
       {!hidden && (
-        <g className="world__hero" style={{ transform: `translate(${heroX}px, ${heroY}px)` }}>
-          <g key={`use-${used.count}`} className={used.count > 0 ? 'world__hop' : undefined}>
+        <g className="world__hero" style={{ transform: `translate(${heroX}px, ${heroY}px)`, ...slide }}>
+          <g key={`use-${used.count}`} className={effects.hop ? 'world__hop' : undefined}>
             <g transform={mirror}>
               <g key={`step-${steps}`} className={steps > 0 ? 'world__bob' : undefined}>
                 <g className="world__breathe">{spriteRects(body, { id: 'hero' })}</g>
@@ -336,6 +382,8 @@ export default function WorldMap({
                 scene={scene3d}
                 label={label}
                 puff={stepPuff}
+                stepMs={stepMs}
+                celebrate={celebrate}
                 onFail={() => setFailed3d(true)}
               />
             </Suspense>

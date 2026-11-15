@@ -3,7 +3,7 @@ import WorldMap from './WorldMap.jsx';
 import { useGameNumber } from './useGameNumber.js';
 import { moveConfirm } from './dialogs.jsx';
 import { placeCorner, TILE } from './worldMap.js';
-import { BASE_MAP, BASE_START, PLACE_MOVES, PLACE_NAMES, BIG_HIT } from './baseMapData.js';
+import { BASE_MAP, BASE_START, BASE_STEP_MS, PLACE_MOVES, PLACE_NAMES, BIG_HIT } from './baseMapData.js';
 import { NOVA } from './heroes.js';
 import { spriteRects } from '../../components/pixel/spriteRects.jsx';
 import { PIECES, PALETTE } from '../../components/pixel/sprites.js';
@@ -51,6 +51,12 @@ const FOOTPRINTS = [[64, 52], [67, 55], [64, 58], [67, 61], [76, 50], [79, 53]];
 const LOOK = {
   moon: { ground: PALETTE.g, light: PALETTE.G, dark: PALETTE.k, name: 'Moon' },
   mars: { ground: '#b0553a', light: PALETTE.O, dark: '#7d3626', name: 'Mars' }
+};
+
+// Why Nova walks slowly here (docs/SOURCES.md: NASA Moon facts and the Mars fact sheet)
+const LOW_GRAVITY_TEXT = {
+  moon: 'The Moon pulls less than Earth (low gravity), so Nova moves in slow hops.',
+  mars: 'Mars pulls less than Earth (low gravity), so Nova moves in slow hops.'
 };
 
 const WHAT_HAPPENED = {
@@ -153,6 +159,10 @@ export default function BaseMap({ view, onMove, hit = 0, overlay, active = true 
       active={active}
       ground={look.ground}
       stepPuff={look.light}
+      // Low gravity: slow steps; and no hop or sparkles when Nova uses a machine
+      stepMs={BASE_STEP_MS[view.world] ?? BASE_STEP_MS.moon}
+      celebrate={false}
+      walkText={`Walk Nova to a place, then press USE. ${LOW_GRAVITY_TEXT[view.world] ?? LOW_GRAVITY_TEXT.moon}`}
       // The 3D picture shows the same things as the 2D one below (world3d/scene.js)
       scene3d={{ kind: 'base', world: view.world, turn, shielded, saving, sheltering, science, lowPower, hit, bigHit: hit >= BIG_HIT }}
       foreground={

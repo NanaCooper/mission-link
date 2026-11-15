@@ -5,8 +5,9 @@
 // cannot see it. A radiation hit is only shown after the move, as the 2D map flashes.
 //
 // createWorld({ canvas, kind, map, hero, world, reducedMotion }) returns
-//   frame(state, dt, t)   draws one picture. state = { position, steps, hidden, used, near, scene, puff }
-//                         (the same things WorldMap draws in 2D; scene = the map's scene3d prop)
+//   frame(state, dt, t)   draws one picture. state = { position, steps, hidden, used, near, scene,
+//                         puff, stepMs, celebrate } (the same things WorldMap draws in 2D;
+//                         scene = the map's scene3d prop)
 //   resize(width, height)
 //   dispose()             frees the graphics memory
 import * as THREE from 'three';
@@ -18,7 +19,7 @@ import {
 import { extrude, lathe, hull, ball, island } from './voxels.js';
 import {
   TILE3, RIM, gridToWorld, placeCentre, letterCentre, letterSpots, drawingToWorld,
-  FACING_ANGLE, turnToward, moveToward, frameCamera, CAMERA_FOV, LOOK_3D
+  FACING_ANGLE, turnToward, moveToward, walkFeel, frameCamera, CAMERA_FOV, LOOK_3D
 } from './layout.js';
 
 // Colours go to the screen exactly as written, so the 3D view keeps the game's palette.
@@ -29,7 +30,6 @@ const LIGHT_DIR = new THREE.Vector3(0.6, 1, 0.35).normalize();
 const ROOM_LIGHT_DIR = new THREE.Vector3(-0.45, 1, 0.7).normalize();
 const SUN_AT = new THREE.Vector3(300, -10, -560);
 const STORM_FROM = new THREE.Vector3(0.47, 0.25, -0.88).normalize(); // radiation streams in from the Sun's side
-const WALK_SPEED = 80; // units a second: a bit faster than one square per step, so it keeps up
 const DOWN_ARROW = ['KKKKKKK', 'KYYYYYK', '.KYYYK.', '..KYK..', '...K...'];
 const DOME_SHIFT = 6; // the round dome is two squares deep in 3D, so it sits a little further back
 const SHIELD_RADIUS = 80;
@@ -593,14 +593,33 @@ export function createWorld({ canvas, kind, map, hero, world = 'moon', reducedMo
   const wanted = new THREE.Vector3();
   let lastSteps = null;
   let stepAt = -10;
+  let landed = true;
   let lastUse = null;
   let useAt = -10;
   let usedSpot = null;
   let puffAt = -10;
+  let puffTime = 0.35;
+  let puffFloats = false;
   const puffSpot = { x: 0, z: 0 };
 
+  // Dust kicked up by a step (on Earth) or a landing (Moon and Mars, where it settles slowly)
+  function kickDust(t, spot, color, feel) {
+    if (!color) return;
+    puffAt = t;
+    puffTime = feel.dustTime;
+    puffFloats = feel.hopTime > 0;
+    puffSpot.x = spot.x;
+    puffSpot.z = spot.z;
+    puffMaterial.color.set(color);
+  }
+
   function frame(state, dt, t) {
-    const { position, steps = 0, hidden = false, used = { count: 0, place: null }, near = null, scene: sc = {}, puff = null } = state;
+    const {
+      position, steps = 0, hidden = false, used = { count: 0, place: null }, near = null,
+      scene: sc = {}, puff = null, stepMs, celebrate = true
+    } = state;
+    // Low gravity on the Moon and Mars: slow, floaty hops. Earth: a quick walk.
+    const feel = walkFeel({ stepMs, world: sc.world });
 
     // The character slides to its square, turns the way it faces, and steps while it walks
     const goal = gridToWorld(map, position.x, position.y);
@@ -610,20 +629,22 @@ export function createWorld({ canvas, kind, map, hero, world = 'moon', reducedMo
       character.angle = FACING_ANGLE[position.facing] ?? 0;
       character.placed = true;
     }
-    const moved = moveToward(character, goal, WALK_SPEED * dt);
+    const moved = moveToward(character, goal, feel.speed * dt);
     character.x = moved.x;
     character.z = moved.z;
     if (lastSteps !== null && steps !== lastSteps) {
       stepAt = t;
-      if (puff && !hidden) {
-        puffAt = t;
-        puffSpot.x = goal.x;
-        puffSpot.z = goal.z;
-        puffMaterial.color.set(puff);
-      }
+      landed = false;
+      if (!feel.hopTime && !hidden) kickDust(t, goal, puff, feel); // Earth: dust as the step starts
     }
     lastSteps = steps;
-    const walking = moved.distance > 0.3 || t - stepAt < 0.2;
+    const hopK = feel.hopTime ? (t - stepAt) / feel.hopTime : 1;
+    const inAir = hopK >= 0 && hopK < 1;
+    if (feel.hopTime && !inAir && !landed) {
+      landed = true;
+      if (!hidden) kickDust(t, character, puff, feel); // Moon and Mars: dust when Nova lands
+    }
+    const walking = inAir || moved.distance > 0.3 || t - stepAt < 0.2;
     character.angle = turnToward(character.angle, FACING_ANGLE[position.facing] ?? 0, dt * 14);
     character.group.position.set(character.x, 0, character.z);
     character.group.rotation.y = character.angle;
@@ -633,16 +654,17 @@ export function createWorld({ canvas, kind, map, hero, world = 'moon', reducedMo
     character.frames.a.visible = walking && odd;
     character.frames.b.visible = walking && !odd;
 
-    // Using a place: a hop, and sparkles over the place
+    // Using a place: a hop, and sparkles over the place (only where the map celebrates)
     if (lastUse !== null && used.count !== lastUse && used.count > 0) {
       useAt = t;
-      usedSpot = used.place ? places[used.place.id] ?? null : null;
+      usedSpot = celebrate && used.place ? places[used.place.id] ?? null : null;
     }
     lastUse = used.count;
-    const hopK = (t - useAt) / 0.32;
-    const hop = !reducedMotion && hopK >= 0 && hopK < 1 ? Math.sin(hopK * PI) * 3 : 0;
-    const bob = walking && !reducedMotion && odd ? 0.6 : 0;
-    character.body.position.y = hop + bob;
+    const useK = (t - useAt) / 0.32;
+    const useHop = celebrate && !reducedMotion && useK >= 0 && useK < 1 ? Math.sin(useK * PI) * 3 : 0;
+    const stepHop = feel.hopTime && inAir && !reducedMotion ? Math.sin(hopK * PI) * feel.hopHeight : 0;
+    const bob = !feel.hopTime && walking && !reducedMotion && odd ? 0.6 : 0;
+    character.body.position.y = useHop + stepHop + bob;
 
     const sparkleK = (t - useAt) / 0.6;
     sparkles.forEach((cube, i) => {
@@ -654,14 +676,15 @@ export function createWorld({ canvas, kind, map, hero, world = 'moon', reducedMo
       }
     });
 
-    // A little puff where the character lands after a step
-    const puffK = (t - puffAt) / 0.35;
+    // The dust: on Earth a quick puff; in low gravity it floats up and drifts down slowly
+    const puffK = (t - puffAt) / puffTime;
     const puffing = puffK >= 0 && puffK < 1 && !reducedMotion;
     puffMaterial.opacity = puffing ? 0.8 * (1 - puffK) : 0;
+    const rise = puffFloats ? (puffK < 0.25 ? puffK / 0.25 : 1 - (puffK - 0.25) / 0.75) * 1.8 : puffK * 1.2;
     puffs.forEach((cube, i) => {
       cube.visible = puffing;
       if (puffing) {
-        cube.position.set(puffSpot.x + [-4, -2, 2, 4][i] * (1 + puffK), 0.6 + puffK * 1.2, puffSpot.z + (i % 2 ? 1.5 : -1.5));
+        cube.position.set(puffSpot.x + [-4, -2, 2, 4][i] * (1 + puffK), 0.6 + rise, puffSpot.z + (i % 2 ? 1.5 : -1.5));
         cube.scale.setScalar(1 + puffK);
       }
     });
