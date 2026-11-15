@@ -2,9 +2,10 @@
 // in docs/SOURCES.md, and its url must point to the page the fact came from.
 
 // Shown on the Mars end screen as "This really happened on Mars".
-// Checked against the page on 2026-11-14.
+// Checked against the page on 2026-11-15. The dose is from the 20 May 2024 storm (an X12 flare),
+// not the 11 May storm the game plays, so the text says "a different solar storm".
 export const MARS_FACT = {
-  text: 'In May 2024 a real solar storm hit Mars. An astronaut standing next to the Curiosity rover would have received about as much radiation as 30 chest X-rays.',
+  text: 'On 20 May 2024, a different solar storm hit Mars. An astronaut next to the Curiosity rover, a robot car exploring Mars, would have got about as much radiation as 30 chest X-rays.',
   source: { name: 'NASA: Mars lights up during epic solar storm', url: 'https://www.nasa.gov/solar-system/planets/mars/nasa-watches-mars-light-up-during-epic-solar-storm/' }
 };
 
@@ -19,7 +20,7 @@ export const BLACKOUT_FACT = {
 // skipped, see WAVES in the contract). How to play shows them instead. Same words and
 // sources as in storm-2024-05-11.json; flow.test.jsx checks they stay the same.
 export const ALERTS_FACT = {
-  text: 'NASA says warning the crew in time, so they can take shelter, is essential for keeping them safe.',
+  text: 'NASA says a warning in time is a must. It lets the crew take shelter and stay safe.',
   source: { name: 'NASA radiation protection standard', url: 'https://www.nasa.gov/sites/default/files/atoms/files/radiation_protection_technical_brief_ochmo.pdf' }
 };
 

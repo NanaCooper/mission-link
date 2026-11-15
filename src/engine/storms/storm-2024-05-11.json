@@ -12,7 +12,7 @@
       "missionControlSees": "The Sun looks calm. But a busy patch of sunspots, number 13664, is facing the base.",
       "realData": { "activeRegionNum": 13664 },
       "fact": {
-        "text": "NASA says warning the crew in time, so they can take shelter, is essential for keeping them safe.",
+        "text": "NASA says a warning in time is a must. It lets the crew take shelter and stay safe.",
         "source": { "name": "NASA radiation protection standard", "url": "https://www.nasa.gov/sites/default/files/atoms/files/radiation_protection_technical_brief_ochmo.pdf" }
       }
     },
@@ -42,7 +42,7 @@
       "missionControlSees": "A space weather satellite is picking up super-fast particles from the Sun right now. Take cover!",
       "realData": { "particlesDetected": "2024-05-11T02:10Z", "instrument": "GOES-P: SEISS >100 MeV" },
       "fact": {
-        "text": "NASA has a special limit on how much radiation an astronaut may get from one solar particle storm like this.",
+        "text": "NASA has a limit on how much radiation an astronaut may get in one solar storm.",
         "source": { "name": "NASA radiation protection standard", "url": "https://www.nasa.gov/sites/default/files/atoms/files/radiation_protection_technical_brief_ochmo.pdf" }
       }
     },
@@ -68,7 +68,7 @@
     }
   ],
   "whatReallyHappened": [
-    "On 11 May 2024 at 01:10 (UTC), a very strong flare called X5.8 burst out of the Sun.",
+    "On 11 May 2024 at 01:10 world time, a very strong flare called X5.8 burst out of the Sun.",
     "It came from sunspot patch number 13664.",
     "26 minutes later, a giant cloud of gas left the Sun at about 1,263 km every second.",
     "At 02:10, a space weather satellite called GOES measured super-fast particles from the Sun.",
