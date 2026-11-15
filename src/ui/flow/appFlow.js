@@ -5,12 +5,15 @@ import { ROLES } from '../../shared/contract.js';
 
 /**
  * Which screen a running session should show.
- *   'lobby'  waiting for the game (or, for the online Astronaut, for Mission Control to join)
- *   'end'    the level is won or lost
- *   'game'   playing
+ *   'briefing'  the mission briefing, before Play again or the next level (briefing: true).
+ *               Every new game starts with it; the level waits behind it.
+ *   'lobby'     waiting for the game (or, for the online Astronaut, for Mission Control to join)
+ *   'end'       the level is won or lost
+ *   'game'      playing
  * Once the first move is made, a partner who drops out gets a banner, not the lobby.
  */
-export function pickGameScreen({ mode, role, state, partnerConnected }) {
+export function pickGameScreen({ mode, role, state, partnerConnected, briefing = false }) {
+  if (briefing) return 'briefing';
   const status = state?.status ?? 'lobby';
   if (status === 'won' || status === 'lost') return 'end';
   if (status === 'lobby') return 'lobby';

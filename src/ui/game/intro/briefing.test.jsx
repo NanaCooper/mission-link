@@ -4,20 +4,12 @@ import MissionBriefing from './MissionBriefing.jsx';
 import {
   BRIEFING_PAGES,
   WARNING_FACT,
-  fillStorm,
-  hasSeenBriefing,
-  markBriefingSeen
+  fillStorm
 } from './briefingText.js';
 import { getStorm } from '../../../engine/storms/index.js';
 
 const storm = getStorm(null);
 const render = (props = {}) => renderToStaticMarkup(<MissionBriefing storm={storm} onDone={() => {}} {...props} />);
-
-// A tiny stand-in for localStorage
-function memoryStorage() {
-  const data = new Map();
-  return { getItem: (k) => (data.has(k) ? data.get(k) : null), setItem: (k, v) => data.set(k, String(v)) };
-}
 
 describe('the mission briefing', () => {
   it('has 4 pages: the danger, why it matters, the mission, the two jobs', () => {
@@ -55,15 +47,5 @@ describe('the mission briefing', () => {
   it('every NASA fact in it has a NASA source link', () => {
     expect(WARNING_FACT.source.url).toMatch(/^https:\/\/www\.nasa\.gov\//);
     expect(BRIEFING_PAGES.find((p) => p.id === 'why').fact).toBe(true);
-  });
-
-  it('remembers that it was seen, and survives blocked storage', () => {
-    const storage = memoryStorage();
-    expect(hasSeenBriefing(storage)).toBe(false);
-    markBriefingSeen(storage);
-    expect(hasSeenBriefing(storage)).toBe(true);
-    const blocked = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); } };
-    expect(hasSeenBriefing(blocked)).toBe(false);
-    expect(() => markBriefingSeen(blocked)).not.toThrow();
   });
 });

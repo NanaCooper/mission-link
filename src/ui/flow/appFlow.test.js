@@ -18,6 +18,13 @@ describe('pickGameScreen', () => {
     expect(pickGameScreen({ mode: 'online', role: 'astronaut', state: midGame, partnerConnected: false })).toBe('game');
   });
 
+  it('shows the mission briefing before Play again or the next level, in every mode', () => {
+    // The finished level waits behind the briefing: it restarts when the player starts or skips
+    expect(pickGameScreen({ mode: 'split', state: { status: 'won' }, briefing: true })).toBe('briefing');
+    expect(pickGameScreen({ mode: 'online', role: 'astronaut', state: { status: 'lost' }, partnerConnected: true, briefing: true })).toBe('briefing');
+    expect(pickGameScreen({ mode: 'split', state: { status: 'won' }, briefing: false })).toBe('end');
+  });
+
   it('plays split mode straight away and ends on won or lost', () => {
     expect(pickGameScreen({ mode: 'split', role: 'astronaut', state: playing, partnerConnected: true })).toBe('game');
     expect(pickGameScreen({ mode: 'split', state: { status: 'won' } })).toBe('end');

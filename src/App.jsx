@@ -19,7 +19,6 @@ import HowToPlayScreen from './ui/flow/HowToPlayScreen.jsx';
 import DataSourcesScreen from './ui/flow/DataSourcesScreen.jsx';
 import TeacherScreen from './ui/flow/TeacherScreen.jsx';
 import MissionBriefing from './ui/game/intro/MissionBriefing.jsx';
-import { hasSeenBriefing, markBriefingSeen } from './ui/game/intro/briefingText.js';
 import { gameBanner, loadProgress, pickGameScreen, pickStorm, progressAfter, saveProgress } from './ui/flow/appFlow.js';
 
 // Screen switching with React state, no router.
@@ -27,7 +26,8 @@ import { gameBanner, loadProgress, pickGameScreen, pickStorm, progressAfter, sav
 //   home -> create room -> lobby -> Astronaut game -> end
 //   home -> join room -> Mission Control game -> end
 //   home <-> How to play, home <-> For teachers, home/end <-> Data sources
-//   the first mission on this device starts with the mission briefing (also: home -> Mission briefing)
+//   every new game starts with the mission briefing, also Play again and the next level
+//   (also: home -> Mission briefing)
 
 const scrollToTop = () => {
   try {
@@ -41,7 +41,7 @@ export default function App() {
   const [page, setPage] = useState('home'); // 'home' | 'howTo' | 'sources' | 'teachers' | 'briefing' | 'game'
   const [session, setSession] = useState(null); // { id, mode, role, code, world, moonStars, stormId, solo }
   const [progress, setProgress] = useState(() => loadProgress());
-  // The mission waiting behind the briefing (the first time), or null when it was opened from home.
+  // The mission waiting behind the briefing, or null when it was opened from home.
   const [afterBriefing, setAfterBriefing] = useState(null);
 
   useEffect(scrollToTop, [page]);
@@ -58,17 +58,15 @@ export default function App() {
     setSession({ id: Date.now(), ...options });
     setPage('game');
   };
-  // The first mission on this device opens the briefing first, so everyone knows the goal.
+  // Every new game opens the briefing first, so everyone knows the goal (Skip is always there).
   // Every new game plays one of the real NASA storms, picked at random (chosen here, so the
   // briefing can name it). Mission Control joining a room never picks: it follows the Astronaut.
   const start = (options) => {
     const game = options.role === ROLES.MISSION_CONTROL ? options : { ...options, stormId: pickStorm(REAL_STORM_IDS) };
-    if (hasSeenBriefing()) return startNow(game);
     setAfterBriefing(game);
     setPage('briefing');
   };
   const briefingDone = () => {
-    markBriefingSeen();
     if (afterBriefing) startNow(afterBriefing);
     else setPage('home');
     setAfterBriefing(null);
@@ -142,8 +140,11 @@ function Game({ session, onLevelEnd, onHome }) {
     stormId,
   });
   const [showSources, setShowSources] = useState(false);
+  // Play again and the next level open the mission briefing first, like every new game. The game
+  // (and an online room) stays open behind it; the level restarts when the player starts or skips.
+  const [nextGame, setNextGame] = useState(null); // restart() options waiting behind the briefing
 
-  const screen = pickGameScreen({ mode, role, state, partnerConnected });
+  const screen = pickGameScreen({ mode, role, state, partnerConnected, briefing: Boolean(nextGame) });
   const banner = gameBanner({ mode, screen, partnerConnected, error });
   const isMissionControl = mode === 'online' && role === ROLES.MISSION_CONTROL;
 
@@ -162,6 +163,18 @@ function Game({ session, onLevelEnd, onHome }) {
     return <DataSourcesScreen storm={getGameStorm(state)} onBack={() => setShowSources(false)} />;
   }
 
+  if (screen === 'briefing') {
+    return (
+      <MissionBriefing
+        storm={getStorm(nextGame.stormId ?? state.stormId ?? null)}
+        onDone={() => {
+          restart(nextGame);
+          setNextGame(null);
+        }}
+      />
+    );
+  }
+
   if (screen === 'lobby') {
     return <LobbyScreen code={code} role={role} error={error} onBack={onHome} />;
   }
@@ -176,9 +189,9 @@ function Game({ session, onLevelEnd, onHome }) {
         crew={getAstronautView(state)}
         missionControl={getMissionControlView(state)}
         canContinue={!isMissionControl}
-        onNextLevel={(stars) => restart({ world: 'mars', moonStars: stars })}
+        onNextLevel={(stars) => setNextGame({ world: 'mars', moonStars: stars })}
         // Play again: the same level with another real storm, so it plays differently
-        onPlayAgain={() => restart({ stormId: pickStorm(REAL_STORM_IDS, state.stormId) })}
+        onPlayAgain={() => setNextGame({ stormId: pickStorm(REAL_STORM_IDS, state.stormId) })}
         onHome={onHome}
         onDataSources={() => setShowSources(true)}
       />
